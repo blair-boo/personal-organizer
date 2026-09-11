@@ -1,10 +1,11 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { ModalBase } from '../../components/ModalBase';
 import { ArquivoLink } from '../../components/ArquivoLink';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
 import { formatarMoeda, formatarData } from '../../lib/datas';
+import { construirOpcoesHierarquicas, rotuloHierarquico } from '../../lib/hierarquia';
 import { useCategoriasItens } from '../../hooks/useCategoriasItens';
 import { useAtualizarItem, useCriarItem, useExcluirItem, useItens, type DadosItem } from '../../hooks/useItens';
 import {
@@ -12,7 +13,7 @@ import {
   useItemDocumentos,
   useRemoverDocumentoItem,
 } from '../../hooks/useItemDocumentos';
-import type { CategoriaItens, Item, ItemDocumento, TipoDocumentoItem } from '../../types';
+import type { Item, ItemDocumento, TipoDocumentoItem } from '../../types';
 
 const ITEM_VAZIO: DadosItem = {
   nome: '',
@@ -30,29 +31,6 @@ const TIPO_DOC_LABEL: Record<TipoDocumentoItem, string> = {
   manual: 'Manual',
   outro: 'Outro',
 };
-
-function useOpcoesCategoria(categorias: CategoriaItens[] | undefined) {
-  return useMemo(() => {
-    const raizes = (categorias ?? []).filter((c) => !c.parent_id);
-    const opcoes: { id: string; rotulo: string }[] = [];
-    for (const raiz of raizes) {
-      opcoes.push({ id: raiz.id, rotulo: raiz.nome });
-      for (const filho of (categorias ?? []).filter((c) => c.parent_id === raiz.id)) {
-        opcoes.push({ id: filho.id, rotulo: `${raiz.nome} › ${filho.nome}` });
-      }
-    }
-    return opcoes;
-  }, [categorias]);
-}
-
-function rotuloCategoria(categorias: CategoriaItens[] | undefined, categoriaId: string | null): string {
-  if (!categoriaId || !categorias) return 'Sem categoria';
-  const cat = categorias.find((c) => c.id === categoriaId);
-  if (!cat) return 'Sem categoria';
-  if (!cat.parent_id) return cat.nome;
-  const pai = categorias.find((c) => c.id === cat.parent_id);
-  return pai ? `${pai.nome} › ${cat.nome}` : cat.nome;
-}
 
 function SecaoDocumentos({ item }: { item: Item }) {
   const { data: documentos, isLoading } = useItemDocumentos(item.id);
@@ -234,7 +212,7 @@ function FormularioItem({
 export function ItensPage() {
   const { data: itens, isLoading } = useItens();
   const { data: categorias } = useCategoriasItens();
-  const opcoesCategoria = useOpcoesCategoria(categorias);
+  const opcoesCategoria = construirOpcoesHierarquicas(categorias ?? []);
   const criar = useCriarItem();
   const atualizar = useAtualizarItem();
   const excluir = useExcluirItem();
@@ -300,7 +278,7 @@ export function ItensPage() {
               <div>
                 <strong>{item.nome}</strong>
                 <span className="conta-detalhe">
-                  {rotuloCategoria(categorias, item.categoria_id)}
+                  {rotuloHierarquico(categorias, item.categoria_id) ?? 'Sem categoria'}
                   {item.valor != null && ` · ${formatarMoeda(item.valor)}`}
                 </span>
               </div>

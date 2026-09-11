@@ -33,7 +33,21 @@ export default defineConfig(({ command }) => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // pdfjs-dist (chunk + worker) só é baixado quando ela realmente importa um
+        // PDF — sem isso o precache inicial do PWA baixaria +1MB pra quem nunca
+        // usa a importação financeira. Fica disponível via rede normal na primeira
+        // vez que um PDF é lido; a regra CacheFirst abaixo cacheia depois disso.
+        globIgnores: ['**/assets/pdf-*.js', '**/assets/pdf.worker.min-*.mjs', '**/assets/ResumoGeralPage-*.js'],
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) => /\/assets\/pdf(\.worker\.min)?-.*\.(js|mjs)$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'pdfjs-chunk-cache',
+              expiration: { maxEntries: 2, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             // Chamadas REST do Supabase: tenta rede primeiro, cai pro cache se offline.
             urlPattern: ({ url }) => url.pathname.startsWith('/rest/v1/'),

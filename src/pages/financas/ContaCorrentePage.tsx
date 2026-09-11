@@ -1,7 +1,7 @@
+import { useParams } from 'react-router-dom';
+import { ExtratoContaView } from './ExtratoContaView';
+
 export function ContaCorrentePage() {
-  return (
-    <div className="pagina-vazia">
-      <p>Extrato de conta corrente/poupança/investimento do mês. Em construção.</p>
-    </div>
-  );
+  const { competencia } = useParams<{ competencia: string }>();
+  return <ExtratoContaView competencia={competencia!} tiposConta={['conta_corrente', 'conta_poupanca', 'conta_investimento']} />;
 }

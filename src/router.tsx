@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { RootLayout } from './RootLayout';
 import { competenciaAtual } from './lib/datas';
@@ -6,8 +7,13 @@ import { FinancasLayout } from './pages/financas/FinancasLayout';
 import { ContaCorrentePage } from './pages/financas/ContaCorrentePage';
 import { CartaoCreditoPage } from './pages/financas/CartaoCreditoPage';
 import { ResumoMesPage } from './pages/financas/ResumoMesPage';
-import { ResumoGeralPage } from './pages/financas/ResumoGeralPage';
 import { ParcelamentosPage } from './pages/financas/ParcelamentosPage';
+
+// Carregada sob demanda: só essa página usa recharts, uma lib pesada que não
+// vale a pena colocar no bundle principal pra quem só usa o resto do app.
+const ResumoGeralPage = lazy(() =>
+  import('./pages/financas/ResumoGeralPage').then((m) => ({ default: m.ResumoGeralPage }))
+);
 
 import { ApartamentoLayout } from './pages/apartamento/ApartamentoLayout';
 import { ItensPage } from './pages/apartamento/ItensPage';
@@ -42,7 +48,14 @@ export const router = createBrowserRouter(
                 { path: 'resumo', element: <ResumoMesPage /> },
               ],
             },
-            { path: 'resumo-geral', element: <ResumoGeralPage /> },
+            {
+              path: 'resumo-geral',
+              element: (
+                <Suspense fallback={<p>Carregando…</p>}>
+                  <ResumoGeralPage />
+                </Suspense>
+              ),
+            },
             { path: 'parcelamentos', element: <ParcelamentosPage /> },
           ],
         },
