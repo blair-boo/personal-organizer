@@ -4,8 +4,9 @@ import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@d
 import { CSS } from '@dnd-kit/utilities';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
-import { IconeSupabase } from '../../components/IconeSupabase';
+import { IconePng, IconeSupabase } from '../../components/IconeSupabase';
 import { mensagemDeErro } from '../../lib/erros';
+import { iconesDaCategoria } from '../../lib/iconesCategorias';
 import {
   useCategorias,
   useCriarCategoria,
@@ -63,6 +64,7 @@ function ItemLinha({
 }) {
   const sortable = useSortable({ id: item.id });
   const style = { transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition };
+  const icones = isRaiz ? iconesDaCategoria(item.nome) : [];
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
@@ -94,6 +96,13 @@ function ItemLinha({
         <button type="button" className="btn-icone categorias-arrastar" aria-label={`Arrastar ${item.nome}`} {...sortable.attributes} {...sortable.listeners}>
           <IconeGrip />
         </button>
+      )}
+      {icones.length > 0 && (
+        <span className="categorias-icones-raiz">
+          {icones.map((arquivo) => (
+            <IconePng key={arquivo} arquivo={arquivo} tamanho={18} />
+          ))}
+        </span>
       )}
       <button
         type="button"

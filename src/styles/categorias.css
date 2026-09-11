@@ -101,6 +101,19 @@
   opacity: 0.9;
 }
 
+.categorias-icones-raiz {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.icone-png {
+  display: block;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
 .categorias-nome {
   flex: 1;
   min-width: 0;
