@@ -6,7 +6,7 @@ import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { IconePng, IconeSupabase } from '../../components/IconeSupabase';
 import { mensagemDeErro } from '../../lib/erros';
-import { iconesDaCategoria } from '../../lib/iconesCategorias';
+import { ehIconeMascarado, iconesDaCategoria } from '../../lib/iconesCategorias';
 import {
   useCategorias,
   useCriarCategoria,
@@ -29,6 +29,8 @@ function IconeGrip() {
 
 function ItemLinha({
   item,
+  nomeExibido,
+  renomeacaoPendente,
   uso,
   isRaiz,
   subCount,
@@ -46,6 +48,8 @@ function ItemLinha({
   onAdicionarSubcategoria,
 }: {
   item: Categoria;
+  nomeExibido: string;
+  renomeacaoPendente: boolean;
   uso: number;
   isRaiz: boolean;
   subCount?: number;
@@ -79,7 +83,7 @@ function ItemLinha({
   if (editando) {
     return (
       <div ref={sortable.setNodeRef} style={style} className="categorias-item categorias-item-editando">
-        <input value={rascunho} onChange={(e) => onRascunhoChange(e.target.value)} onKeyDown={handleKeyDown} autoFocus aria-label={`Renomear ${item.nome}`} />
+        <input value={rascunho} onChange={(e) => onRascunhoChange(e.target.value)} onKeyDown={handleKeyDown} autoFocus aria-label={`Renomear ${nomeExibido}`} />
         <button type="button" className="btn-icone" onClick={onConfirmarEdicao} title="Confirmar" aria-label="Confirmar">
           ✓
         </button>
@@ -91,17 +95,25 @@ function ItemLinha({
   }
 
   return (
-    <div ref={sortable.setNodeRef} style={style} className={`categorias-item${pendente ? ' categorias-item-pendente' : ''}`}>
+    <div
+      ref={sortable.setNodeRef}
+      style={style}
+      className={`categorias-item${pendente ? ' categorias-item-pendente' : ''}${renomeacaoPendente ? ' categorias-item-renomeado' : ''}`}
+    >
       {modoEdicao && !pendente && (
-        <button type="button" className="btn-icone categorias-arrastar" aria-label={`Arrastar ${item.nome}`} {...sortable.attributes} {...sortable.listeners}>
+        <button type="button" className="btn-icone categorias-arrastar" aria-label={`Arrastar ${nomeExibido}`} {...sortable.attributes} {...sortable.listeners}>
           <IconeGrip />
         </button>
       )}
       {icones.length > 0 && (
         <span className="categorias-icones-raiz">
-          {icones.map((arquivo) => (
-            <IconePng key={arquivo} arquivo={arquivo} tamanho={18} />
-          ))}
+          {icones.map((arquivo) =>
+            ehIconeMascarado(arquivo) ? (
+              <IconeSupabase key={arquivo} arquivo={arquivo} tamanho={18} />
+            ) : (
+              <IconePng key={arquivo} arquivo={arquivo} tamanho={18} />
+            )
+          )}
         </span>
       )}
       <button
@@ -112,7 +124,7 @@ function ItemLinha({
       >
         <span className="categorias-nome-texto">
           {isRaiz && <span className="categorias-seta">{expandido ? '▾' : '▸'}</span>}
-          {item.nome}
+          {nomeExibido}
         </span>
         {isRaiz && subCount != null && <span className="categorias-contagem-subs">({subCount})</span>}
       </button>
@@ -122,17 +134,17 @@ function ItemLinha({
         </span>
       )}
       {onAdicionarSubcategoria && (
-        <button type="button" className="btn-icone" onClick={onAdicionarSubcategoria} disabled={pendente} title={`Nova subcategoria em ${item.nome}`} aria-label={`Nova subcategoria em ${item.nome}`}>
+        <button type="button" className="btn-icone" onClick={onAdicionarSubcategoria} disabled={pendente} title={`Nova subcategoria em ${nomeExibido}`} aria-label={`Nova subcategoria em ${nomeExibido}`}>
           +
         </button>
       )}
       {modoEdicao && (
         pendente ? (
-          <button type="button" className="categorias-btn-desfazer" onClick={onDesfazerExclusao} title={`Desfazer exclusão de ${item.nome}`}>
+          <button type="button" className="categorias-btn-desfazer" onClick={onDesfazerExclusao} title={`Desfazer exclusão de ${nomeExibido}`}>
             Desfazer
           </button>
         ) : (
-          <button type="button" className="btn-icone btn-icone-perigo" onClick={onMarcarExclusao} title={`Excluir ${item.nome}`} aria-label={`Excluir ${item.nome}`}>
+          <button type="button" className="btn-icone btn-icone-perigo" onClick={onMarcarExclusao} title={`Excluir ${nomeExibido}`} aria-label={`Excluir ${nomeExibido}`}>
             <IconeSupabase arquivo="trash3.svg" />
           </button>
         )
@@ -158,10 +170,15 @@ export function CategoriasPage() {
   const [modoEdicao, setModoEdicao] = useState(false);
   const [ordemLocal, setOrdemLocal] = useState<Categoria[] | null>(null);
   const [exclusoesPendentes, setExclusoesPendentes] = useState<Set<string>>(new Set());
+  const [renomeacoesPendentes, setRenomeacoesPendentes] = useState<Map<string, string>>(new Map());
   const [colapsados, setColapsados] = useState<Set<string>>(new Set());
   const [salvando, setSalvando] = useState(false);
   const haAlteracoesOrdem = ordemLocal !== null;
-  const temPendencias = haAlteracoesOrdem || exclusoesPendentes.size > 0;
+  const temPendencias = haAlteracoesOrdem || exclusoesPendentes.size > 0 || renomeacoesPendentes.size > 0;
+
+  function nomeAtual(item: Categoria): string {
+    return renomeacoesPendentes.get(item.id) ?? item.nome;
+  }
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -187,7 +204,7 @@ export function CategoriasPage() {
 
   function iniciarEdicao(item: Categoria) {
     setEdicaoAtivaId(item.id);
-    setRascunho(item.nome);
+    setRascunho(nomeAtual(item));
   }
 
   function cancelarEdicao() {
@@ -195,15 +212,19 @@ export function CategoriasPage() {
     setRascunho('');
   }
 
-  async function confirmarEdicao(item: Categoria) {
+  function confirmarEdicao(item: Categoria) {
     const novo = rascunho.trim();
     cancelarEdicao();
-    if (!novo || novo === item.nome) return;
-    try {
-      await renomear.mutateAsync({ id: item.id, nome: novo });
-    } catch (err) {
-      mostrarToast(mensagemDeErro(err), 'erro');
-    }
+    if (!novo || novo === nomeAtual(item)) return;
+    setRenomeacoesPendentes((atual) => {
+      const novoMapa = new Map(atual);
+      if (novo === item.nome) {
+        novoMapa.delete(item.id);
+      } else {
+        novoMapa.set(item.id, novo);
+      }
+      return novoMapa;
+    });
   }
 
   function alternarExpandir(raizId: string) {
@@ -269,6 +290,7 @@ export function CategoriasPage() {
     setModoEdicao(false);
     setOrdemLocal(null);
     setExclusoesPendentes(new Set());
+    setRenomeacoesPendentes(new Map());
     cancelarEdicao();
   }
 
@@ -296,6 +318,10 @@ export function CategoriasPage() {
     try {
       if (ordemLocal) {
         await reordenar.mutateAsync(ordemLocal.map((c) => ({ id: c.id, ordem: c.ordem })));
+      }
+      for (const [id, nome] of renomeacoesPendentes) {
+        if (exclusoesPendentes.has(id)) continue;
+        await renomear.mutateAsync({ id, nome });
       }
       for (const id of exclusoesPendentes) {
         await excluir.mutateAsync(id);
@@ -344,8 +370,8 @@ export function CategoriasPage() {
         <div className="categorias-cabecalho">
           <h1>Categorias</h1>
           <p className="categorias-subtitulo">
-            Clique no ícone de vassoura pra entrar no modo de edição — aí dá pra arrastar e excluir. As alterações só ficam
-            definitivas ao clicar em salvar e confirmar.
+            Clique no ícone de vassoura pra entrar no modo de edição — aí dá pra arrastar, renomear e excluir. As
+            alterações só ficam definitivas ao clicar em salvar e confirmar.
           </p>
         </div>
 
@@ -407,6 +433,8 @@ export function CategoriasPage() {
                   <div className="categorias-raiz">
                     <ItemLinha
                       item={raiz}
+                      nomeExibido={nomeAtual(raiz)}
+                      renomeacaoPendente={renomeacoesPendentes.has(raiz.id)}
                       uso={uso?.get(raiz.id) ?? 0}
                       isRaiz
                       subCount={totalSubs}
@@ -434,6 +462,8 @@ export function CategoriasPage() {
                             <ItemLinha
                               key={sub.id}
                               item={sub}
+                              nomeExibido={nomeAtual(sub)}
+                              renomeacaoPendente={renomeacoesPendentes.has(sub.id)}
                               uso={uso?.get(sub.id) ?? 0}
                               isRaiz={false}
                               modoEdicao={modoEdicao}

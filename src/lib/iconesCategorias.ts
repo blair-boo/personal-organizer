@@ -27,3 +27,16 @@ const ICONES_CATEGORIAS: Record<string, string[]> = {
 export function iconesDaCategoria(nome: string): string[] {
   return (ICONES_CATEGORIAS[nome] ?? []).map((arquivo) => `PNG/${arquivo}`);
 }
+
+/** Subconjunto de ícones que, em vez da ilustração colorida, usa a mesma
+ * máscara com currentColor dos ícones de ação (vassoura/salvar/lixeira) —
+ * saem como silhueta sólida na cor do texto, não na cor original do PNG. */
+const ICONES_MASCARADOS = new Set(
+  ['compras.png', 'taxi.png', 'estetoscopio.png', 'rato-injecao.png', 'face-mask.png', 'aviao.png', 'compras-celular.png', 'martelo-juiz.png'].map(
+    (arquivo) => `PNG/${arquivo}`
+  )
+);
+
+export function ehIconeMascarado(arquivo: string): boolean {
+  return ICONES_MASCARADOS.has(arquivo);
+}

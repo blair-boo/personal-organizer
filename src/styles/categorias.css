@@ -1,9 +1,9 @@
 /* Settings > Categorias: cada categoria-raiz é uma seção, com suas
    subcategorias num grid de 4 colunas (2 no celular) logo abaixo — não duas
-   listas separadas. Puxador de arraste sempre visível por item; reordenar só
-   fica pendente (descartar/salvar) até confirmar — renomear/excluir/criar
-   sempre salvam na hora. Conteúdo com scroll interno próprio, igual ao
-   Genres/Tags do manga-lists. */
+   listas separadas. Grip/lixeira só aparecem no modo de edição (vassoura);
+   reordenar, renomear e excluir ficam pendentes até salvar e confirmar —
+   só criar categoria/subcategoria salva na hora. Conteúdo com scroll interno
+   próprio, igual ao Genres/Tags do manga-lists. */
 
 .categorias-pagina {
   display: flex;
@@ -106,6 +106,7 @@
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  color: var(--text-h);
 }
 
 .icone-png {
@@ -161,6 +162,11 @@
 .categorias-item-pendente .categorias-nome-texto {
   text-decoration: line-through;
   opacity: 0.5;
+}
+
+.categorias-item-renomeado .categorias-nome-texto {
+  font-style: italic;
+  color: var(--accent);
 }
 
 .categorias-btn-desfazer {
