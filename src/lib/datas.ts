@@ -48,6 +48,19 @@ export function formatarMoeda(valor: number): string {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+/** Soma (ou subtrai) dias a uma data "AAAA-MM-DD", retornando outra "AAAA-MM-DD". */
+export function somarDias(dataIso: string, dias: number): string {
+  const [ano, mes, dia] = dataIso.split('-').map(Number);
+  const data = new Date(ano, mes - 1, dia + dias);
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+}
+
+/** Data de hoje no formato "AAAA-MM-DD" (fuso local). */
+export function hojeIso(): string {
+  const hoje = new Date();
+  return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+}
+
 export function formatarData(iso: string): string {
   const [ano, mes, dia] = iso.split('-');
   return `${dia}/${mes}/${ano}`;

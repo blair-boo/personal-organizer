@@ -1,0 +1,74 @@
+.calendario-cabecalho-mes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.calendario-cabecalho-mes button {
+  border: 1px solid var(--border);
+  background: none;
+  padding: 4px 12px;
+}
+
+.calendario {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.calendario-cabecalho {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--accent-bg);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.calendario-cabecalho span {
+  padding: 6px 0;
+}
+
+.calendario-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calendario-celula {
+  min-height: 64px;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.calendario-celula:nth-child(7n) {
+  border-right: 1px solid var(--border);
+}
+
+.calendario-celula-vazia {
+  background: var(--bg);
+  opacity: 0.4;
+}
+
+.calendario-dia {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.calendario-evento {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 1px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
