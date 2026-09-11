@@ -8,6 +8,7 @@ import { parseLinhasExtrato, type LancamentoCandidato } from '../../lib/parserEx
 import { normalizarDescricao } from '../../lib/normalizacao';
 import { caminhoComprovante, enviarArquivo } from '../../lib/storage';
 import { competenciaParaSigla, formatarMoeda } from '../../lib/datas';
+import { rotuloConta } from '../../lib/contas';
 import { useCriarImportacao, useConcluirImportacao } from '../../hooks/useImportacoes';
 import { useCriarLancamentosEmLote, type DadosLancamento } from '../../hooks/useLancamentos';
 import { useRegrasPara, useSalvarRegra } from '../../hooks/useRegrasCategorizacao';
@@ -134,7 +135,7 @@ export function ImportarExtratoModal({
 
   return (
     <ModalBase aberto={aberto} rotulo="Importar extrato/fatura" onFechar={fecharTudo} classe="modal-importacao">
-      <h3 className="modal-titulo">Importar {conta.tipo === 'cartao_credito' ? 'fatura' : 'extrato'} — {conta.nome}</h3>
+      <h3 className="modal-titulo">Importar {conta.tipo === 'cartao_credito' ? 'fatura' : 'extrato'} — {rotuloConta(conta)}</h3>
 
       {etapa === 'selecionar' && (
         <div className="importar-selecionar">

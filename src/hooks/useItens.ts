@@ -6,7 +6,6 @@ const QUERY_KEY = ['itens'];
 
 export interface DadosItem {
   nome: string;
-  categoria_id: string | null;
   marca: string | null;
   modelo: string | null;
   data_compra: string | null;

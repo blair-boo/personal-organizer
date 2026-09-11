@@ -22,10 +22,10 @@ import { ManutencaoPage } from './pages/apartamento/ManutencaoPage';
 
 import { SettingsLayout } from './pages/settings/SettingsLayout';
 import { CategoriasPage } from './pages/settings/CategoriasPage';
-import { CategoriasItensPage } from './pages/settings/CategoriasItensPage';
+import { TagsItensPage } from './pages/settings/TagsItensPage';
 import { ContasPage } from './pages/settings/ContasPage';
 import { BancoDeLancamentosPage } from './pages/settings/BancoDeLancamentosPage';
-import { ClassificacoesManutencaoPage } from './pages/settings/ClassificacoesManutencaoPage';
+import { ClassificacoesTarefasPage } from './pages/settings/ClassificacoesTarefasPage';
 
 export const router = createBrowserRouter(
   [
@@ -75,10 +75,10 @@ export const router = createBrowserRouter(
           children: [
             { index: true, element: <Navigate to="/settings/categorias" replace /> },
             { path: 'categorias', element: <CategoriasPage /> },
-            { path: 'categorias-itens', element: <CategoriasItensPage /> },
+            { path: 'tags-itens', element: <TagsItensPage /> },
             { path: 'contas', element: <ContasPage /> },
             { path: 'banco-lancamentos', element: <BancoDeLancamentosPage /> },
-            { path: 'classificacoes-manutencao', element: <ClassificacoesManutencaoPage /> },
+            { path: 'classificacoes-tarefas', element: <ClassificacoesTarefasPage /> },
           ],
         },
         { path: '*', element: <Navigate to="/" replace /> },

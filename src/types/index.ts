@@ -1,4 +1,12 @@
-export type TipoConta = 'conta_corrente' | 'conta_poupanca' | 'conta_investimento' | 'cartao_credito';
+export type TipoConta =
+  | 'conta_corrente'
+  | 'conta_poupanca'
+  | 'conta_investimento'
+  | 'cartao_credito'
+  | 'cartao_beneficio';
+export type StatusConta = 'ativo' | 'inativo' | 'cancelado' | 'expirado';
+export type FormatoCartao = 'fisico' | 'virtual';
+export type SubtipoVirtualCartao = 'recorrente' | 'expiravel';
 export type TipoCategoria = 'despesa' | 'receita';
 export type TipoLancamento = 'entrada' | 'saida';
 export type StatusProjeto = 'planejado' | 'andamento' | 'concluido';
@@ -6,11 +14,18 @@ export type TipoDocumentoItem = 'nota_fiscal' | 'manual' | 'outro';
 
 export interface Conta {
   id: string;
-  nome: string;
+  nome: string | null;
   tipo: TipoConta;
   instituicao: string;
   cor: string | null;
-  ativo: boolean;
+  status: StatusConta;
+  conta_vinculada_id: string | null;
+  emissora: string | null;
+  ultimos_4_digitos: string | null;
+  formato: FormatoCartao | null;
+  subtipo_virtual: SubtipoVirtualCartao | null;
+  valor_deposito_mensal: number | null;
+  dia_deposito: number | null;
 }
 
 export interface Categoria {
@@ -23,12 +38,11 @@ export interface Categoria {
   ordem: number;
 }
 
-export interface CategoriaItens {
+export interface TagItem {
   id: string;
   nome: string;
-  parent_id: string | null;
+  cor: string | null;
   icone_url: string | null;
-  ordem: number;
 }
 
 export interface Lancamento {
@@ -49,7 +63,6 @@ export interface Lancamento {
 export interface Item {
   id: string;
   nome: string;
-  categoria_id: string | null;
   marca: string | null;
   modelo: string | null;
   data_compra: string | null;
@@ -84,7 +97,7 @@ export interface ProjetoAnexo {
   nome_arquivo: string;
 }
 
-export interface ClassificacaoManutencao {
+export interface ClassificacaoTarefa {
   id: string;
   nome: string;
   cor: string | null;
@@ -94,7 +107,6 @@ export interface ClassificacaoManutencao {
 export interface TarefaManutencao {
   id: string;
   nome: string;
-  classificacao_id: string | null;
   frequencia_dias: number;
   ultima_execucao: string | null;
   ativo: boolean;

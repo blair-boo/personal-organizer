@@ -1,12 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { ModalBase } from '../../components/ModalBase';
 import { ArquivoLink } from '../../components/ArquivoLink';
+import { TagMultiSelect } from '../../components/TagMultiSelect';
+import { TagsChips } from '../../components/TagsChips';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
 import { formatarMoeda, formatarData } from '../../lib/datas';
-import { construirOpcoesHierarquicas, rotuloHierarquico } from '../../lib/hierarquia';
-import { useCategoriasItens } from '../../hooks/useCategoriasItens';
+import { useTagsItens } from '../../hooks/useTagsItens';
+import { useDefinirTagsItem, useTodosItemTags } from '../../hooks/useItemTags';
 import { useAtualizarItem, useCriarItem, useExcluirItem, useItens, type DadosItem } from '../../hooks/useItens';
 import {
   useAdicionarDocumentoItem,
@@ -17,7 +19,6 @@ import type { Item, ItemDocumento, TipoDocumentoItem } from '../../types';
 
 const ITEM_VAZIO: DadosItem = {
   nome: '',
-  categoria_id: null,
   marca: null,
   modelo: null,
   data_compra: null,
@@ -115,23 +116,26 @@ function SecaoDocumentos({ item }: { item: Item }) {
 
 function FormularioItem({
   inicial,
-  opcoesCategoria,
+  tagsIniciais,
+  todasTags,
   onSalvar,
   onCancelar,
 }: {
   inicial: DadosItem;
-  opcoesCategoria: { id: string; rotulo: string }[];
-  onSalvar: (dados: DadosItem) => Promise<void>;
+  tagsIniciais: string[];
+  todasTags: { id: string; nome: string }[];
+  onSalvar: (dados: DadosItem, tagIds: string[]) => Promise<void>;
   onCancelar: () => void;
 }) {
   const [dados, setDados] = useState<DadosItem>(inicial);
+  const [tagIds, setTagIds] = useState<string[]>(tagsIniciais);
   const [salvando, setSalvando] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSalvando(true);
     try {
-      await onSalvar(dados);
+      await onSalvar(dados, tagIds);
     } finally {
       setSalvando(false);
     }
@@ -144,18 +148,8 @@ function FormularioItem({
         <input type="text" value={dados.nome} onChange={(e) => setDados({ ...dados, nome: e.target.value })} data-autofocus required />
       </label>
       <label>
-        Categoria
-        <select
-          value={dados.categoria_id ?? ''}
-          onChange={(e) => setDados({ ...dados, categoria_id: e.target.value || null })}
-        >
-          <option value="">Sem categoria</option>
-          {opcoesCategoria.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.rotulo}
-            </option>
-          ))}
-        </select>
+        Tags
+        <TagMultiSelect todasTags={todasTags} selecionadas={tagIds} onChange={setTagIds} />
       </label>
       <label>
         Marca
@@ -211,11 +205,12 @@ function FormularioItem({
 
 export function ItensPage() {
   const { data: itens, isLoading } = useItens();
-  const { data: categorias } = useCategoriasItens();
-  const opcoesCategoria = construirOpcoesHierarquicas(categorias ?? []);
+  const { data: todasTags } = useTagsItens();
+  const { data: itemTags } = useTodosItemTags();
   const criar = useCriarItem();
   const atualizar = useAtualizarItem();
   const excluir = useExcluirItem();
+  const definirTags = useDefinirTagsItem();
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
 
@@ -232,13 +227,11 @@ export function ItensPage() {
     setModalAberto(true);
   }
 
-  async function salvar(dados: DadosItem) {
+  async function salvar(dados: DadosItem, tagIds: string[]) {
     try {
-      if (editando) {
-        await atualizar.mutateAsync({ id: editando.id, dados });
-      } else {
-        await criar.mutateAsync(dados);
-      }
+      const itemId = editando ? editando.id : (await criar.mutateAsync(dados)).id;
+      if (editando) await atualizar.mutateAsync({ id: editando.id, dados });
+      await definirTags.mutateAsync({ itemId, tagIds });
       mostrarToast('Item salvo.');
       if (!editando) setModalAberto(false);
     } catch (err) {
@@ -278,7 +271,7 @@ export function ItensPage() {
               <div>
                 <strong>{item.nome}</strong>
                 <span className="conta-detalhe">
-                  {rotuloHierarquico(categorias, item.categoria_id) ?? 'Sem categoria'}
+                  <TagsChips tags={itemTags?.get(item.id)} />
                   {item.valor != null && ` · ${formatarMoeda(item.valor)}`}
                 </span>
               </div>
@@ -297,7 +290,6 @@ export function ItensPage() {
             editando
               ? {
                   nome: editando.nome,
-                  categoria_id: editando.categoria_id,
                   marca: editando.marca,
                   modelo: editando.modelo,
                   data_compra: editando.data_compra,
@@ -307,7 +299,8 @@ export function ItensPage() {
                 }
               : ITEM_VAZIO
           }
-          opcoesCategoria={opcoesCategoria}
+          tagsIniciais={editando ? (itemTags?.get(editando.id) ?? []).map((t) => t.id) : []}
+          todasTags={todasTags ?? []}
           onSalvar={salvar}
           onCancelar={() => setModalAberto(false)}
         />

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import type { Conta, TipoConta } from '../types';
+import type { Conta, FormatoCartao, StatusConta, SubtipoVirtualCartao, TipoConta } from '../types';
 
 const QUERY_KEY = ['contas'];
 
@@ -16,11 +16,18 @@ export function useContas() {
 }
 
 export interface DadosConta {
-  nome: string;
+  nome: string | null;
   tipo: TipoConta;
   instituicao: string;
   cor: string | null;
-  ativo: boolean;
+  status: StatusConta;
+  conta_vinculada_id: string | null;
+  emissora: string | null;
+  ultimos_4_digitos: string | null;
+  formato: FormatoCartao | null;
+  subtipo_virtual: SubtipoVirtualCartao | null;
+  valor_deposito_mensal: number | null;
+  dia_deposito: number | null;
 }
 
 export function useCriarConta() {

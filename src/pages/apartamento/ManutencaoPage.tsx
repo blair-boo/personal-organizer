@@ -1,12 +1,15 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { ModalBase } from '../../components/ModalBase';
 import { CalendarioMensal } from '../../components/CalendarioMensal';
+import { TagMultiSelect } from '../../components/TagMultiSelect';
+import { TagsChips } from '../../components/TagsChips';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
 import { formatarData } from '../../lib/datas';
 import { ocorrenciasNoIntervalo, proximaExecucao } from '../../lib/manutencao';
-import { useClassificacoesManutencao } from '../../hooks/useClassificacoesManutencao';
+import { useClassificacoesTarefas } from '../../hooks/useClassificacoesTarefas';
+import { useDefinirClassificacoesTarefa, useTodasTarefaClassificacoes } from '../../hooks/useTarefaClassificacoes';
 import {
   useAtualizarTarefaManutencao,
   useCriarTarefaManutencao,
@@ -17,7 +20,7 @@ import {
 } from '../../hooks/useTarefasManutencao';
 import type { TarefaManutencao } from '../../types';
 
-const TAREFA_VAZIA: DadosTarefaManutencao = { nome: '', classificacao_id: null, frequencia_dias: 30, ativo: true };
+const TAREFA_VAZIA: DadosTarefaManutencao = { nome: '', frequencia_dias: 30, ativo: true };
 
 const PRESETS_FREQUENCIA = [
   { label: 'Toda semana', dias: 7 },
@@ -30,23 +33,26 @@ const PRESETS_FREQUENCIA = [
 
 function FormularioTarefa({
   inicial,
-  classificacoes,
+  classificacoesIniciais,
+  todasClassificacoes,
   onSalvar,
   onCancelar,
 }: {
   inicial: DadosTarefaManutencao;
-  classificacoes: { id: string; nome: string }[];
-  onSalvar: (dados: DadosTarefaManutencao) => Promise<void>;
+  classificacoesIniciais: string[];
+  todasClassificacoes: { id: string; nome: string }[];
+  onSalvar: (dados: DadosTarefaManutencao, classificacaoIds: string[]) => Promise<void>;
   onCancelar: () => void;
 }) {
   const [dados, setDados] = useState<DadosTarefaManutencao>(inicial);
+  const [classificacaoIds, setClassificacaoIds] = useState<string[]>(classificacoesIniciais);
   const [salvando, setSalvando] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSalvando(true);
     try {
-      await onSalvar(dados);
+      await onSalvar(dados, classificacaoIds);
     } finally {
       setSalvando(false);
     }
@@ -59,18 +65,8 @@ function FormularioTarefa({
         <input type="text" value={dados.nome} onChange={(e) => setDados({ ...dados, nome: e.target.value })} data-autofocus required />
       </label>
       <label>
-        Classificação
-        <select
-          value={dados.classificacao_id ?? ''}
-          onChange={(e) => setDados({ ...dados, classificacao_id: e.target.value || null })}
-        >
-          <option value="">Sem classificação</option>
-          {classificacoes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nome}
-            </option>
-          ))}
-        </select>
+        Classificações
+        <TagMultiSelect todasTags={todasClassificacoes} selecionadas={classificacaoIds} onChange={setClassificacaoIds} />
       </label>
       <label>
         Frequência
@@ -117,11 +113,13 @@ function FormularioTarefa({
 
 export function ManutencaoPage() {
   const { data: tarefas, isLoading } = useTarefasManutencao();
-  const { data: classificacoes } = useClassificacoesManutencao();
+  const { data: classificacoes } = useClassificacoesTarefas();
+  const { data: tarefaClassificacoes } = useTodasTarefaClassificacoes();
   const criar = useCriarTarefaManutencao();
   const atualizar = useAtualizarTarefaManutencao();
   const excluir = useExcluirTarefaManutencao();
   const registrarExecucao = useRegistrarExecucaoTarefa();
+  const definirClassificacoes = useDefinirClassificacoesTarefa();
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
 
@@ -129,8 +127,6 @@ export function ManutencaoPage() {
   const [editando, setEditando] = useState<TarefaManutencao | null>(null);
   const hoje = new Date();
   const [mesCalendario, setMesCalendario] = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 });
-
-  const classificacaoPorId = useMemo(() => new Map((classificacoes ?? []).map((c) => [c.id, c.nome])), [classificacoes]);
 
   const eventosCalendario = useMemo(() => {
     const inicio = `${mesCalendario.ano}-${String(mesCalendario.mes).padStart(2, '0')}-01`;
@@ -154,13 +150,11 @@ export function ManutencaoPage() {
     setModalAberto(true);
   }
 
-  async function salvar(dados: DadosTarefaManutencao) {
+  async function salvar(dados: DadosTarefaManutencao, classificacaoIds: string[]) {
     try {
-      if (editando) {
-        await atualizar.mutateAsync({ id: editando.id, dados });
-      } else {
-        await criar.mutateAsync(dados);
-      }
+      const tarefaId = editando ? editando.id : (await criar.mutateAsync(dados)).id;
+      if (editando) await atualizar.mutateAsync({ id: editando.id, dados });
+      await definirClassificacoes.mutateAsync({ tarefaId, classificacaoIds });
       setModalAberto(false);
       mostrarToast('Tarefa salva.');
     } catch (err) {
@@ -211,8 +205,7 @@ export function ManutencaoPage() {
               <div>
                 <strong>{tarefa.nome}</strong>
                 <span className="conta-detalhe">
-                  {tarefa.classificacao_id ? `${classificacaoPorId.get(tarefa.classificacao_id) ?? ''} · ` : ''}
-                  próxima em {formatarData(proximaExecucao(tarefa))}
+                  <TagsChips tags={tarefaClassificacoes?.get(tarefa.id)} /> · próxima em {formatarData(proximaExecucao(tarefa))}
                 </span>
               </div>
               <div className="hierarquia-item-acoes">
@@ -248,12 +241,9 @@ export function ManutencaoPage() {
       <ModalBase aberto={modalAberto} rotulo={editando ? 'Editar tarefa' : 'Nova tarefa'} onFechar={() => setModalAberto(false)} classe="modal-edicao">
         <h3 className="modal-titulo">{editando ? 'Editar tarefa' : 'Nova tarefa'}</h3>
         <FormularioTarefa
-          inicial={
-            editando
-              ? { nome: editando.nome, classificacao_id: editando.classificacao_id, frequencia_dias: editando.frequencia_dias, ativo: editando.ativo }
-              : TAREFA_VAZIA
-          }
-          classificacoes={classificacoes ?? []}
+          inicial={editando ? { nome: editando.nome, frequencia_dias: editando.frequencia_dias, ativo: editando.ativo } : TAREFA_VAZIA}
+          classificacoesIniciais={editando ? (tarefaClassificacoes?.get(editando.id) ?? []).map((c) => c.id) : []}
+          todasClassificacoes={classificacoes ?? []}
           onSalvar={salvar}
           onCancelar={() => setModalAberto(false)}
         />

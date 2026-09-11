@@ -1,47 +1,47 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import type { CategoriaItens } from '../types';
+import type { TagItem } from '../types';
 
-const QUERY_KEY = ['categorias_itens'];
+const QUERY_KEY = ['tags_itens'];
 
-export function useCategoriasItens() {
+export function useTagsItens() {
   return useQuery({
     queryKey: QUERY_KEY,
     queryFn: async () => {
-      const { data, error } = await supabase.from('categorias_itens').select('*').order('ordem').order('nome');
+      const { data, error } = await supabase.from('tags_itens').select('*').order('nome');
       if (error) throw error;
-      return data as CategoriaItens[];
+      return data as TagItem[];
     },
   });
 }
 
-export function useCriarCategoriaItens() {
+export function useCriarTagItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ nome, parentId }: { nome: string; parentId: string | null }) => {
-      const { error } = await supabase.from('categorias_itens').insert({ nome, parent_id: parentId });
+    mutationFn: async (nome: string) => {
+      const { error } = await supabase.from('tags_itens').insert({ nome });
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
   });
 }
 
-export function useRenomearCategoriaItens() {
+export function useRenomearTagItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, nome }: { id: string; nome: string }) => {
-      const { error } = await supabase.from('categorias_itens').update({ nome }).eq('id', id);
+      const { error } = await supabase.from('tags_itens').update({ nome }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
   });
 }
 
-export function useExcluirCategoriaItens() {
+export function useExcluirTagItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('categorias_itens').delete().eq('id', id);
+      const { error } = await supabase.from('tags_itens').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),

@@ -8,6 +8,7 @@ import { formatarData, formatarMoeda } from '../../lib/datas';
 import { normalizarDescricao } from '../../lib/normalizacao';
 import { rotuloHierarquico } from '../../lib/hierarquia';
 import { useContas } from '../../hooks/useContas';
+import { rotuloConta } from '../../lib/contas';
 import { useCategorias } from '../../hooks/useCategorias';
 import {
   useAtualizarLancamento,
@@ -136,7 +137,7 @@ export function ExtratoContaView({ competencia, tiposConta }: { competencia: str
   const { data: contas } = useContas();
   const { data: categoriasDespesa } = useCategorias('despesa');
   const { data: categoriasReceita } = useCategorias('receita');
-  const contasFiltradas = (contas ?? []).filter((c) => tiposConta.includes(c.tipo) && c.ativo);
+  const contasFiltradas = (contas ?? []).filter((c) => tiposConta.includes(c.tipo) && c.status === 'ativo');
 
   const [contaId, setContaId] = useState<string | null>(null);
   const contaAtual = contasFiltradas.find((c) => c.id === contaId) ?? contasFiltradas[0] ?? null;
@@ -186,7 +187,7 @@ export function ExtratoContaView({ competencia, tiposConta }: { competencia: str
         <select value={contaAtual?.id ?? ''} onChange={(e) => setContaId(e.target.value)}>
           {contasFiltradas.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.nome}
+              {rotuloConta(c)}
             </option>
           ))}
         </select>

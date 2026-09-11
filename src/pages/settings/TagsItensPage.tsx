@@ -1,33 +1,28 @@
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
-import {
-  useClassificacoesManutencao,
-  useCriarClassificacaoManutencao,
-  useExcluirClassificacaoManutencao,
-  useRenomearClassificacaoManutencao,
-} from '../../hooks/useClassificacoesManutencao';
-import type { ClassificacaoManutencao } from '../../types';
+import { useCriarTagItem, useExcluirTagItem, useRenomearTagItem, useTagsItens } from '../../hooks/useTagsItens';
+import type { TagItem } from '../../types';
 
-export function ClassificacoesManutencaoPage() {
-  const { data: classificacoes, isLoading } = useClassificacoesManutencao();
-  const criar = useCriarClassificacaoManutencao();
-  const renomear = useRenomearClassificacaoManutencao();
-  const excluir = useExcluirClassificacaoManutencao();
+export function TagsItensPage() {
+  const { data: tags, isLoading } = useTagsItens();
+  const criar = useCriarTagItem();
+  const renomear = useRenomearTagItem();
+  const excluir = useExcluirTagItem();
   const { confirmar, pedirTexto } = useDialogos();
   const { mostrarToast } = useToast();
 
   async function adicionar() {
-    const nome = await pedirTexto({ titulo: 'Nova classificação', mensagem: 'Nome' });
+    const nome = await pedirTexto({ titulo: 'Nova tag', mensagem: 'Nome' });
     if (!nome?.trim()) return;
     try {
-      await criar.mutateAsync({ nome: nome.trim(), cor: null });
+      await criar.mutateAsync(nome.trim());
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
     }
   }
 
-  async function editar(item: ClassificacaoManutencao) {
+  async function editar(item: TagItem) {
     const nome = await pedirTexto({ titulo: 'Renomear', mensagem: 'Nome', valorInicial: item.nome });
     if (!nome?.trim() || nome.trim() === item.nome) return;
     try {
@@ -37,10 +32,10 @@ export function ClassificacoesManutencaoPage() {
     }
   }
 
-  async function remover(item: ClassificacaoManutencao) {
+  async function remover(item: TagItem) {
     const ok = await confirmar({
-      titulo: `Excluir "${item.nome}"?`,
-      mensagem: 'Tarefas de manutenção que usam essa classificação ficam sem classificação.',
+      titulo: `Excluir a tag "${item.nome}"?`,
+      mensagem: 'Itens que usam essa tag ficam sem ela.',
       confirmarRotulo: 'Excluir',
       perigoso: true,
     });
@@ -54,17 +49,20 @@ export function ClassificacoesManutencaoPage() {
 
   return (
     <div className="settings-secao">
-      <h2>Classificações de manutenção</h2>
+      <h2>Tags de itens</h2>
+      <p className="settings-secao-ajuda">
+        Usadas pra filtrar os itens do apartamento (um item pode ter mais de uma tag) — ex.: cozinha, eletrodoméstico, móvel.
+      </p>
       <div className="hierarquia-topo">
         <button type="button" onClick={adicionar}>
-          + Classificação
+          + Tag
         </button>
       </div>
       {isLoading ? (
         <p>Carregando…</p>
       ) : (
         <ul className="lista-contas">
-          {(classificacoes ?? []).map((item) => (
+          {(tags ?? []).map((item) => (
             <li key={item.id}>
               <strong>{item.nome}</strong>
               <div className="hierarquia-item-acoes">
@@ -77,7 +75,7 @@ export function ClassificacoesManutencaoPage() {
               </div>
             </li>
           ))}
-          {classificacoes?.length === 0 && <p className="hierarquia-vazio">Nenhuma classificação cadastrada ainda.</p>}
+          {tags?.length === 0 && <p className="hierarquia-vazio">Nenhuma tag cadastrada ainda.</p>}
         </ul>
       )}
     </div>

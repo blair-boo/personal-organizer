@@ -7,7 +7,6 @@ const QUERY_KEY = ['tarefas_manutencao'];
 
 export interface DadosTarefaManutencao {
   nome: string;
-  classificacao_id: string | null;
   frequencia_dias: number;
   ativo: boolean;
 }
@@ -27,8 +26,9 @@ export function useCriarTarefaManutencao() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (dados: DadosTarefaManutencao) => {
-      const { error } = await supabase.from('tarefas_manutencao').insert(dados);
+      const { data, error } = await supabase.from('tarefas_manutencao').insert(dados).select().single();
       if (error) throw error;
+      return data as TarefaManutencao;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
   });
