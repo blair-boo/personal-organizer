@@ -1,0 +1,103 @@
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+}
+
+.app-header-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 18px;
+  flex: 1;
+}
+
+.tema-toggle,
+.logout-button {
+  background: none;
+  border: 1px solid var(--border);
+}
+
+.app-nav {
+  display: flex;
+  gap: 4px;
+  margin-top: 10px;
+  overflow-x: auto;
+}
+
+.app-nav a,
+.app-subnav a {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.app-nav a.active {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.app-subnav {
+  display: flex;
+  gap: 4px;
+  padding: 10px 16px 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-subnav a.active {
+  border-bottom: 2px solid var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.app-subnav-conteudo {
+  padding: 16px;
+}
+
+.app-main {
+  flex: 1;
+}
+
+.mes-seletor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 16px 0;
+}
+
+.mes-seletor-atual {
+  font-weight: 600;
+  min-width: 180px;
+  text-align: center;
+}
+
+.mes-seletor-botao {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 12px;
+}
+
+.pagina-vazia {
+  opacity: 0.7;
+  padding: 24px 0;
+}
+
+@media (min-width: 720px) {
+  .app-header-top {
+    padding: 0 4px;
+  }
+}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="favicon-32.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f4c3a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="Organizador pessoal de finanças e apartamento" />
+    <!-- nome do app: manter em sincronia com src/config.ts -->
+    <title>Personal Organizer</title>
+    <script>
+      // Aplica o tema salvo (e a cor da status bar/toolbar, meta theme-color)
+      // antes do 1º paint pra evitar flash. Cores duplicadas de propósito
+      // de src/styles/base.css (--accent claro/escuro) — manter em sincronia;
+      // ver também useTema.ts, que assume esta mesma duplicação no toggle.
+      (function () {
+        try {
+          var t = localStorage.getItem('tema');
+          if (t === 'light' || t === 'dark') {
+            document.documentElement.setAttribute('data-theme', t);
+          }
+          var escuro = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', escuro ? '#134e3a' : '#0f4c3a');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

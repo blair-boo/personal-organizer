@@ -1,0 +1,115 @@
+.settings-secao {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 640px;
+}
+
+.settings-secao-ajuda {
+  margin: -8px 0 0;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.abas-internas {
+  display: flex;
+  gap: 6px;
+}
+
+.abas-internas button {
+  background: none;
+  border: 1px solid var(--border);
+}
+
+.abas-internas button.ativa {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.hierarquia-topo {
+  display: flex;
+}
+
+.hierarquia-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hierarquia-vazio {
+  opacity: 0.7;
+  font-size: 14px;
+}
+
+.hierarquia-grupo {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.hierarquia-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.hierarquia-item-raiz {
+  background: var(--accent-bg);
+  font-weight: 600;
+}
+
+.hierarquia-filhos {
+  display: flex;
+  flex-direction: column;
+}
+
+.hierarquia-item-filho {
+  padding-left: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.hierarquia-item-acoes {
+  display: flex;
+  gap: 4px;
+}
+
+.hierarquia-add-filho {
+  margin: 8px 12px 12px 28px;
+  align-self: flex-start;
+  background: none;
+  border: 1px dashed var(--border);
+  font-size: 13px;
+}
+
+.lista-contas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lista-contas li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+}
+
+.conta-inativa {
+  opacity: 0.55;
+}
+
+.conta-detalhe {
+  display: block;
+  font-size: 12px;
+  opacity: 0.75;
+}
