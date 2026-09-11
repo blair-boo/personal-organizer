@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import { IconeSupabase } from '../../components/IconeSupabase';
 import { ModalBase } from '../../components/ModalBase';
 import { CategoriaSelect } from '../../components/CategoriaSelect';
 import { useDialogos } from '../../components/Dialogo';
@@ -239,7 +240,7 @@ export function ExtratoContaView({ competencia, tiposConta }: { competencia: str
                         ✎
                       </button>
                       <button type="button" className="btn-icone btn-icone-perigo" onClick={() => tratarExcluir(l)} aria-label="Excluir">
-                        🗑
+                        <IconeSupabase arquivo="trash3.svg" />
                       </button>
                     </div>
                   </li>

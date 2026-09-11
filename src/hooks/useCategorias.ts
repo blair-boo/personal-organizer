@@ -56,6 +56,21 @@ export function useUsoCategorias() {
   });
 }
 
+/** Persiste uma nova ordem (id -> índice) pra um conjunto de categorias/subcategorias. */
+export function useReordenarCategorias(tipo: TipoCategoria) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ordens: { id: string; ordem: number }[]) => {
+      await Promise.all(
+        ordens.map(({ id, ordem }) => supabase.from('categorias').update({ ordem }).eq('id', id).then(({ error }) => {
+          if (error) throw error;
+        }))
+      );
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categorias', tipo] }),
+  });
+}
+
 export function useExcluirCategoria(tipo: TipoCategoria) {
   const qc = useQueryClient();
   return useMutation({

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { IconeSupabase } from '../../components/IconeSupabase';
 import { ModalBase } from '../../components/ModalBase';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
@@ -292,7 +293,7 @@ export function ContasPage() {
             ✎
           </button>
           <button type="button" className="btn-icone btn-icone-perigo" onClick={() => tratarExcluir(conta)} aria-label="Excluir">
-            🗑
+            <IconeSupabase arquivo="trash3.svg" />
           </button>
         </div>
       </li>

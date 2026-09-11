@@ -1,4 +1,5 @@
 import { useDialogos } from '../../components/Dialogo';
+import { IconeSupabase } from '../../components/IconeSupabase';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
 import { useCriarTagItem, useExcluirTagItem, useRenomearTagItem, useTagsItens } from '../../hooks/useTagsItens';
@@ -70,7 +71,7 @@ export function TagsItensPage() {
                   ✎
                 </button>
                 <button type="button" className="btn-icone btn-icone-perigo" onClick={() => remover(item)} aria-label="Excluir">
-                  🗑
+                  <IconeSupabase arquivo="trash3.svg" />
                 </button>
               </div>
             </li>

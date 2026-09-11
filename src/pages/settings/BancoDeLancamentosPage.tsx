@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { IconeSupabase } from '../../components/IconeSupabase';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
@@ -87,7 +88,7 @@ export function BancoDeLancamentosPage() {
                   onClick={() => remover(regra.id, regra.descricao_normalizada)}
                   aria-label="Esquecer"
                 >
-                  🗑
+                  <IconeSupabase arquivo="trash3.svg" />
                 </button>
               </div>
             </li>

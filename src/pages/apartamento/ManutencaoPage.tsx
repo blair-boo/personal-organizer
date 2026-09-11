@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import { IconeSupabase } from '../../components/IconeSupabase';
 import { ModalBase } from '../../components/ModalBase';
 import { CalendarioMensal } from '../../components/CalendarioMensal';
 import { TagMultiSelect } from '../../components/TagMultiSelect';
@@ -216,7 +217,7 @@ export function ManutencaoPage() {
                   ✎
                 </button>
                 <button type="button" className="btn-icone btn-icone-perigo" onClick={() => tratarExcluir(tarefa)} aria-label="Excluir">
-                  🗑
+                  <IconeSupabase arquivo="trash3.svg" />
                 </button>
               </div>
             </li>
