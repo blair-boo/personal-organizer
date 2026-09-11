@@ -29,26 +29,36 @@ function IconeGrip() {
 function ItemLinha({
   item,
   uso,
-  bloqueado,
+  isRaiz,
+  subCount,
+  expandido,
+  modoEdicao,
+  pendente,
   editando,
   rascunho,
-  onIniciarEdicao,
+  onNomeClick,
   onRascunhoChange,
   onConfirmarEdicao,
   onCancelarEdicao,
-  onExcluir,
+  onMarcarExclusao,
+  onDesfazerExclusao,
   onAdicionarSubcategoria,
 }: {
   item: Categoria;
   uso: number;
-  bloqueado: boolean;
+  isRaiz: boolean;
+  subCount?: number;
+  expandido?: boolean;
+  modoEdicao: boolean;
+  pendente: boolean;
   editando: boolean;
   rascunho: string;
-  onIniciarEdicao: () => void;
+  onNomeClick: () => void;
   onRascunhoChange: (v: string) => void;
   onConfirmarEdicao: () => void;
   onCancelarEdicao: () => void;
-  onExcluir: () => void;
+  onMarcarExclusao: () => void;
+  onDesfazerExclusao: () => void;
   onAdicionarSubcategoria?: () => void;
 }) {
   const sortable = useSortable({ id: item.id });
@@ -79,12 +89,23 @@ function ItemLinha({
   }
 
   return (
-    <div ref={sortable.setNodeRef} style={style} className="categorias-item">
-      <button type="button" className="btn-icone categorias-arrastar" aria-label={`Arrastar ${item.nome}`} {...sortable.attributes} {...sortable.listeners}>
-        <IconeGrip />
-      </button>
-      <button type="button" className="categorias-nome" onClick={onIniciarEdicao} disabled={bloqueado}>
-        {item.nome}
+    <div ref={sortable.setNodeRef} style={style} className={`categorias-item${pendente ? ' categorias-item-pendente' : ''}`}>
+      {modoEdicao && !pendente && (
+        <button type="button" className="btn-icone categorias-arrastar" aria-label={`Arrastar ${item.nome}`} {...sortable.attributes} {...sortable.listeners}>
+          <IconeGrip />
+        </button>
+      )}
+      <button
+        type="button"
+        className={`categorias-nome${isRaiz ? ' categorias-raiz-clicavel' : ''}`}
+        onClick={onNomeClick}
+        disabled={pendente || (!modoEdicao && !isRaiz)}
+      >
+        <span className="categorias-nome-texto">
+          {isRaiz && <span className="categorias-seta">{expandido ? '▾' : '▸'}</span>}
+          {item.nome}
+        </span>
+        {isRaiz && subCount != null && <span className="categorias-contagem-subs">({subCount})</span>}
       </button>
       {uso > 0 && (
         <span className="categorias-uso" title={`Usada em ${uso} lançamento(s)`}>
@@ -92,13 +113,21 @@ function ItemLinha({
         </span>
       )}
       {onAdicionarSubcategoria && (
-        <button type="button" className="btn-icone" onClick={onAdicionarSubcategoria} disabled={bloqueado} title={`Nova subcategoria em ${item.nome}`} aria-label={`Nova subcategoria em ${item.nome}`}>
+        <button type="button" className="btn-icone" onClick={onAdicionarSubcategoria} disabled={pendente} title={`Nova subcategoria em ${item.nome}`} aria-label={`Nova subcategoria em ${item.nome}`}>
           +
         </button>
       )}
-      <button type="button" className="btn-icone btn-icone-perigo" onClick={onExcluir} disabled={bloqueado} title={`Excluir ${item.nome}`} aria-label={`Excluir ${item.nome}`}>
-        <IconeSupabase arquivo="trash3.svg" />
-      </button>
+      {modoEdicao && (
+        pendente ? (
+          <button type="button" className="categorias-btn-desfazer" onClick={onDesfazerExclusao} title={`Desfazer exclusão de ${item.nome}`}>
+            Desfazer
+          </button>
+        ) : (
+          <button type="button" className="btn-icone btn-icone-perigo" onClick={onMarcarExclusao} title={`Excluir ${item.nome}`} aria-label={`Excluir ${item.nome}`}>
+            <IconeSupabase arquivo="trash3.svg" />
+          </button>
+        )
+      )}
     </div>
   );
 }
@@ -117,9 +146,13 @@ export function CategoriasPage() {
   const [busca, setBusca] = useState('');
   const [edicaoAtivaId, setEdicaoAtivaId] = useState<string | null>(null);
   const [rascunho, setRascunho] = useState('');
+  const [modoEdicao, setModoEdicao] = useState(false);
   const [ordemLocal, setOrdemLocal] = useState<Categoria[] | null>(null);
-  const [salvandoOrdem, setSalvandoOrdem] = useState(false);
+  const [exclusoesPendentes, setExclusoesPendentes] = useState<Set<string>>(new Set());
+  const [colapsados, setColapsados] = useState<Set<string>>(new Set());
+  const [salvando, setSalvando] = useState(false);
   const haAlteracoesOrdem = ordemLocal !== null;
+  const temPendencias = haAlteracoesOrdem || exclusoesPendentes.size > 0;
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -164,25 +197,39 @@ export function CategoriasPage() {
     }
   }
 
-  async function excluirItem(item: Categoria) {
-    const usoCount = uso?.get(item.id) ?? 0;
-    const temFilhos = !item.parent_id && dados.some((s) => s.parent_id === item.id);
-    const avisos = [
-      usoCount > 0 ? `Usada em ${usoCount} lançamento(s) — eles ficam sem categoria.` : null,
-      temFilhos ? 'Isso também exclui as subcategorias dela.' : null,
-    ].filter(Boolean);
-    const ok = await confirmar({
-      titulo: `Excluir "${item.nome}"?`,
-      mensagem: avisos.length > 0 ? avisos.join(' ') : 'Essa ação não pode ser desfeita.',
-      confirmarRotulo: 'Excluir',
-      perigoso: true,
+  function alternarExpandir(raizId: string) {
+    setColapsados((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(raizId)) novo.delete(raizId);
+      else novo.add(raizId);
+      return novo;
     });
-    if (!ok) return;
-    try {
-      await excluir.mutateAsync(item.id);
-    } catch (err) {
-      mostrarToast(mensagemDeErro(err), 'erro');
-    }
+  }
+
+  function marcarExclusao(item: Categoria) {
+    setExclusoesPendentes((atual) => {
+      const novo = new Set(atual);
+      novo.add(item.id);
+      if (!item.parent_id) {
+        for (const c of dados) {
+          if (c.parent_id === item.id) novo.add(c.id);
+        }
+      }
+      return novo;
+    });
+  }
+
+  function desfazerExclusao(item: Categoria) {
+    setExclusoesPendentes((atual) => {
+      const novo = new Set(atual);
+      novo.delete(item.id);
+      if (!item.parent_id) {
+        for (const c of dados) {
+          if (c.parent_id === item.id) novo.delete(c.id);
+        }
+      }
+      return novo;
+    });
   }
 
   async function adicionarRaiz() {
@@ -205,21 +252,51 @@ export function CategoriasPage() {
     }
   }
 
-  function descartarOrdem() {
-    setOrdemLocal(null);
+  function entrarModoEdicao() {
+    setModoEdicao(true);
   }
 
-  async function salvarOrdem() {
-    if (!ordemLocal) return;
-    setSalvandoOrdem(true);
+  function sairModoEdicao() {
+    setModoEdicao(false);
+    setOrdemLocal(null);
+    setExclusoesPendentes(new Set());
+    cancelarEdicao();
+  }
+
+  function alternarModoEdicao() {
+    if (modoEdicao) sairModoEdicao();
+    else entrarModoEdicao();
+  }
+
+  async function salvarAlteracoes() {
+    if (!temPendencias) return;
+    if (exclusoesPendentes.size > 0) {
+      const usoTotal = [...exclusoesPendentes].reduce((soma, id) => soma + (uso?.get(id) ?? 0), 0);
+      const ok = await confirmar({
+        titulo: `Excluir ${exclusoesPendentes.size} categoria(s)?`,
+        mensagem:
+          usoTotal > 0
+            ? `Usadas em ${usoTotal} lançamento(s) no total — eles ficam sem categoria. Essa ação não pode ser desfeita.`
+            : 'Essa ação não pode ser desfeita.',
+        confirmarRotulo: 'Excluir e salvar',
+        perigoso: true,
+      });
+      if (!ok) return;
+    }
+    setSalvando(true);
     try {
-      await reordenar.mutateAsync(ordemLocal.map((c) => ({ id: c.id, ordem: c.ordem })));
-      mostrarToast('Ordem salva.');
-      setOrdemLocal(null);
+      if (ordemLocal) {
+        await reordenar.mutateAsync(ordemLocal.map((c) => ({ id: c.id, ordem: c.ordem })));
+      }
+      for (const id of exclusoesPendentes) {
+        await excluir.mutateAsync(id);
+      }
+      mostrarToast('Alterações salvas.');
+      sairModoEdicao();
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
     } finally {
-      setSalvandoOrdem(false);
+      setSalvando(false);
     }
   }
 
@@ -257,14 +334,17 @@ export function CategoriasPage() {
       <div className="categorias-topo">
         <div className="categorias-cabecalho">
           <h1>Categorias</h1>
-          <p className="categorias-subtitulo">Renomeie, exclua ou arraste pra reordenar — a mudança de nome/exclusão já salva na hora; a ordem só depois de confirmar.</p>
+          <p className="categorias-subtitulo">
+            Clique no ícone de vassoura pra entrar no modo de edição — aí dá pra arrastar e excluir. As alterações só ficam
+            definitivas ao clicar em salvar e confirmar.
+          </p>
         </div>
 
         <nav className="app-nav categorias-abas">
-          <button type="button" className={tipo === 'despesa' ? 'active' : ''} onClick={() => setTipo('despesa')} disabled={haAlteracoesOrdem}>
+          <button type="button" className={tipo === 'despesa' ? 'active' : ''} onClick={() => setTipo('despesa')} disabled={modoEdicao}>
             Despesas
           </button>
-          <button type="button" className={tipo === 'receita' ? 'active' : ''} onClick={() => setTipo('receita')} disabled={haAlteracoesOrdem}>
+          <button type="button" className={tipo === 'receita' ? 'active' : ''} onClick={() => setTipo('receita')} disabled={modoEdicao}>
             Receitas
           </button>
         </nav>
@@ -279,17 +359,28 @@ export function CategoriasPage() {
             aria-label="Buscar categorias"
             disabled={haAlteracoesOrdem}
           />
-          <button type="button" className="btn-icone" onClick={descartarOrdem} disabled={!haAlteracoesOrdem} title="Descartar reordenação" aria-label="Descartar reordenação">
+          <button type="button" onClick={adicionarRaiz} disabled={modoEdicao}>
+            + Categoria
+          </button>
+          <button
+            type="button"
+            className={`btn-icone${modoEdicao ? ' categorias-modo-ativo' : ''}`}
+            onClick={alternarModoEdicao}
+            title={modoEdicao ? 'Sair do modo de edição' : 'Editar (arrastar/excluir)'}
+            aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição'}
+          >
             <IconeSupabase arquivo="broomstick.svg" />
           </button>
-          <button type="button" className="btn-icone" onClick={salvarOrdem} disabled={!haAlteracoesOrdem || salvandoOrdem} title="Salvar ordem" aria-label="Salvar ordem">
+          <button
+            type="button"
+            className="btn-icone"
+            onClick={salvarAlteracoes}
+            disabled={!modoEdicao || !temPendencias || salvando}
+            title="Salvar alterações"
+            aria-label="Salvar alterações"
+          >
             <IconeSupabase arquivo="save.svg" />
           </button>
-          {!haAlteracoesOrdem && (
-            <button type="button" onClick={adicionarRaiz}>
-              + Categoria
-            </button>
-          )}
         </div>
       </div>
 
@@ -299,46 +390,58 @@ export function CategoriasPage() {
           <SortableContext items={raizesTodas.map((r) => r.id)} strategy={rectSortingStrategy}>
             {raizes.map((raiz) => {
               const subs = subcategoriasDe(raiz.id);
+              const totalSubs = dados.filter((c) => c.parent_id === raiz.id).length;
+              const expandido = q ? true : !colapsados.has(raiz.id);
+              const raizPendente = exclusoesPendentes.has(raiz.id);
               return (
                 <section key={raiz.id} className="categorias-secao">
                   <div className="categorias-raiz">
                     <ItemLinha
                       item={raiz}
                       uso={uso?.get(raiz.id) ?? 0}
-                      bloqueado={haAlteracoesOrdem}
+                      isRaiz
+                      subCount={totalSubs}
+                      expandido={expandido}
+                      modoEdicao={modoEdicao}
+                      pendente={raizPendente}
                       editando={edicaoAtivaId === raiz.id}
                       rascunho={rascunho}
-                      onIniciarEdicao={() => iniciarEdicao(raiz)}
+                      onNomeClick={() => (modoEdicao ? iniciarEdicao(raiz) : alternarExpandir(raiz.id))}
                       onRascunhoChange={setRascunho}
                       onConfirmarEdicao={() => confirmarEdicao(raiz)}
                       onCancelarEdicao={cancelarEdicao}
-                      onExcluir={() => excluirItem(raiz)}
+                      onMarcarExclusao={() => marcarExclusao(raiz)}
+                      onDesfazerExclusao={() => desfazerExclusao(raiz)}
                       onAdicionarSubcategoria={() => adicionarSubcategoria(raiz)}
                     />
                   </div>
-                  {subs.length === 0 ? (
-                    <p className="categorias-vazio categorias-vazio-sub">Nenhuma subcategoria ainda.</p>
-                  ) : (
-                    <SortableContext items={subs.map((s) => s.id)} strategy={rectSortingStrategy}>
-                      <div className="categorias-grid">
-                        {subs.map((sub) => (
-                          <ItemLinha
-                            key={sub.id}
-                            item={sub}
-                            uso={uso?.get(sub.id) ?? 0}
-                            bloqueado={haAlteracoesOrdem}
-                            editando={edicaoAtivaId === sub.id}
-                            rascunho={rascunho}
-                            onIniciarEdicao={() => iniciarEdicao(sub)}
-                            onRascunhoChange={setRascunho}
-                            onConfirmarEdicao={() => confirmarEdicao(sub)}
-                            onCancelarEdicao={cancelarEdicao}
-                            onExcluir={() => excluirItem(sub)}
-                          />
-                        ))}
-                      </div>
-                    </SortableContext>
-                  )}
+                  {expandido &&
+                    (subs.length === 0 ? (
+                      <p className="categorias-vazio categorias-vazio-sub">Nenhuma subcategoria ainda.</p>
+                    ) : (
+                      <SortableContext items={subs.map((s) => s.id)} strategy={rectSortingStrategy}>
+                        <div className="categorias-grid">
+                          {subs.map((sub) => (
+                            <ItemLinha
+                              key={sub.id}
+                              item={sub}
+                              uso={uso?.get(sub.id) ?? 0}
+                              isRaiz={false}
+                              modoEdicao={modoEdicao}
+                              pendente={exclusoesPendentes.has(sub.id)}
+                              editando={edicaoAtivaId === sub.id}
+                              rascunho={rascunho}
+                              onNomeClick={() => modoEdicao && iniciarEdicao(sub)}
+                              onRascunhoChange={setRascunho}
+                              onConfirmarEdicao={() => confirmarEdicao(sub)}
+                              onCancelarEdicao={cancelarEdicao}
+                              onMarcarExclusao={() => marcarExclusao(sub)}
+                              onDesfazerExclusao={() => desfazerExclusao(sub)}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    ))}
                 </section>
               );
             })}
