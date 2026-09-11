@@ -40,6 +40,22 @@ export function useRenomearCategoria(tipo: TipoCategoria) {
   });
 }
 
+/** Quantos lançamentos usam cada categoria, pra mostrar o selinho de contagem (ex.: Genres/Tags do manga-lists). */
+export function useUsoCategorias() {
+  return useQuery({
+    queryKey: ['categorias', 'uso'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('lancamentos').select('categoria_id').not('categoria_id', 'is', null);
+      if (error) throw error;
+      const mapa = new Map<string, number>();
+      for (const linha of data as { categoria_id: string }[]) {
+        mapa.set(linha.categoria_id, (mapa.get(linha.categoria_id) ?? 0) + 1);
+      }
+      return mapa;
+    },
+  });
+}
+
 export function useExcluirCategoria(tipo: TipoCategoria) {
   const qc = useQueryClient();
   return useMutation({

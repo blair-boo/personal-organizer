@@ -42,46 +42,9 @@
   font-size: 14px;
 }
 
-.hierarquia-grupo {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.hierarquia-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-}
-
-.hierarquia-item-raiz {
-  background: var(--accent-bg);
-  font-weight: 600;
-}
-
-.hierarquia-filhos {
-  display: flex;
-  flex-direction: column;
-}
-
-.hierarquia-item-filho {
-  padding-left: 28px;
-  border-top: 1px solid var(--border);
-}
-
 .hierarquia-item-acoes {
   display: flex;
   gap: 4px;
-}
-
-.hierarquia-add-filho {
-  margin: 8px 12px 12px 28px;
-  align-self: flex-start;
-  background: none;
-  border: 1px dashed var(--border);
-  font-size: 13px;
 }
 
 .lista-contas {

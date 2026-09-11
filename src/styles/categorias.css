@@ -1,0 +1,144 @@
+/* Settings > Categorias: mesmo padrão visual do Genres/Tags do manga-lists —
+   topo fixo (título, abas Despesas/Receitas, busca) + conteúdo com scroll
+   interno próprio, dois grids de 4 colunas (2 no celular). Sem bulk edit: toda
+   ação (criar/renomear/excluir) já salva na hora. */
+
+.categorias-pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.categorias-topo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.categorias-cabecalho h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.categorias-subtitulo {
+  font-size: 13px;
+  opacity: 0.7;
+  margin: 0;
+}
+
+.categorias-abas {
+  gap: 16px;
+}
+
+.categorias-busca {
+  width: 100%;
+}
+
+.categorias-conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding-top: 8px;
+}
+
+.categorias-secao h2 {
+  position: sticky;
+  top: -1px;
+  z-index: 3;
+  background: var(--bg);
+  font-size: 15px;
+  margin-top: -1px;
+  margin-bottom: 0;
+  padding: 9px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.categorias-secao-contagem {
+  font-weight: 400;
+  opacity: 0.6;
+  font-size: 13px;
+}
+
+.categorias-add {
+  margin-left: auto;
+}
+
+.categorias-vazio {
+  opacity: 0.7;
+  font-size: 13px;
+}
+
+.categorias-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px 16px;
+  font-size: 13px;
+}
+
+.categorias-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.categorias-nome {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  color: var(--text);
+}
+
+.categorias-nome:hover {
+  color: var(--text-h);
+  text-decoration: underline;
+}
+
+.categorias-pai {
+  font-size: 11px;
+  opacity: 0.6;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.categorias-uso {
+  font-size: 11px;
+  background: var(--bg-raised);
+  border-radius: 999px;
+  padding: 0 6px;
+  min-width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.categorias-item-editando {
+  align-items: stretch;
+}
+
+.categorias-item-editando input {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  .categorias-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .categorias-grid {
+    grid-template-columns: 1fr;
+  }
+}
