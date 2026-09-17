@@ -65,3 +65,12 @@ export function formatarData(iso: string): string {
   const [ano, mes, dia] = iso.split('-');
   return `${dia}/${mes}/${ano}`;
 }
+
+/** Soma um prazo (dias/meses/anos) a uma data "AAAA-MM-DD", retornando outra "AAAA-MM-DD". */
+export function somarPeriodo(dataIso: string, quantidade: number, unidade: 'dias' | 'meses' | 'anos'): string {
+  if (unidade === 'dias') return somarDias(dataIso, quantidade);
+  const [ano, mes, dia] = dataIso.split('-').map(Number);
+  const data =
+    unidade === 'meses' ? new Date(ano, mes - 1 + quantidade, dia) : new Date(ano + quantidade, mes - 1, dia);
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+}
