@@ -16,22 +16,35 @@ import {
   useAdicionarAnexoDocumento,
   useAtualizarDocumentoPessoal,
   useCriarDocumentoCompleto,
+  useCriarPessoaDocumentos,
   useDocumentoAnexos,
   useDocumentoLocaisRenovacao,
   useDocumentos,
+  useDocumentosPessoas,
   useExcluirDocumento,
+  useExcluirPessoaDocumentos,
+  useProximosVencimentosPessoais,
   useRemoverAnexoDocumento,
   useRenomearDocumento,
+  useRenomearPessoaDocumentos,
   useReordenarDocumentos,
   useSalvarLocaisRenovacao,
   type DadosDocumentoPessoal,
   type DadosLocalRenovacao,
+  type ProximoVencimento,
 } from '../../hooks/useDocumentos';
-import type { Documento, DocumentoAnexo, DocumentoLocalRenovacao, PessoaDocumento, RenovarTipo, VencimentoTipo, VencimentoUnidade } from '../../types';
+import type {
+  Documento,
+  DocumentoAnexo,
+  DocumentoLocalRenovacao,
+  PessoaDocumentos,
+  RenovarTipo,
+  VencimentoTipo,
+  VencimentoUnidade,
+} from '../../types';
 
 const EXPIRACAO_URL_SEGUNDOS = 60;
 
-const PESSOA_LABEL: Record<PessoaDocumento, string> = { mariana: 'Mariana', casal: 'Casal' };
 const UNIDADE_LABEL: Record<VencimentoUnidade, string> = { dias: 'dia(s)', meses: 'mês(es)', anos: 'ano(s)' };
 
 function ehCNH(titulo: string): boolean {
@@ -434,6 +447,7 @@ function ItemDocumentoLinha({
   documento,
   tituloExibido,
   renomeacaoPendente,
+  incompleto,
   modoEdicao,
   pendente,
   editando,
@@ -451,6 +465,7 @@ function ItemDocumentoLinha({
   documento: Documento;
   tituloExibido: string;
   renomeacaoPendente: boolean;
+  incompleto: boolean;
   modoEdicao: boolean;
   pendente: boolean;
   editando: boolean;
@@ -501,6 +516,7 @@ function ItemDocumentoLinha({
       )}
       <button type="button" className="documentos-titulo-botao" onClick={() => (modoEdicao ? undefined : onExpandir())} disabled={pendente || modoEdicao}>
         <span className="documentos-seta">{expandido ? '▾' : '▸'}</span>
+        {incompleto && <span className="documentos-marcador-vazio" title="Ainda sem preenchimento" aria-hidden="true" />}
         {tituloExibido}
       </button>
       {modoEdicao && !pendente && (
@@ -527,13 +543,13 @@ function ItemDocumentoLinha({
   );
 }
 
-function ListaDocumentosPessoa({ pessoa }: { pessoa: PessoaDocumento }) {
-  const { data: documentos, isLoading } = useDocumentos('pessoais', pessoa);
-  const criarCompleto = useCriarDocumentoCompleto('pessoais', pessoa);
-  const atualizar = useAtualizarDocumentoPessoal('pessoais', pessoa);
-  const renomear = useRenomearDocumento('pessoais', pessoa);
-  const excluir = useExcluirDocumento('pessoais', pessoa);
-  const reordenar = useReordenarDocumentos('pessoais', pessoa);
+function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pessoaNome: string }) {
+  const { data: documentos, isLoading } = useDocumentos('pessoais', pessoaId);
+  const criarCompleto = useCriarDocumentoCompleto('pessoais', pessoaId);
+  const atualizar = useAtualizarDocumentoPessoal('pessoais', pessoaId);
+  const renomear = useRenomearDocumento('pessoais', pessoaId);
+  const excluir = useExcluirDocumento('pessoais', pessoaId);
+  const reordenar = useReordenarDocumentos('pessoais', pessoaId);
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
 
@@ -780,8 +796,8 @@ function ListaDocumentosPessoa({ pessoa }: { pessoa: PessoaDocumento }) {
           type="search"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          placeholder={`Buscar em ${PESSOA_LABEL[pessoa]}…`}
-          aria-label={`Buscar em ${PESSOA_LABEL[pessoa]}`}
+          placeholder={`Buscar em ${pessoaNome}…`}
+          aria-label={`Buscar em ${pessoaNome}`}
           disabled={haAlteracoesOrdem}
         />
         <button type="button" onClick={abrirNovo} disabled={modoEdicao}>
@@ -811,7 +827,7 @@ function ListaDocumentosPessoa({ pessoa }: { pessoa: PessoaDocumento }) {
       {isLoading ? (
         <p>Carregando…</p>
       ) : filtrados.length === 0 ? (
-        <p className="documentos-vazio">{q ? 'Nenhum resultado.' : `Nenhum documento em ${PESSOA_LABEL[pessoa]} ainda.`}</p>
+        <p className="documentos-vazio">{q ? 'Nenhum resultado.' : `Nenhum documento em ${pessoaNome} ainda.`}</p>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={filtrados.map((d) => d.id)} strategy={verticalListSortingStrategy}>
@@ -825,6 +841,7 @@ function ListaDocumentosPessoa({ pessoa }: { pessoa: PessoaDocumento }) {
                       documento={d}
                       tituloExibido={tituloAtual(d)}
                       renomeacaoPendente={renomeacoesPendentes.has(d.id)}
+                      incompleto={!d.numero && !d.numero_espelho && !d.emissao && !d.vencimento_tipo}
                       modoEdicao={modoEdicao}
                       pendente={pendente}
                       editando={edicaoAtivaId === d.id}
@@ -953,20 +970,173 @@ function SecaoAnexosPendentesPessoal({
   );
 }
 
+function textoPrazoVencimento(item: ProximoVencimento): string {
+  if (item.diasRestantes < 0) return `venceu há ${Math.abs(item.diasRestantes)} dia(s)`;
+  if (item.diasRestantes === 0) return 'vence hoje';
+  return `vence em ${item.diasRestantes} dia(s) (${formatarData(item.vencimentoCalculada)})`;
+}
+
+function ResumoVencimentos({ onSelecionarPessoa }: { onSelecionarPessoa: (pessoaId: string) => void }) {
+  const { data: itens } = useProximosVencimentosPessoais();
+  if (!itens || itens.length === 0) return null;
+  return (
+    <div className="documentos-resumo-vencimentos">
+      <h3>Vencendo em breve</h3>
+      <ul>
+        {itens.map((item) => (
+          <li key={item.documentoId}>
+            <button type="button" className="documentos-resumo-item" onClick={() => onSelecionarPessoa(item.pessoaId)}>
+              <strong>{item.pessoaNome}</strong> — {item.titulo}: {textoPrazoVencimento(item)}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function AbasPessoas({
+  pessoas,
+  pessoaAtualId,
+  onSelecionar,
+  onCriar,
+}: {
+  pessoas: PessoaDocumentos[];
+  pessoaAtualId: string | null;
+  onSelecionar: (id: string) => void;
+  onCriar: () => void;
+}) {
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [rascunho, setRascunho] = useState('');
+  const renomear = useRenomearPessoaDocumentos();
+  const excluir = useExcluirPessoaDocumentos();
+  const { confirmar } = useDialogos();
+  const { mostrarToast } = useToast();
+
+  function iniciarRenomear(p: PessoaDocumentos) {
+    setEditandoId(p.id);
+    setRascunho(p.nome);
+  }
+  function cancelarRenomear() {
+    setEditandoId(null);
+    setRascunho('');
+  }
+  async function confirmarRenomear(p: PessoaDocumentos) {
+    const novo = rascunho.trim();
+    cancelarRenomear();
+    if (!novo || novo === p.nome) return;
+    try {
+      await renomear.mutateAsync({ id: p.id, nome: novo });
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>, p: PessoaDocumentos) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      confirmarRenomear(p);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelarRenomear();
+    }
+  }
+  async function handleExcluir(p: PessoaDocumentos) {
+    const ok = await confirmar({
+      titulo: `Excluir ${p.nome}?`,
+      mensagem: `Isso apaga também todos os documentos e anexos de ${p.nome}. Essa ação não pode ser desfeita.`,
+      confirmarRotulo: 'Excluir',
+      perigoso: true,
+    });
+    if (!ok) return;
+    try {
+      await excluir.mutateAsync(p.id);
+      mostrarToast('Pessoa excluída.');
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  return (
+    <nav className="app-nav documentos-abas-pessoa">
+      {pessoas.map((p) =>
+        modoEdicao ? (
+          <span key={p.id} className="documentos-pessoa-editando">
+            {editandoId === p.id ? (
+              <input
+                value={rascunho}
+                onChange={(e) => setRascunho(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, p)}
+                autoFocus
+                aria-label={`Renomear ${p.nome}`}
+              />
+            ) : (
+              <button type="button" onClick={() => iniciarRenomear(p)}>
+                {p.nome}
+              </button>
+            )}
+            <button type="button" className="btn-icone btn-icone-perigo" onClick={() => handleExcluir(p)} title={`Excluir ${p.nome}`} aria-label={`Excluir ${p.nome}`}>
+              <IconeSupabase arquivo="trash3.svg" />
+            </button>
+          </span>
+        ) : (
+          <button key={p.id} type="button" className={pessoaAtualId === p.id ? 'active' : ''} onClick={() => onSelecionar(p.id)}>
+            {p.nome}
+          </button>
+        )
+      )}
+      <button type="button" onClick={onCriar} disabled={modoEdicao}>
+        + Pessoa
+      </button>
+      <button
+        type="button"
+        className={`btn-icone${modoEdicao ? ' documentos-modo-ativo' : ''}`}
+        onClick={() => setModoEdicao((v) => !v)}
+        title={modoEdicao ? 'Sair do modo de edição' : 'Editar pessoas (renomear/excluir)'}
+        aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição de pessoas'}
+      >
+        <IconeSupabase arquivo="broomstick.svg" />
+      </button>
+    </nav>
+  );
+}
+
 export function DocumentosPessoaisPage() {
-  const [pessoa, setPessoa] = useState<PessoaDocumento>('mariana');
+  const { data: pessoas, isLoading } = useDocumentosPessoas();
+  const criarPessoa = useCriarPessoaDocumentos();
+  const { pedirTexto } = useDialogos();
+  const { mostrarToast } = useToast();
+  const [pessoaAtualId, setPessoaAtualId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pessoas || pessoas.length === 0) return;
+    if (pessoaAtualId && pessoas.some((p) => p.id === pessoaAtualId)) return;
+    setPessoaAtualId(pessoas[0].id);
+  }, [pessoas, pessoaAtualId]);
+
+  async function adicionarPessoa() {
+    const nome = await pedirTexto({ titulo: 'Nova pessoa', mensagem: 'Nome' });
+    if (!nome?.trim()) return;
+    try {
+      const pessoa = await criarPessoa.mutateAsync(nome.trim());
+      setPessoaAtualId(pessoa.id);
+      mostrarToast('Pessoa criada com os documentos padrão.');
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  const pessoaAtual = pessoas?.find((p) => p.id === pessoaAtualId) ?? null;
 
   return (
     <div>
-      <nav className="app-nav documentos-abas-pessoa">
-        <button type="button" className={pessoa === 'mariana' ? 'active' : ''} onClick={() => setPessoa('mariana')}>
-          Mariana
-        </button>
-        <button type="button" className={pessoa === 'casal' ? 'active' : ''} onClick={() => setPessoa('casal')}>
-          Casal
-        </button>
-      </nav>
-      <ListaDocumentosPessoa key={pessoa} pessoa={pessoa} />
+      <ResumoVencimentos onSelecionarPessoa={setPessoaAtualId} />
+      {isLoading ? (
+        <p>Carregando…</p>
+      ) : (
+        <AbasPessoas pessoas={pessoas ?? []} pessoaAtualId={pessoaAtualId} onSelecionar={setPessoaAtualId} onCriar={adicionarPessoa} />
+      )}
+      {pessoaAtual && <ListaDocumentosPessoa key={pessoaAtual.id} pessoaId={pessoaAtual.id} pessoaNome={pessoaAtual.nome} />}
     </div>
   );
 }

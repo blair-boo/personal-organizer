@@ -6,6 +6,65 @@
 .documentos-abas-pessoa {
   gap: 16px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.documentos-pessoa-editando {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.documentos-pessoa-editando input {
+  min-width: 0;
+  max-width: 140px;
+}
+
+.documentos-resumo-vencimentos {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: var(--bg-raised);
+}
+
+.documentos-resumo-vencimentos h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.documentos-resumo-vencimentos ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.documentos-resumo-item {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.documentos-resumo-item:hover {
+  color: var(--text-h);
+  text-decoration: underline;
+}
+
+.documentos-marcador-vazio {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-h);
+  opacity: 0.5;
+  flex-shrink: 0;
 }
 
 .documentos-busca-linha {

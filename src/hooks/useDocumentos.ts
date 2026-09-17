@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import { caminhoAnexoDocumento, enviarArquivo, removerArquivo } from '../lib/storage';
+import { hojeIso, somarDias } from '../lib/datas';
 import type {
   AreaDocumento,
   Documento,
   DocumentoAnexo,
   DocumentoCampo,
   DocumentoLocalRenovacao,
-  PessoaDocumento,
+  PessoaDocumentos,
   RenovarTipo,
   VencimentoTipo,
   VencimentoUnidade,
@@ -16,16 +17,27 @@ import type {
 const BUCKET_CONFIDENCIAL = 'confidencial';
 const SUBPASTA_DOCUMENTOS_PESSOAIS = 'documentos-pessoais';
 
-function queryKeyDocumentos(area: AreaDocumento, pessoa?: PessoaDocumento) {
-  return ['documentos', area, pessoa ?? null];
+/** Lista fixa dos documentos padrão copiados pra toda pessoa nova em Documentos > Pessoais. Gravada aqui de propósito: não segue o que Rat_1 tiver depois. */
+export const MODELO_PADRAO_DOCUMENTOS_PESSOAIS = [
+  'Certidão de Nascimento',
+  'Carteira de Identidade Nacional (CIN)',
+  'CPF (Cadastro de Pessoas Físicas)',
+  'Título de Eleitor',
+  'CNH (Carteira Nacional de Habilitação)',
+  'Carteira de Trabalho (CTPS)',
+  'Passaporte',
+];
+
+function queryKeyDocumentos(area: AreaDocumento, pessoaId?: string) {
+  return ['documentos', area, pessoaId ?? null];
 }
 
-export function useDocumentos(area: AreaDocumento, pessoa?: PessoaDocumento) {
+export function useDocumentos(area: AreaDocumento, pessoaId?: string) {
   return useQuery({
-    queryKey: queryKeyDocumentos(area, pessoa),
+    queryKey: queryKeyDocumentos(area, pessoaId),
     queryFn: async () => {
       let query = supabase.from('documentos').select('*').eq('area', area);
-      query = pessoa ? query.eq('pessoa', pessoa) : query.is('pessoa', null);
+      query = pessoaId ? query.eq('pessoa_id', pessoaId) : query.is('pessoa_id', null);
       const { data, error } = await query.order('ordem').order('titulo');
       if (error) throw error;
       return data as Documento[];
@@ -33,35 +45,35 @@ export function useDocumentos(area: AreaDocumento, pessoa?: PessoaDocumento) {
   });
 }
 
-export function useCriarDocumento(area: AreaDocumento, pessoa?: PessoaDocumento) {
+export function useCriarDocumento(area: AreaDocumento, pessoaId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (titulo: string) => {
       const { data, error } = await supabase
         .from('documentos')
-        .insert({ area, pessoa: pessoa ?? null, titulo })
+        .insert({ area, pessoa_id: pessoaId ?? null, titulo })
         .select()
         .single();
       if (error) throw error;
       return data as Documento;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoa) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
   });
 }
 
-export function useRenomearDocumento(area: AreaDocumento, pessoa?: PessoaDocumento) {
+export function useRenomearDocumento(area: AreaDocumento, pessoaId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, titulo }: { id: string; titulo: string }) => {
       const { error } = await supabase.from('documentos').update({ titulo }).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoa) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
   });
 }
 
 /** Persiste uma nova ordem (id -> índice) pra um conjunto de documentos. */
-export function useReordenarDocumentos(area: AreaDocumento, pessoa?: PessoaDocumento) {
+export function useReordenarDocumentos(area: AreaDocumento, pessoaId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (ordens: { id: string; ordem: number }[]) => {
@@ -77,18 +89,130 @@ export function useReordenarDocumentos(area: AreaDocumento, pessoa?: PessoaDocum
         )
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoa) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
   });
 }
 
-export function useExcluirDocumento(area: AreaDocumento, pessoa?: PessoaDocumento) {
+export function useExcluirDocumento(area: AreaDocumento, pessoaId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('documentos').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoa) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
+  });
+}
+
+/** Pessoas de Documentos > Pessoais (Rat_1, Casal, e as que forem criadas pelo botão + Pessoa). */
+export function useDocumentosPessoas() {
+  return useQuery({
+    queryKey: ['documentos_pessoas'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('documentos_pessoas').select('*').order('ordem').order('nome');
+      if (error) throw error;
+      return data as PessoaDocumentos[];
+    },
+  });
+}
+
+/** Cria uma pessoa nova e já semeia os documentos padrão (vazios) pra ela. */
+export function useCriarPessoaDocumentos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (nome: string) => {
+      const { data: pessoa, error: erroPessoa } = await supabase
+        .from('documentos_pessoas')
+        .insert({ nome })
+        .select()
+        .single();
+      if (erroPessoa) throw erroPessoa;
+      const linhas = MODELO_PADRAO_DOCUMENTOS_PESSOAIS.map((titulo, i) => ({
+        area: 'pessoais' as const,
+        pessoa_id: pessoa.id,
+        titulo,
+        ordem: i + 1,
+      }));
+      const { error: erroDocumentos } = await supabase.from('documentos').insert(linhas);
+      if (erroDocumentos) throw erroDocumentos;
+      return pessoa as PessoaDocumentos;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['documentos_pessoas'] }),
+  });
+}
+
+export function useRenomearPessoaDocumentos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, nome }: { id: string; nome: string }) => {
+      const { error } = await supabase.from('documentos_pessoas').update({ nome }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['documentos_pessoas'] }),
+  });
+}
+
+/** Exclui a pessoa; `on delete cascade` já apaga seus documentos, campos, locais e anexos. */
+export function useExcluirPessoaDocumentos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('documentos_pessoas').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['documentos_pessoas'] }),
+  });
+}
+
+export interface ProximoVencimento {
+  documentoId: string;
+  pessoaId: string;
+  pessoaNome: string;
+  titulo: string;
+  vencimentoCalculada: string;
+  diasRestantes: number;
+}
+
+/** Documentos pessoais com aviso de vencimento ativado, dentro do prazo de aviso (inclui já vencidos), de todas as pessoas. */
+export function useProximosVencimentosPessoais() {
+  return useQuery({
+    queryKey: ['documentos_proximos_vencimentos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('documentos')
+        .select('id, titulo, pessoa_id, vencimento_calculada, aviso_dias, pessoa:documentos_pessoas(nome)')
+        .eq('area', 'pessoais')
+        .eq('aviso_vencimento', true)
+        .not('vencimento_calculada', 'is', null);
+      if (error) throw error;
+      const hoje = hojeIso();
+      const itens: ProximoVencimento[] = [];
+      for (const linha of data as unknown as {
+        id: string;
+        titulo: string;
+        pessoa_id: string | null;
+        vencimento_calculada: string;
+        aviso_dias: number | null;
+        pessoa: { nome: string } | null;
+      }[]) {
+        if (!linha.pessoa_id || !linha.pessoa) continue;
+        const limite = somarDias(hoje, linha.aviso_dias ?? 0);
+        if (linha.vencimento_calculada > limite) continue;
+        const diasRestantes = Math.round(
+          (new Date(linha.vencimento_calculada).getTime() - new Date(hoje).getTime()) / 86400000
+        );
+        itens.push({
+          documentoId: linha.id,
+          pessoaId: linha.pessoa_id,
+          pessoaNome: linha.pessoa.nome,
+          titulo: linha.titulo,
+          vencimentoCalculada: linha.vencimento_calculada,
+          diasRestantes,
+        });
+      }
+      itens.sort((a, b) => a.vencimentoCalculada.localeCompare(b.vencimentoCalculada));
+      return itens;
+    },
   });
 }
 
@@ -110,14 +234,14 @@ export interface DadosDocumentoPessoal {
   renovar_site_link: string | null;
 }
 
-export function useAtualizarDocumentoPessoal(area: AreaDocumento, pessoa?: PessoaDocumento) {
+export function useAtualizarDocumentoPessoal(area: AreaDocumento, pessoaId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, dados }: { id: string; dados: DadosDocumentoPessoal }) => {
       const { error } = await supabase.from('documentos').update(dados).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoa) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
   });
 }
 
@@ -261,7 +385,7 @@ export interface CriarDocumentoCompletoInput {
  * gerado no navegador, pra bater com os arquivos já enviados ao Storage
  * durante a criação), campos livres, locais de renovação e anexos.
  */
-export function useCriarDocumentoCompleto(area: AreaDocumento, pessoa?: PessoaDocumento) {
+export function useCriarDocumentoCompleto(area: AreaDocumento, pessoaId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -274,7 +398,7 @@ export function useCriarDocumentoCompleto(area: AreaDocumento, pessoa?: PessoaDo
     }: CriarDocumentoCompletoInput) => {
       const { error: erroDocumento } = await supabase
         .from('documentos')
-        .insert({ id, area, pessoa: pessoa ?? null, titulo, ...camposFixos });
+        .insert({ id, area, pessoa_id: pessoaId ?? null, titulo, ...camposFixos });
       if (erroDocumento) throw erroDocumento;
       if (camposLivres.length > 0) {
         const linhas = camposLivres.map((campo, ordem) => ({ documento_id: id, ordem, ...campo }));
@@ -292,7 +416,7 @@ export function useCriarDocumentoCompleto(area: AreaDocumento, pessoa?: PessoaDo
         if (error) throw error;
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoa) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
   });
 }
 

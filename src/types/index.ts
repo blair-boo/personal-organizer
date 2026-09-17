@@ -12,7 +12,6 @@ export type TipoLancamento = 'entrada' | 'saida';
 export type StatusProjeto = 'planejado' | 'andamento' | 'concluido';
 export type TipoDocumentoItem = 'nota_fiscal' | 'manual' | 'outro';
 export type AreaDocumento = 'pessoais' | 'apartamento' | 'arquivo' | 'outros';
-export type PessoaDocumento = 'mariana' | 'casal';
 export type VencimentoTipo = 'data' | 'prazo' | 'indeterminado';
 export type VencimentoUnidade = 'dias' | 'meses' | 'anos';
 export type RenovarTipo = 'online' | 'presencial' | 'ambos';
@@ -117,10 +116,16 @@ export interface TarefaManutencao {
   ativo: boolean;
 }
 
+export interface PessoaDocumentos {
+  id: string;
+  nome: string;
+  ordem: number;
+}
+
 export interface Documento {
   id: string;
   area: AreaDocumento;
-  pessoa: PessoaDocumento | null;
+  pessoa_id: string | null;
   titulo: string;
   ordem: number;
   numero: string | null;
