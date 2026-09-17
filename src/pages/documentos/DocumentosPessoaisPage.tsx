@@ -11,6 +11,7 @@ import { mensagemDeErro } from '../../lib/erros';
 import { copiarConteudo } from '../../lib/clipboard';
 import { formatarData, somarPeriodo } from '../../lib/datas';
 import { caminhoAnexoDocumento, enviarArquivo, removerArquivo } from '../../lib/storage';
+import { useCalendarioToken, useGerarNovoTokenCalendario, urlFeedCalendario } from '../../hooks/useCalendarioDocumentos';
 import {
   BUCKET_CONFIDENCIAL,
   useAdicionarAnexoDocumento,
@@ -1101,6 +1102,56 @@ function AbasPessoas({
   );
 }
 
+function AssinaturaCalendario() {
+  const { data: config, isLoading } = useCalendarioToken();
+  const gerarNovo = useGerarNovoTokenCalendario();
+  const { confirmar } = useDialogos();
+  const { mostrarToast } = useToast();
+
+  async function copiarLink() {
+    if (!config) return;
+    await copiarConteudo(urlFeedCalendario(config.token), mostrarToast, 'link do calendário');
+  }
+
+  async function handleGerarNovo() {
+    const ok = await confirmar({
+      titulo: 'Gerar nova URL do calendário?',
+      mensagem:
+        'O link atual para de funcionar. Você vai precisar assinar de novo em qualquer calendário (iPhone, Google) que já tiver configurado com ele.',
+      confirmarRotulo: 'Gerar nova URL',
+      perigoso: true,
+    });
+    if (!ok) return;
+    try {
+      await gerarNovo.mutateAsync();
+      mostrarToast('Nova URL gerada.');
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  if (isLoading || !config) return null;
+
+  return (
+    <div className="documentos-assinatura-calendario">
+      <h3>Assinar vencimentos no calendário</h3>
+      <p>
+        Copie o link e assine como calendário no iPhone (Ajustes → Calendário → Contas → Adicionar calendário de
+        assinatura) ou no Google Calendar (Outros calendários → Do URL). Só título, pessoa e data aparecem, nunca os
+        dados do documento.
+      </p>
+      <div className="documentos-assinatura-acoes">
+        <button type="button" onClick={copiarLink}>
+          Copiar link
+        </button>
+        <button type="button" onClick={handleGerarNovo} disabled={gerarNovo.isPending}>
+          Gerar nova URL
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function DocumentosPessoaisPage() {
   const { data: pessoas, isLoading } = useDocumentosPessoas();
   const criarPessoa = useCriarPessoaDocumentos();
@@ -1131,6 +1182,7 @@ export function DocumentosPessoaisPage() {
   return (
     <div>
       <ResumoVencimentos onSelecionarPessoa={setPessoaAtualId} />
+      <AssinaturaCalendario />
       {isLoading ? (
         <p>Carregando…</p>
       ) : (

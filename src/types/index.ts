@@ -168,3 +168,7 @@ export interface DocumentoAnexo {
   arquivo_url: string;
   nome_arquivo: string;
 }
+
+export interface CalendarioConfig {
+  token: string;
+}
