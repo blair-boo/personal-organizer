@@ -58,3 +58,10 @@ export function caminhoComprovante(
   const ext = extensaoDe(arquivo.name);
   return `${contaId}/${prefixo}_${slugify(banco)}_${siglaCompetencia}.${ext}`;
 }
+
+/** Caminho de um anexo de documento (bucket confidencial), seguindo a convenção {subpasta}/{documentoId}/{slug}-{timestamp}.{ext}. */
+export function caminhoAnexoDocumento(subpasta: string, documentoId: string, nomeAnexo: string, arquivo: File): string {
+  const slug = slugify(nomeAnexo) || 'anexo';
+  const ext = extensaoDe(arquivo.name);
+  return `${subpasta}/${documentoId}/${slug}-${Date.now()}.${ext}`;
+}

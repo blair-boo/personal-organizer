@@ -20,6 +20,10 @@ import { ItensPage } from './pages/apartamento/ItensPage';
 import { ProjetosPage } from './pages/apartamento/ProjetosPage';
 import { ManutencaoPage } from './pages/apartamento/ManutencaoPage';
 
+import { DocumentosLayout } from './pages/documentos/DocumentosLayout';
+import { DocumentosPessoaisPage } from './pages/documentos/DocumentosPessoaisPage';
+import { DocumentosAreaPage } from './pages/documentos/DocumentosAreaPage';
+
 import { SettingsLayout } from './pages/settings/SettingsLayout';
 import { CategoriasPage } from './pages/settings/CategoriasPage';
 import { TagsItensPage } from './pages/settings/TagsItensPage';
@@ -67,6 +71,17 @@ export const router = createBrowserRouter(
             { path: 'itens', element: <ItensPage /> },
             { path: 'projetos', element: <ProjetosPage /> },
             { path: 'manutencao', element: <ManutencaoPage /> },
+          ],
+        },
+        {
+          path: 'documentos',
+          element: <DocumentosLayout />,
+          children: [
+            { index: true, element: <Navigate to="/documentos/pessoais" replace /> },
+            { path: 'pessoais', element: <DocumentosPessoaisPage /> },
+            { path: 'apartamento', element: <DocumentosAreaPage area="apartamento" /> },
+            { path: 'arquivo', element: <DocumentosAreaPage area="arquivo" /> },
+            { path: 'outros', element: <DocumentosAreaPage area="outros" /> },
           ],
         },
         {

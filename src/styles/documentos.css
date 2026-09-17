@@ -1,0 +1,197 @@
+/* Aba Documentos: lista com busca/vassoura (igual Categorias), item expansível
+   mostrando campos com botão de copiar e os anexos, e formulário de criação
+   (Padrão A/B/C da skill padrao-ps). Documentos Pessoais usa o mesmo esqueleto
+   de lista, mas com um formulário de campos fixos em vez de campos livres. */
+
+.documentos-abas-pessoa {
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.documentos-busca-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.documentos-busca-linha input[type='search'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.documentos-modo-ativo {
+  color: var(--accent);
+}
+
+.documentos-vazio {
+  opacity: 0.7;
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.documentos-lista-area {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 8px;
+}
+
+.documentos-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.documentos-item-editando {
+  align-items: stretch;
+}
+
+.documentos-item-editando input {
+  flex: 1;
+  min-width: 0;
+}
+
+.documentos-arrastar {
+  cursor: grab;
+  flex-shrink: 0;
+  opacity: 0.45;
+  padding: 2px;
+}
+
+.documentos-arrastar:hover {
+  opacity: 0.9;
+}
+
+.documentos-titulo-botao {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-wrap: anywhere;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.documentos-titulo-botao:hover:not(:disabled) {
+  color: var(--text-h);
+  text-decoration: underline;
+}
+
+.documentos-seta {
+  flex-shrink: 0;
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+.documentos-item-pendente .documentos-titulo-botao {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.documentos-item-renomeado .documentos-titulo-botao {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.documentos-btn-desfazer {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.documentos-item-expandido {
+  padding: 4px 0 12px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.documentos-campos-exibicao,
+.documentos-local-exibicao {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.documentos-campo-exibicao-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.documentos-anexo-acoes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Editores (formulário de criação/edição) */
+
+.documentos-campos-editor,
+.documentos-locais-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.documentos-campo-linha {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.documentos-local-linha {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.documentos-form-fixo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.documentos-prazo-linha {
+  display: flex;
+  gap: 8px;
+}
+
+.documentos-prazo-linha input[type='number'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.documentos-checkbox-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-direction: row;
+}
+
+@media (max-width: 700px) {
+  .documentos-campo-linha,
+  .documentos-local-linha {
+    grid-template-columns: 1fr;
+  }
+}

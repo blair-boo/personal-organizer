@@ -11,6 +11,11 @@ export type TipoCategoria = 'despesa' | 'receita';
 export type TipoLancamento = 'entrada' | 'saida';
 export type StatusProjeto = 'planejado' | 'andamento' | 'concluido';
 export type TipoDocumentoItem = 'nota_fiscal' | 'manual' | 'outro';
+export type AreaDocumento = 'pessoais' | 'apartamento' | 'arquivo' | 'outros';
+export type PessoaDocumento = 'mariana' | 'casal';
+export type VencimentoTipo = 'data' | 'prazo' | 'indeterminado';
+export type VencimentoUnidade = 'dias' | 'meses' | 'anos';
+export type RenovarTipo = 'online' | 'presencial' | 'ambos';
 
 export interface Conta {
   id: string;
@@ -110,4 +115,51 @@ export interface TarefaManutencao {
   frequencia_dias: number;
   ultima_execucao: string | null;
   ativo: boolean;
+}
+
+export interface Documento {
+  id: string;
+  area: AreaDocumento;
+  pessoa: PessoaDocumento | null;
+  titulo: string;
+  ordem: number;
+  numero: string | null;
+  numero_espelho: string | null;
+  emissao: string | null;
+  vencimento_tipo: VencimentoTipo | null;
+  vencimento_data: string | null;
+  vencimento_quantidade: number | null;
+  vencimento_unidade: VencimentoUnidade | null;
+  vencimento_calculada: string | null;
+  aviso_vencimento: boolean;
+  aviso_dias: number | null;
+  renovar_tipo: RenovarTipo | null;
+  renovar_site_nome: string | null;
+  renovar_site_link: string | null;
+}
+
+export interface DocumentoCampo {
+  id: string;
+  documento_id: string;
+  nome: string;
+  conteudo: string | null;
+  copiavel: boolean;
+  ordem: number;
+}
+
+export interface DocumentoLocalRenovacao {
+  id: string;
+  documento_id: string;
+  local: string | null;
+  endereco: string | null;
+  telefone: string | null;
+  ordem: number;
+}
+
+export interface DocumentoAnexo {
+  id: string;
+  documento_id: string;
+  nome: string;
+  arquivo_url: string;
+  nome_arquivo: string;
 }
