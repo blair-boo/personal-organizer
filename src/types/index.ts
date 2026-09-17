@@ -169,6 +169,11 @@ export interface DocumentoAnexo {
   nome_arquivo: string;
 }
 
-export interface CalendarioConfig {
+export interface CalendarioFeed {
+  id: string;
+  nome: string;
   token: string;
+  criado_em: string;
+  /** Pessoas incluídas nesse link. Vazio = todas as pessoas. */
+  pessoas: PessoaDocumentos[];
 }

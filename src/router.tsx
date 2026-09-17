@@ -30,6 +30,7 @@ import { TagsItensPage } from './pages/settings/TagsItensPage';
 import { ContasPage } from './pages/settings/ContasPage';
 import { BancoDeLancamentosPage } from './pages/settings/BancoDeLancamentosPage';
 import { ClassificacoesTarefasPage } from './pages/settings/ClassificacoesTarefasPage';
+import { CalendarioPage } from './pages/settings/CalendarioPage';
 
 export const router = createBrowserRouter(
   [
@@ -94,6 +95,7 @@ export const router = createBrowserRouter(
             { path: 'contas', element: <ContasPage /> },
             { path: 'banco-lancamentos', element: <BancoDeLancamentosPage /> },
             { path: 'classificacoes-tarefas', element: <ClassificacoesTarefasPage /> },
+            { path: 'calendario', element: <CalendarioPage /> },
           ],
         },
         { path: '*', element: <Navigate to="/" replace /> },

@@ -128,3 +128,18 @@
   padding: 1px 8px;
   font-size: 11px;
 }
+
+.calendario-checkbox-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-direction: row;
+}
+
+.calendario-pessoas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+}
