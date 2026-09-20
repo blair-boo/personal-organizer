@@ -1,0 +1,156 @@
+/* Aba Testes (Settings): prévia de fonte/ícones em tamanho ajustável (sem duplicar por tamanho). */
+
+/* A página inteira rola normalmente dentro da área de conteúdo do Settings.
+   O conteúdo abaixo do topo (fonte/ícones) tem, além disso, seu próprio
+   scroll interno (.testes-conteudo), pra não crescer sem limite quando o
+   topo já ocupa bastante espaço (ex.: seletor de cor aberto no celular). */
+.testes-pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 900px;
+}
+
+/* Área superior: controles de tamanho, recarregar e cor. Altura intrínseca. */
+.testes-topo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.testes-conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 16px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+/* A seção de cor fica no topo (sem border-top — já tem o separador do container) */
+.testes-secao-cor {
+  border-top: none;
+  padding-top: 0;
+}
+
+.testes-cabecalho h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.testes-subtitulo {
+  font-size: 13px;
+  opacity: 0.7;
+  margin: 0;
+}
+
+.testes-controle-tamanho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+}
+
+.testes-tamanho-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.testes-tamanho-input {
+  width: 64px;
+}
+
+.testes-refresh-carregando svg {
+  animation: testes-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes testes-refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.testes-secao {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.testes-secao h2 {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+
+.testes-fonte-amostra {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--testes-cor-preview, var(--text-h));
+}
+
+.testes-fonte-amostra p {
+  margin: 0;
+}
+
+.testes-fonte-muted {
+  opacity: 0.7;
+}
+
+.testes-erro {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.testes-icones-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.testes-icone-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 96px;
+  text-align: center;
+}
+
+.testes-icone-nome {
+  font-size: 11px;
+  opacity: 0.7;
+  word-break: break-all;
+}
+
+/* Ícone "pintado" via mask: usa --testes-cor-preview (setada pelo seletor de
+   cor em .testes-conteudo) com fallback pra --text-h, em vez da cor fixa do
+   SVG original — assim segue a cor escolhida sem repintar ícones/botões de
+   fora desta seção. */
+.testes-icone-svg {
+  display: inline-block;
+  background-color: var(--testes-cor-preview, var(--text-h));
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* Ícone PNG: <img> normal, sem mask — mantém as cores do próprio arquivo em
+   vez de herdar a cor do tema. */
+.testes-icone-img {
+  display: inline-block;
+  object-fit: contain;
+}
