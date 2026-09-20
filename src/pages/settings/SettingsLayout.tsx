@@ -5,12 +5,11 @@ export function SettingsLayout() {
     <div>
       <nav className="app-subnav">
         <NavLink to="/settings/categorias">Categorias</NavLink>
-        <NavLink to="/settings/tags-itens">Tags de Itens</NavLink>
+        <NavLink to="/settings/icones">Ícones</NavLink>
         <NavLink to="/settings/contas">Contas e Cartões</NavLink>
         <NavLink to="/settings/banco-lancamentos">Banco de Lançamentos</NavLink>
         <NavLink to="/settings/classificacoes-tarefas">Classificações de Tarefas</NavLink>
         <NavLink to="/settings/calendario">Calendário</NavLink>
-        <NavLink to="/settings/testes">Testes</NavLink>
       </nav>
       <div className="app-subnav-conteudo">
         <Outlet />

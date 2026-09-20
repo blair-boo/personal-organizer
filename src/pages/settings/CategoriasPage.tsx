@@ -7,6 +7,7 @@ import { useToast } from '../../components/Toast';
 import { IconePng, IconeSupabase } from '../../components/IconeSupabase';
 import { mensagemDeErro } from '../../lib/erros';
 import { ehIconeMascarado, iconesDaCategoria } from '../../lib/iconesCategorias';
+import { TagsItensSecao } from './TagsItensSecao';
 import {
   useCategorias,
   useCriarCategoria,
@@ -155,6 +156,7 @@ function ItemLinha({
 
 export function CategoriasPage() {
   const [tipo, setTipo] = useState<TipoCategoria>('despesa');
+  const [mostrarTagsItens, setMostrarTagsItens] = useState(false);
   const { data: categorias } = useCategorias(tipo);
   const { data: uso } = useUsoCategorias();
   const criar = useCriarCategoria(tipo);
@@ -375,118 +377,148 @@ export function CategoriasPage() {
           </p>
         </div>
 
-        <nav className="app-nav categorias-abas">
-          <button type="button" className={tipo === 'despesa' ? 'active' : ''} onClick={() => setTipo('despesa')} disabled={modoEdicao}>
+        <nav className="abas-internas">
+          <button
+            type="button"
+            className={!mostrarTagsItens && tipo === 'despesa' ? 'ativa' : ''}
+            onClick={() => {
+              setMostrarTagsItens(false);
+              setTipo('despesa');
+            }}
+            disabled={modoEdicao}
+          >
             Despesas
           </button>
-          <button type="button" className={tipo === 'receita' ? 'active' : ''} onClick={() => setTipo('receita')} disabled={modoEdicao}>
+          <button
+            type="button"
+            className={!mostrarTagsItens && tipo === 'receita' ? 'ativa' : ''}
+            onClick={() => {
+              setMostrarTagsItens(false);
+              setTipo('receita');
+            }}
+            disabled={modoEdicao}
+          >
             Receitas
+          </button>
+          <button
+            type="button"
+            className={mostrarTagsItens ? 'ativa' : ''}
+            onClick={() => setMostrarTagsItens(true)}
+            disabled={modoEdicao}
+          >
+            Tags de Itens
           </button>
         </nav>
 
-        <div className="categorias-busca-linha">
-          <input
-            type="search"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar categorias…"
-            className="categorias-busca"
-            aria-label="Buscar categorias"
-            disabled={haAlteracoesOrdem}
-          />
-          <button type="button" onClick={adicionarRaiz} disabled={modoEdicao}>
-            + Categoria
-          </button>
-          <button
-            type="button"
-            className={`btn-icone${modoEdicao ? ' categorias-modo-ativo' : ''}`}
-            onClick={alternarModoEdicao}
-            title={modoEdicao ? 'Sair do modo de edição' : 'Editar (arrastar/excluir)'}
-            aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição'}
-          >
-            <IconeSupabase arquivo="broomstick.svg" />
-          </button>
-          <button
-            type="button"
-            className="btn-icone"
-            onClick={salvarAlteracoes}
-            disabled={!modoEdicao || !temPendencias || salvando}
-            title="Salvar alterações"
-            aria-label="Salvar alterações"
-          >
-            <IconeSupabase arquivo="save.svg" />
-          </button>
-        </div>
+        {!mostrarTagsItens && (
+          <div className="categorias-busca-linha">
+            <input
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar categorias…"
+              className="categorias-busca"
+              aria-label="Buscar categorias"
+              disabled={haAlteracoesOrdem}
+            />
+            <button type="button" onClick={adicionarRaiz} disabled={modoEdicao}>
+              + Categoria
+            </button>
+            <button
+              type="button"
+              className={`btn-icone${modoEdicao ? ' categorias-modo-ativo' : ''}`}
+              onClick={alternarModoEdicao}
+              title={modoEdicao ? 'Sair do modo de edição' : 'Editar (arrastar/excluir)'}
+              aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição'}
+            >
+              <IconeSupabase arquivo="broomstick.svg" />
+            </button>
+            <button
+              type="button"
+              className="btn-icone"
+              onClick={salvarAlteracoes}
+              disabled={!modoEdicao || !temPendencias || salvando}
+              title="Salvar alterações"
+              aria-label="Salvar alterações"
+            >
+              <IconeSupabase arquivo="save.svg" />
+            </button>
+          </div>
+        )}
       </div>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <div className="categorias-conteudo">
-          {raizes.length === 0 && <p className="categorias-vazio">Nenhum resultado.</p>}
-          <SortableContext items={raizesTodas.map((r) => r.id)} strategy={rectSortingStrategy}>
-            {raizes.map((raiz) => {
-              const subs = subcategoriasDe(raiz.id);
-              const totalSubs = dados.filter((c) => c.parent_id === raiz.id).length;
-              const expandido = q ? true : !colapsados.has(raiz.id);
-              const raizPendente = exclusoesPendentes.has(raiz.id);
-              return (
-                <section key={raiz.id} className="categorias-secao">
-                  <div className="categorias-raiz">
-                    <ItemLinha
-                      item={raiz}
-                      nomeExibido={nomeAtual(raiz)}
-                      renomeacaoPendente={renomeacoesPendentes.has(raiz.id)}
-                      uso={uso?.get(raiz.id) ?? 0}
-                      isRaiz
-                      subCount={totalSubs}
-                      expandido={expandido}
-                      modoEdicao={modoEdicao}
-                      pendente={raizPendente}
-                      editando={edicaoAtivaId === raiz.id}
-                      rascunho={rascunho}
-                      onNomeClick={() => (modoEdicao ? iniciarEdicao(raiz) : alternarExpandir(raiz.id))}
-                      onRascunhoChange={setRascunho}
-                      onConfirmarEdicao={() => confirmarEdicao(raiz)}
-                      onCancelarEdicao={cancelarEdicao}
-                      onMarcarExclusao={() => marcarExclusao(raiz)}
-                      onDesfazerExclusao={() => desfazerExclusao(raiz)}
-                      onAdicionarSubcategoria={() => adicionarSubcategoria(raiz)}
-                    />
-                  </div>
-                  {expandido &&
-                    (subs.length === 0 ? (
-                      <p className="categorias-vazio categorias-vazio-sub">Nenhuma subcategoria ainda.</p>
-                    ) : (
-                      <SortableContext items={subs.map((s) => s.id)} strategy={rectSortingStrategy}>
-                        <div className="categorias-grid">
-                          {subs.map((sub) => (
-                            <ItemLinha
-                              key={sub.id}
-                              item={sub}
-                              nomeExibido={nomeAtual(sub)}
-                              renomeacaoPendente={renomeacoesPendentes.has(sub.id)}
-                              uso={uso?.get(sub.id) ?? 0}
-                              isRaiz={false}
-                              modoEdicao={modoEdicao}
-                              pendente={exclusoesPendentes.has(sub.id)}
-                              editando={edicaoAtivaId === sub.id}
-                              rascunho={rascunho}
-                              onNomeClick={() => modoEdicao && iniciarEdicao(sub)}
-                              onRascunhoChange={setRascunho}
-                              onConfirmarEdicao={() => confirmarEdicao(sub)}
-                              onCancelarEdicao={cancelarEdicao}
-                              onMarcarExclusao={() => marcarExclusao(sub)}
-                              onDesfazerExclusao={() => desfazerExclusao(sub)}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
-                    ))}
-                </section>
-              );
-            })}
-          </SortableContext>
-        </div>
-      </DndContext>
+      {mostrarTagsItens ? (
+        <TagsItensSecao />
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <div className="categorias-conteudo">
+            {raizes.length === 0 && <p className="categorias-vazio">Nenhum resultado.</p>}
+            <SortableContext items={raizesTodas.map((r) => r.id)} strategy={rectSortingStrategy}>
+              {raizes.map((raiz) => {
+                const subs = subcategoriasDe(raiz.id);
+                const totalSubs = dados.filter((c) => c.parent_id === raiz.id).length;
+                const expandido = q ? true : !colapsados.has(raiz.id);
+                const raizPendente = exclusoesPendentes.has(raiz.id);
+                return (
+                  <section key={raiz.id} className="categorias-secao">
+                    <div className="categorias-raiz">
+                      <ItemLinha
+                        item={raiz}
+                        nomeExibido={nomeAtual(raiz)}
+                        renomeacaoPendente={renomeacoesPendentes.has(raiz.id)}
+                        uso={uso?.get(raiz.id) ?? 0}
+                        isRaiz
+                        subCount={totalSubs}
+                        expandido={expandido}
+                        modoEdicao={modoEdicao}
+                        pendente={raizPendente}
+                        editando={edicaoAtivaId === raiz.id}
+                        rascunho={rascunho}
+                        onNomeClick={() => (modoEdicao ? iniciarEdicao(raiz) : alternarExpandir(raiz.id))}
+                        onRascunhoChange={setRascunho}
+                        onConfirmarEdicao={() => confirmarEdicao(raiz)}
+                        onCancelarEdicao={cancelarEdicao}
+                        onMarcarExclusao={() => marcarExclusao(raiz)}
+                        onDesfazerExclusao={() => desfazerExclusao(raiz)}
+                        onAdicionarSubcategoria={() => adicionarSubcategoria(raiz)}
+                      />
+                    </div>
+                    {expandido &&
+                      (subs.length === 0 ? (
+                        <p className="categorias-vazio categorias-vazio-sub">Nenhuma subcategoria ainda.</p>
+                      ) : (
+                        <SortableContext items={subs.map((s) => s.id)} strategy={rectSortingStrategy}>
+                          <div className="categorias-grid">
+                            {subs.map((sub) => (
+                              <ItemLinha
+                                key={sub.id}
+                                item={sub}
+                                nomeExibido={nomeAtual(sub)}
+                                renomeacaoPendente={renomeacoesPendentes.has(sub.id)}
+                                uso={uso?.get(sub.id) ?? 0}
+                                isRaiz={false}
+                                modoEdicao={modoEdicao}
+                                pendente={exclusoesPendentes.has(sub.id)}
+                                editando={edicaoAtivaId === sub.id}
+                                rascunho={rascunho}
+                                onNomeClick={() => modoEdicao && iniciarEdicao(sub)}
+                                onRascunhoChange={setRascunho}
+                                onConfirmarEdicao={() => confirmarEdicao(sub)}
+                                onCancelarEdicao={cancelarEdicao}
+                                onMarcarExclusao={() => marcarExclusao(sub)}
+                                onDesfazerExclusao={() => desfazerExclusao(sub)}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      ))}
+                  </section>
+                );
+              })}
+            </SortableContext>
+          </div>
+        </DndContext>
+      )}
     </div>
   );
 }

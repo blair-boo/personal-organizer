@@ -8,11 +8,11 @@ const TAMANHO_MIN = 10;
 const TAMANHO_MAX = 64;
 
 /**
- * Aba de testes (Settings): prévia de fonte e dos ícones do bucket `icones`
+ * Aba de ícones (Settings): prévia de fonte e dos ícones do bucket `icones`
  * (SVG na raiz, PNG na pasta PNG/) num tamanho ajustável — um controle só,
  * em vez de duplicar blocos fixos por tamanho.
  */
-export function TestesPage() {
+export function IconesPage() {
   const [tamanho, setTamanho] = useState(TAMANHO_PADRAO);
   const { data, isLoading, isFetching, isError, error, refetch } = useIconesTeste();
   const conteudoRef = useRef<HTMLDivElement>(null);
@@ -46,7 +46,7 @@ export function TestesPage() {
           independente desta área — ver .testes-conteudo. */}
       <div className="testes-topo">
         <div className="testes-cabecalho">
-          <h1>Testes</h1>
+          <h1>Ícones</h1>
           <p className="testes-subtitulo">
             Prévia de fonte e ícones em qualquer tamanho — sem precisar duplicar blocos por tamanho.
           </p>
