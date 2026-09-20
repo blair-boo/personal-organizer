@@ -10,6 +10,7 @@ export function SettingsLayout() {
         <NavLink to="/settings/banco-lancamentos">Banco de Lançamentos</NavLink>
         <NavLink to="/settings/classificacoes-tarefas">Classificações de Tarefas</NavLink>
         <NavLink to="/settings/calendario">Calendário</NavLink>
+        <NavLink to="/settings/testes">Testes</NavLink>
       </nav>
       <div className="app-subnav-conteudo">
         <Outlet />

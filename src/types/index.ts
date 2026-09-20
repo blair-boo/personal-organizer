@@ -169,6 +169,11 @@ export interface DocumentoAnexo {
   nome_arquivo: string;
 }
 
+export interface IconeArquivo {
+  nome: string;
+  url: string;
+}
+
 export interface CalendarioFeed {
   id: string;
   nome: string;
