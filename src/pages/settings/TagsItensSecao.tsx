@@ -5,7 +5,8 @@ import { mensagemDeErro } from '../../lib/erros';
 import { useCriarTagItem, useExcluirTagItem, useRenomearTagItem, useTagsItens } from '../../hooks/useTagsItens';
 import type { TagItem } from '../../types';
 
-export function TagsItensPage() {
+/** Seção embutida na aba interna "Tags de Itens" de Categorias (ver CategoriasPage.tsx). */
+export function TagsItensSecao() {
   const { data: tags, isLoading } = useTagsItens();
   const criar = useCriarTagItem();
   const renomear = useRenomearTagItem();

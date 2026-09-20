@@ -28,6 +28,9 @@ export function iconesDaCategoria(nome: string): string[] {
   return (ICONES_CATEGORIAS[nome] ?? []).map((arquivo) => `PNG/${arquivo}`);
 }
 
+/** Nomes de arquivo (sem o prefixo "PNG/") usados como ícone de alguma categoria — protegidos contra renomear/excluir na aba Ícones. */
+export const ICONES_CATEGORIAS_PROTEGIDOS = new Set(Object.values(ICONES_CATEGORIAS).flat());
+
 /** Subconjunto de ícones que, em vez da ilustração colorida, usa a mesma
  * máscara com currentColor dos ícones de ação (vassoura/salvar/lixeira) —
  * saem como silhueta sólida na cor do texto, não na cor original do PNG. */

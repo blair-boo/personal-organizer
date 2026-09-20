@@ -26,12 +26,11 @@ import { DocumentosAreaPage } from './pages/documentos/DocumentosAreaPage';
 
 import { SettingsLayout } from './pages/settings/SettingsLayout';
 import { CategoriasPage } from './pages/settings/CategoriasPage';
-import { TagsItensPage } from './pages/settings/TagsItensPage';
 import { ContasPage } from './pages/settings/ContasPage';
 import { BancoDeLancamentosPage } from './pages/settings/BancoDeLancamentosPage';
 import { ClassificacoesTarefasPage } from './pages/settings/ClassificacoesTarefasPage';
 import { CalendarioPage } from './pages/settings/CalendarioPage';
-import { TestesPage } from './pages/settings/TestesPage';
+import { IconesPage } from './pages/settings/IconesPage';
 
 export const router = createBrowserRouter(
   [
@@ -92,12 +91,11 @@ export const router = createBrowserRouter(
           children: [
             { index: true, element: <Navigate to="/settings/categorias" replace /> },
             { path: 'categorias', element: <CategoriasPage /> },
-            { path: 'tags-itens', element: <TagsItensPage /> },
+            { path: 'icones', element: <IconesPage /> },
             { path: 'contas', element: <ContasPage /> },
             { path: 'banco-lancamentos', element: <BancoDeLancamentosPage /> },
             { path: 'classificacoes-tarefas', element: <ClassificacoesTarefasPage /> },
             { path: 'calendario', element: <CalendarioPage /> },
-            { path: 'testes', element: <TestesPage /> },
           ],
         },
         { path: '*', element: <Navigate to="/" replace /> },
