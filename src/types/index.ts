@@ -170,8 +170,12 @@ export interface DocumentoAnexo {
 }
 
 export interface IconeArquivo {
+  id: string;
   nome: string;
   url: string;
+  ordem: number;
+  /** Referenciado por nome fixo em algum lugar do código — não pode ser renomeado nem excluído pela aba Ícones. */
+  protegido: boolean;
 }
 
 export interface CalendarioFeed {

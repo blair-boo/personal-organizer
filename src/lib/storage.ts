@@ -65,3 +65,8 @@ export function caminhoAnexoDocumento(subpasta: string, documentoId: string, nom
   const ext = extensaoDe(arquivo.name);
   return `${subpasta}/${documentoId}/${slug}-${Date.now()}.${ext}`;
 }
+
+/** Caminho de um ícone no bucket `icones` (pasta '' = raiz/SVG, 'PNG' = ilustrações). */
+export function caminhoIcone(pasta: string, nomeArquivo: string): string {
+  return pasta ? `${pasta}/${nomeArquivo}` : nomeArquivo;
+}
