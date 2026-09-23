@@ -1,20 +1,20 @@
 /* Tokens, temas, resets, tipografia, controles genéricos, modal, toasts. */
 
 :root {
-  --text: #1f2a24;
-  --text-h: #0d1512;
-  --bg: #f4f6f5;
-  --bg-raised: #ffffff;
-  --border: #cbd6d0;
-  --accent: #0f4c3a;
-  --accent-bg: rgba(15, 76, 58, 0.08);
-  --accent-border: rgba(15, 76, 58, 0.4);
-  --danger: #a3212b;
-  --ok: #227a4f;
-  --warn: #b45309;
-  --info: #2563a8;
-  --info-bg: rgba(37, 99, 168, 0.08);
-  --info-border: rgba(37, 99, 168, 0.4);
+  --text: #1f1a24;
+  --text-h: #0f2865;
+  --bg: #ede8e5;
+  --bg-raised: #ece1d6;
+  --border: #f5f3ef;
+  --accent: #eab74a;
+  --accent-bg: rgba(234, 183, 74, 0.08);
+  --accent-border: rgba(234, 183, 74, 0.4);
+  --danger: #911514;
+  --ok: #5dac8e;
+  --warn: #f9d266;
+  --info: #5d7cab;
+  --info-bg: rgba(93, 124, 171, 0.08);
+  --info-border: rgba(93, 124, 171, 0.4);
   --shadow: 0 1px 2px rgba(8, 12, 10, 0.06), 0 2px 8px rgba(8, 12, 10, 0.06);
   --shadow-hover: 0 4px 14px rgba(8, 12, 10, 0.12);
 
@@ -29,34 +29,36 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --text: #c3cdc7;
-    --text-h: #f1f4f2;
-    --bg: #0e1512;
-    --bg-raised: #17211c;
-    --border: #2e3d35;
-    --accent: #3fae82;
-    --accent-bg: rgba(63, 174, 130, 0.16);
-    --accent-border: rgba(63, 174, 130, 0.5);
-    --info: #6ba3d8;
-    --info-bg: rgba(107, 163, 216, 0.16);
-    --info-border: rgba(107, 163, 216, 0.5);
+    --text: #f3f4f6;
+    --text-h: #998872;
+    --bg: #243452;
+    --bg-raised: #2a3b58;
+    --border: #413e36;
+    --accent: #ab977f;
+    --accent-bg: rgba(171, 151, 127, 0.16);
+    --accent-border: rgba(171, 151, 127, 0.5);
+    --warn: #eab74a;
+    --info: #5d7cab;
+    --info-bg: rgba(93, 124, 171, 0.16);
+    --info-border: rgba(93, 124, 171, 0.5);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 10px rgba(0, 0, 0, 0.35);
     --shadow-hover: 0 6px 18px rgba(0, 0, 0, 0.5);
   }
 }
 
 :root[data-theme='dark'] {
-  --text: #c3cdc7;
-  --text-h: #f1f4f2;
-  --bg: #0e1512;
-  --bg-raised: #17211c;
-  --border: #2e3d35;
-  --accent: #3fae82;
-  --accent-bg: rgba(63, 174, 130, 0.16);
-  --accent-border: rgba(63, 174, 130, 0.5);
-  --info: #6ba3d8;
-  --info-bg: rgba(107, 163, 216, 0.16);
-  --info-border: rgba(107, 163, 216, 0.5);
+  --text: #f3f4f6;
+  --text-h: #998872;
+  --bg: #243452;
+  --bg-raised: #2a3b58;
+  --border: #413e36;
+  --accent: #ab977f;
+  --accent-bg: rgba(171, 151, 127, 0.16);
+  --accent-border: rgba(171, 151, 127, 0.5);
+  --warn: #eab74a;
+  --info: #5d7cab;
+  --info-bg: rgba(93, 124, 171, 0.16);
+  --info-border: rgba(93, 124, 171, 0.5);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 10px rgba(0, 0, 0, 0.35);
   --shadow-hover: 0 6px 18px rgba(0, 0, 0, 0.5);
 }
@@ -197,8 +199,8 @@ label {
 
 .botao-perigoso,
 .botao-perigoso.botao-perigoso {
-  background: rgba(163, 33, 43, 0.1);
-  border-color: rgba(163, 33, 43, 0.5);
+  background: rgba(145, 21, 20, 0.1);
+  border-color: rgba(145, 21, 20, 0.5);
   color: var(--danger);
 }
 
@@ -278,7 +280,7 @@ label {
   border-color: var(--accent-border);
 }
 .toast-erro {
-  border-color: rgba(163, 33, 43, 0.6);
+  border-color: rgba(145, 21, 20, 0.6);
 }
 
 @keyframes toast-in {
