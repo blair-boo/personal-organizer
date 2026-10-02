@@ -189,15 +189,9 @@ function SecaoIcones({ pasta, titulo, tamanho }: { pasta: string; titulo: string
     const arquivos = Array.from(e.target.files ?? []);
     e.target.value = '';
     if (arquivos.length === 0) return;
-    const extensaoEsperada = pasta === 'PNG' ? 'png' : 'svg';
-    const validos = arquivos.filter((a) => extensaoDe(a.name).toLowerCase() === extensaoEsperada);
-    if (validos.length < arquivos.length) {
-      mostrarToast(`Só é possível enviar arquivos .${extensaoEsperada} aqui.`, 'erro');
-    }
-    if (validos.length === 0) return;
     try {
-      await adicionar.mutateAsync(validos);
-      mostrarToast(validos.length === 1 ? 'Ícone adicionado.' : `${validos.length} ícones adicionados.`);
+      await adicionar.mutateAsync(arquivos);
+      mostrarToast(arquivos.length === 1 ? 'Ícone adicionado.' : `${arquivos.length} ícones adicionados.`);
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
     }
@@ -254,7 +248,7 @@ function SecaoIcones({ pasta, titulo, tamanho }: { pasta: string; titulo: string
             ref={inputRef}
             type="file"
             multiple
-            accept={pasta === 'PNG' ? 'image/png' : 'image/svg+xml'}
+            accept="image/*"
             onChange={onArquivosEscolhidos}
             hidden
           />
