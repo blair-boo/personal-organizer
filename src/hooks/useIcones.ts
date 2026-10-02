@@ -32,16 +32,32 @@ export function useIconesGaleria(pasta: string) {
       if (erroMetadados) throw erroMetadados;
 
       const metadadosPorNome = new Map((metadados ?? []).map((m) => [m.arquivo as string, m]));
+      const arquivosValidos = (arquivos ?? []).filter((item) => item.id !== null);
 
-      return (arquivos ?? [])
-        .filter((item) => item.id !== null)
+      // Arquivos enviados direto no Storage ficam sem linha em icones_metadados (e sem uuid):
+      // cria a linha aqui pra renomear, reordenar e excluir sempre terem um id válido.
+      const semMetadado = arquivosValidos.filter((item) => !metadadosPorNome.has(item.name));
+      if (semMetadado.length > 0) {
+        const maiorOrdem = Math.max(0, ...(metadados ?? []).map((m) => m.ordem as number));
+        const { data: criados, error: erroCriar } = await supabase
+          .from('icones_metadados')
+          .upsert(
+            semMetadado.map((item, i) => ({ pasta, arquivo: item.name, ordem: maiorOrdem + i + 1 })),
+            { onConflict: 'pasta,arquivo' }
+          )
+          .select('*');
+        if (erroCriar) throw erroCriar;
+        for (const m of criados ?? []) metadadosPorNome.set(m.arquivo as string, m);
+      }
+
+      return arquivosValidos
         .map((item): IconeArquivo => {
-          const meta = metadadosPorNome.get(item.name);
+          const meta = metadadosPorNome.get(item.name)!;
           return {
-            id: meta?.id ?? item.name,
+            id: meta.id,
             nome: item.name,
             url: urlIconeSupabase(caminhoIcone(pasta, item.name)),
-            ordem: meta?.ordem ?? Number.MAX_SAFE_INTEGER,
+            ordem: meta.ordem,
             protegido: ehProtegido(pasta, item.name),
           };
         })
