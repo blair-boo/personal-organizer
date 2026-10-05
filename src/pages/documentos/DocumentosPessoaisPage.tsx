@@ -5,7 +5,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } 
 import { CSS } from '@dnd-kit/utilities';
 import { ModalBase } from '../../components/ModalBase';
 import { ArquivoLink, BotaoBaixarArquivo } from '../../components/ArquivoLink';
-import { IconeSupabase } from '../../components/IconeSupabase';
+import { IconeFuncao } from '../../components/IconeUso';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
@@ -164,7 +164,7 @@ function EditorLocais({ locais, onChange }: { locais: LinhaLocal[]; onChange: (l
           <input type="text" placeholder="Endereço" value={l.endereco} onChange={(e) => atualizar(l.chave, { endereco: e.target.value })} />
           <input type="text" placeholder="Telefone" value={l.telefone} onChange={(e) => atualizar(l.chave, { telefone: e.target.value })} />
           <button type="button" className="btn-icone btn-icone-perigo" onClick={() => remover(l.chave)} title="Remover local" aria-label="Remover local de renovação">
-            <IconeSupabase arquivo="trash3.svg" />
+            <IconeFuncao funcao="excluir" />
           </button>
         </div>
       ))}
@@ -299,7 +299,7 @@ function LinhaExibicao({ rotulo, valor }: { rotulo: string; valor: string }) {
         <strong>{rotulo}:</strong> {valor}
       </span>
       <button type="button" className="btn-icone" onClick={() => copiarConteudo(valor, mostrarToast, rotulo)} title={`Copiar ${rotulo}`} aria-label={`Copiar ${rotulo}`}>
-        <IconeSupabase arquivo="save.svg" />
+        <IconeFuncao funcao="salvar" />
       </button>
     </div>
   );
@@ -425,7 +425,7 @@ function SecaoAnexosDocumentoPessoal({ documentoId }: { documentoId: string }) {
                 </ArquivoLink>
                 <BotaoBaixarArquivo bucket={BUCKET_CONFIDENCIAL} caminho={anexo.arquivo_url} nomeArquivo={anexo.nome_arquivo} expiraEmSegundos={EXPIRACAO_URL_SEGUNDOS} />
                 <button type="button" className="btn-icone btn-icone-perigo" onClick={() => handleRemover(anexo)} title="Remover anexo" aria-label={`Remover anexo ${anexo.nome}`}>
-                  <IconeSupabase arquivo="trash3.svg" />
+                  <IconeFuncao funcao="excluir" />
                 </button>
               </span>
             </li>
@@ -512,7 +512,7 @@ function ItemDocumentoLinha({
     <div ref={sortable.setNodeRef} style={style} className={`documentos-item${pendente ? ' documentos-item-pendente' : ''}${renomeacaoPendente ? ' documentos-item-renomeado' : ''}`}>
       {modoEdicao && !pendente && (
         <button type="button" className="btn-icone documentos-arrastar" aria-label={`Arrastar ${tituloExibido}`} {...sortable.attributes} {...sortable.listeners}>
-          <IconeSupabase arquivo="broomstick.svg" />
+          <IconeFuncao funcao="editar" />
         </button>
       )}
       <button type="button" className="documentos-titulo-botao" onClick={() => (modoEdicao ? undefined : onExpandir())} disabled={pendente || modoEdicao}>
@@ -522,7 +522,7 @@ function ItemDocumentoLinha({
       </button>
       {modoEdicao && !pendente && (
         <button type="button" className="btn-icone" onClick={onIniciarRenomear} title="Renomear" aria-label={`Renomear ${tituloExibido}`}>
-          <IconeSupabase arquivo="save.svg" />
+          <IconeFuncao funcao="salvar" />
         </button>
       )}
       {!modoEdicao && (
@@ -537,7 +537,7 @@ function ItemDocumentoLinha({
           </button>
         ) : (
           <button type="button" className="btn-icone btn-icone-perigo" onClick={onMarcarExclusao} title={`Excluir ${tituloExibido}`} aria-label={`Excluir ${tituloExibido}`}>
-            <IconeSupabase arquivo="trash3.svg" />
+            <IconeFuncao funcao="excluir" />
           </button>
         ))}
     </div>
@@ -811,7 +811,7 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
           title={modoEdicao ? 'Sair do modo de edição' : 'Editar (arrastar/excluir)'}
           aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição'}
         >
-          <IconeSupabase arquivo="broomstick.svg" />
+          <IconeFuncao funcao="editar" />
         </button>
         <button
           type="button"
@@ -821,7 +821,7 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
           title="Salvar alterações"
           aria-label="Salvar alterações"
         >
-          <IconeSupabase arquivo="save.svg" />
+          <IconeFuncao funcao="salvar" />
         </button>
       </div>
 
@@ -954,7 +954,7 @@ function SecaoAnexosPendentesPessoal({
           <li key={anexo.chave}>
             <span>{anexo.nome}</span>
             <button type="button" className="btn-icone btn-icone-perigo" onClick={() => handleRemover(anexo)} title="Remover anexo" aria-label={`Remover anexo ${anexo.nome}`}>
-              <IconeSupabase arquivo="trash3.svg" />
+              <IconeFuncao funcao="excluir" />
             </button>
           </li>
         ))}
@@ -1077,7 +1077,7 @@ function AbasPessoas({
               </button>
             )}
             <button type="button" className="btn-icone btn-icone-perigo" onClick={() => handleExcluir(p)} title={`Excluir ${p.nome}`} aria-label={`Excluir ${p.nome}`}>
-              <IconeSupabase arquivo="trash3.svg" />
+              <IconeFuncao funcao="excluir" />
             </button>
           </span>
         ) : (
@@ -1096,7 +1096,7 @@ function AbasPessoas({
         title={modoEdicao ? 'Sair do modo de edição' : 'Editar pessoas (renomear/excluir)'}
         aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição de pessoas'}
       >
-        <IconeSupabase arquivo="broomstick.svg" />
+        <IconeFuncao funcao="editar" />
       </button>
     </nav>
   );

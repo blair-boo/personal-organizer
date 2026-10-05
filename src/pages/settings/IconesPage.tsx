@@ -1,14 +1,23 @@
-import { useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
-import { IconeSupabase } from '../../components/IconeSupabase';
+import { IconeChevron } from '../../components/IconesProvisorios';
+import { IconeDoUso, IconeFuncao } from '../../components/IconeUso';
+import { ModalIcone } from '../../components/ModalIcone';
+import { ModalUsosIcone } from '../../components/ModalUsosIcone';
 import { SeletorCor } from '../../components/SeletorCor';
 import { mensagemDeErro } from '../../lib/erros';
+import { FUNCOES_ICONE, usoPadraoDaFuncao, type DefinicaoFuncao } from '../../lib/iconesFuncoes';
+import { arquivosEmUso, caminhoDoUso, contarUsos, resolverUso } from '../../lib/iconesUsos';
+import { caminhoIcone } from '../../lib/storage';
 import { useAdicionarIcones, useExcluirIcone, useIconesGaleria, useRenomearIcone, useReordenarIcones } from '../../hooks/useIcones';
-import type { IconeArquivo } from '../../types';
+import { useIconesUsos, useRemoverUsoIcone, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
+import { useTemaEfetivo } from '../../hooks/useTema';
+import type { IconeArquivo, UsoIcone } from '../../types';
 
 const TAMANHO_PADRAO = 16;
 const TAMANHO_MIN = 10;
@@ -25,12 +34,18 @@ function baseDe(nome: string): string {
 }
 
 /**
- * Aba de ícones (Settings): gerencia os arquivos do bucket `icones` (SVG na
- * raiz, PNG na pasta PNG/) — adicionar, renomear, reordenar e excluir — além
- * da prévia de fonte/ícones em qualquer tamanho.
+ * Aba de ícones (Settings): ícones de função e de UI em uso no app, mais os
+ * arquivos livres do bucket `icones` (raiz = com máscara, PNG/ = originais) com
+ * adicionar, renomear, reordenar e excluir, além da prévia de fonte/ícones em qualquer tamanho.
  */
 export function IconesPage() {
   const [tamanho, setTamanho] = useState(TAMANHO_PADRAO);
+  const [aplicarFonte, setAplicarFonte] = useState(true);
+  const [aplicarIcones, setAplicarIcones] = useState(true);
+  const { data: usos = [] } = useIconesUsos();
+  const emUso = arquivosEmUso(usos);
+  const tamanhoFonte = aplicarFonte ? tamanho : TAMANHO_PADRAO;
+  const tamanhoIcones = aplicarIcones ? tamanho : TAMANHO_PADRAO;
   const conteudoRef = useRef<HTMLDivElement>(null);
 
   function aplicarCor(hex: string) {
@@ -72,6 +87,16 @@ export function IconesPage() {
             />
             px
           </label>
+          <div className="testes-tamanho-alvos" role="group" aria-label="Onde aplicar o tamanho">
+            <label>
+              <input type="checkbox" checked={aplicarFonte} onChange={(e) => setAplicarFonte(e.target.checked)} />
+              Fonte
+            </label>
+            <label>
+              <input type="checkbox" checked={aplicarIcones} onChange={(e) => setAplicarIcones(e.target.checked)} />
+              Ícones
+            </label>
+          </div>
         </div>
 
         <section className="testes-secao testes-secao-cor">
@@ -82,8 +107,8 @@ export function IconesPage() {
 
       <div className="testes-conteudo" ref={conteudoRef}>
         <section className="testes-secao">
-          <h2>Fonte — {tamanho}px</h2>
-          <div className="testes-fonte-amostra" style={{ fontSize: tamanho }}>
+          <h2>Fonte: {tamanhoFonte}px</h2>
+          <div className="testes-fonte-amostra" style={{ fontSize: tamanhoFonte }}>
             <p>Regular — O rato roeu a roupa do rei de Roma.</p>
             <p style={{ fontWeight: 600 }}>Negrito (600) — O rato roeu a roupa do rei de Roma.</p>
             <p style={{ fontStyle: 'italic' }}>Itálico — O rato roeu a roupa do rei de Roma.</p>
@@ -91,14 +116,138 @@ export function IconesPage() {
           </div>
         </section>
 
-        <SecaoIcones pasta="" titulo="Ícones (SVG)" tamanho={tamanho} />
-        <SecaoIcones pasta="PNG" titulo="Ícones (PNG)" tamanho={tamanho} />
+        <SecaoRecolhivel titulo="Ícones (Settings)">
+          <ListaIconesSettings tamanho={tamanhoIcones} usos={usos} />
+        </SecaoRecolhivel>
+        <SecaoRecolhivel titulo="Ícones (UI)">
+          <ListaIconesUi tamanho={tamanhoIcones} usos={usos} />
+        </SecaoRecolhivel>
+        <SecaoIcones pasta="" titulo="Ícones (Com máscara)" tamanho={tamanhoIcones} emUso={emUso} />
+        <SecaoIcones pasta="PNG" titulo="Ícones (Originais)" tamanho={tamanhoIcones} emUso={emUso} />
       </div>
     </div>
   );
 }
 
-function SecaoIcones({ pasta, titulo, tamanho }: { pasta: string; titulo: string; tamanho: number }) {
+/** Seção que começa recolhida e só mostra o conteúdo ao clicar no título. */
+function SecaoRecolhivel({ titulo, children }: { titulo: string; children: ReactNode }) {
+  const [aberta, setAberta] = useState(false);
+  return (
+    <section className="testes-secao">
+      <button type="button" className="icones-secao-titulo" onClick={() => setAberta((v) => !v)} aria-expanded={aberta}>
+        <IconeChevron aberto={aberta} />
+        {titulo}
+      </button>
+      {aberta && children}
+    </section>
+  );
+}
+
+/** Ícones com função (salvar, editar...): trocar aqui muda em todo o app. */
+function ListaIconesSettings({ tamanho, usos }: { tamanho: number; usos: UsoIcone[] }) {
+  const tema = useTemaEfetivo();
+  const salvar = useSalvarUsoIcone();
+  const remover = useRemoverUsoIcone();
+  const { mostrarToast } = useToast();
+  const [alvo, setAlvo] = useState<DefinicaoFuncao | null>(null);
+
+  function usoAtual(def: DefinicaoFuncao): UsoIcone | null {
+    return resolverUso(usos, 'funcao', def.chave, tema) ?? usoPadraoDaFuncao(def.chave);
+  }
+
+  async function aoConfirmar(uso: UsoIcone) {
+    try {
+      await salvar.mutateAsync(uso);
+      mostrarToast('Ícone da função atualizado em todo o app.');
+      setAlvo(null);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  async function restaurar(def: DefinicaoFuncao) {
+    try {
+      await remover.mutateAsync({ alvoTipo: 'funcao', alvoId: def.chave });
+      mostrarToast('Ícone padrão restaurado.');
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  return (
+    <>
+      <p className="testes-legenda">Trocar o ícone de uma função altera todos os lugares em que ela aparece. O nome aparece ao passar o mouse.</p>
+      <ul className="icones-lista">
+        {FUNCOES_ICONE.map((def) => {
+          const personalizado = usos.some((u) => u.alvo_tipo === 'funcao' && u.alvo_id === def.chave);
+          return (
+            <li key={def.chave} className="icones-lista-item">
+              <button type="button" className="btn-icone icone-uso-botao" onClick={() => setAlvo(def)} title={`Trocar o ícone de ${def.rotulo}`} aria-label={`Trocar o ícone de ${def.rotulo}`}>
+                <IconeFuncao funcao={def.chave} tamanho={tamanho} />
+              </button>
+              <span className="icones-lista-rotulo">{def.rotulo}</span>
+              {personalizado && (
+                <button type="button" className="icones-restaurar" onClick={() => void restaurar(def)} title={`Restaurar o ícone padrão de ${def.rotulo}`}>
+                  Restaurar
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {alvo && (
+        <ModalIcone
+          aberto
+          rotuloAlvo={alvo.rotulo}
+          alvoTipo="funcao"
+          alvoId={alvo.chave}
+          inicial={usoAtual(alvo)}
+          tamanhoBase={16}
+          permiteRemover={false}
+          onConfirmar={(uso) => void aoConfirmar(uso)}
+          onFechar={() => setAlvo(null)}
+        />
+      )}
+    </>
+  );
+}
+
+/** Ícones que ilustram títulos (categorias e abas). Clicar abre onde cada um é usado. */
+function ListaIconesUi({ tamanho, usos }: { tamanho: number; usos: UsoIcone[] }) {
+  const [caminhoAberto, setCaminhoAberto] = useState<string | null>(null);
+  const instancias = usos.filter((u) => u.alvo_tipo !== 'funcao');
+  const porCaminho = new Map<string, UsoIcone[]>();
+  for (const u of instancias) {
+    const lista = porCaminho.get(caminhoDoUso(u)) ?? [];
+    lista.push(u);
+    porCaminho.set(caminhoDoUso(u), lista);
+  }
+
+  return (
+    <>
+      {porCaminho.size === 0 ? (
+        <p className="hierarquia-vazio">Nenhum ícone em uso nos títulos ainda.</p>
+      ) : (
+        <ul className="icones-lista">
+          {[...porCaminho.entries()].map(([caminho, lista]) => (
+            <li key={caminho} className="icones-lista-item">
+              <button type="button" className="btn-icone icone-uso-botao" onClick={() => setCaminhoAberto(caminho)} title={`Ver onde ${caminho} é usado`} aria-label={`Ver onde ${caminho} é usado`}>
+                <IconeDoUso uso={lista[0]} tamanhoBase={tamanho} />
+              </button>
+              <span className="icones-lista-rotulo">{caminho.split('/').pop()}</span>
+              <span className="icones-contagem">{contarUsos(usos, caminho)} uso(s)</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {caminhoAberto && (
+        <ModalUsosIcone usos={porCaminho.get(caminhoAberto) ?? []} tamanho={tamanho} onFechar={() => setCaminhoAberto(null)} />
+      )}
+    </>
+  );
+}
+
+function SecaoIcones({ pasta, titulo, tamanho, emUso }: { pasta: string; titulo: string; tamanho: number; emUso: Set<string> }) {
   const { data, isLoading, isError, error } = useIconesGaleria(pasta);
   const adicionar = useAdicionarIcones(pasta);
   const renomear = useRenomearIcone(pasta);
@@ -106,6 +255,8 @@ function SecaoIcones({ pasta, titulo, tamanho }: { pasta: string; titulo: string
   const reordenar = useReordenarIcones(pasta);
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
+  const qc = useQueryClient();
+  const [atualizando, setAtualizando] = useState(false);
 
   const [modoEdicao, setModoEdicao] = useState(false);
   const [ordemLocal, setOrdemLocal] = useState<IconeArquivo[] | null>(null);
@@ -118,10 +269,11 @@ function SecaoIcones({ pasta, titulo, tamanho }: { pasta: string; titulo: string
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  const dados = ordemLocal ?? data ?? [];
+  // Ícones em uso (funções, títulos, placeholder) saem daqui e aparecem em Settings ou UI.
+  const livres = (lista: IconeArquivo[]) => lista.filter((i) => !emUso.has(caminhoIcone(pasta, i.nome)));
+  const dados = livres(ordemLocal ?? data ?? []);
   const temPendencias = ordemLocal !== null || exclusoesPendentes.size > 0 || renomeacoesPendentes.size > 0;
   const erro = isError ? mensagemDeErro(error) : null;
-  const temProtegido = dados.some((i) => i.protegido);
 
   function nomeAtual(item: IconeArquivo): string {
     return renomeacoesPendentes.get(item.id) ?? item.nome;
@@ -197,6 +349,18 @@ function SecaoIcones({ pasta, titulo, tamanho }: { pasta: string; titulo: string
     }
   }
 
+  async function atualizar() {
+    setAtualizando(true);
+    try {
+      await Promise.all([qc.invalidateQueries({ queryKey: ['icones_galeria'] }), qc.invalidateQueries({ queryKey: ['icones_usos'] })]);
+      mostrarToast('Ícones atualizados.');
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    } finally {
+      setAtualizando(false);
+    }
+  }
+
   async function salvarAlteracoes() {
     if (!temPendencias) return;
     if (exclusoesPendentes.size > 0) {
@@ -241,7 +405,7 @@ function SecaoIcones({ pasta, titulo, tamanho }: { pasta: string; titulo: string
     <section className="testes-secao">
       <div className="testes-secao-cabecalho">
         <h2>
-          {titulo} — {tamanho}px
+          {titulo}: {tamanho}px
         </h2>
         <div className="testes-secao-acoes">
           <input
@@ -259,7 +423,17 @@ function SecaoIcones({ pasta, titulo, tamanho }: { pasta: string; titulo: string
             title="Adicionar ícones"
             aria-label="Adicionar ícones"
           >
-            <IconeMais />
+            <IconeFuncao funcao="adicionar" />
+          </button>
+          <button
+            type="button"
+            className="btn-icone"
+            onClick={() => void atualizar()}
+            disabled={atualizando}
+            title="Atualizar lista de ícones"
+            aria-label="Atualizar lista de ícones"
+          >
+            <IconeFuncao funcao="atualizar" />
           </button>
           <button
             type="button"
@@ -268,7 +442,7 @@ function SecaoIcones({ pasta, titulo, tamanho }: { pasta: string; titulo: string
             title={modoEdicao ? 'Sair do modo de edição' : 'Editar (arrastar/renomear/excluir)'}
             aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição'}
           >
-            <IconeSupabase arquivo="broomstick.svg" />
+            <IconeFuncao funcao="editar" />
           </button>
           <button
             type="button"
@@ -278,7 +452,7 @@ function SecaoIcones({ pasta, titulo, tamanho }: { pasta: string; titulo: string
             title="Salvar alterações"
             aria-label="Salvar alterações"
           >
-            <IconeSupabase arquivo="save.svg" />
+            <IconeFuncao funcao="salvar" />
           </button>
         </div>
       </div>
@@ -313,9 +487,7 @@ function SecaoIcones({ pasta, titulo, tamanho }: { pasta: string; titulo: string
         </SortableContext>
       </DndContext>
 
-      {temProtegido && (
-        <p className="testes-legenda">* usado em outras telas do app — não pode ser renomeado nem excluído por aqui.</p>
-      )}
+      <p className="testes-legenda">Ícones em uso aparecem em Ícones (Settings) ou Ícones (UI) e não podem ser renomeados nem excluídos daqui.</p>
     </section>
   );
 }
@@ -391,7 +563,7 @@ function IconeItem({
         )}
       </div>
 
-      {modoEdicao && !icone.protegido && (
+      {modoEdicao && (
         <button
           type="button"
           className={`testes-icone-excluir${pendenteExclusao ? ' testes-icone-excluir-marcado' : ''}`}
@@ -399,7 +571,7 @@ function IconeItem({
           title={pendenteExclusao ? 'Desfazer exclusão' : 'Excluir'}
           aria-label={pendenteExclusao ? `Desfazer exclusão de ${icone.nome}` : `Excluir ${icone.nome}`}
         >
-          ×
+          <IconeFuncao funcao="fechar" tamanho={10} />
         </button>
       )}
 
@@ -418,10 +590,10 @@ function IconeItem({
           </div>
           <div className="testes-icone-editando-acoes">
             <button type="button" className="btn-icone" onClick={onConfirmarEdicao} title="Confirmar" aria-label="Confirmar">
-              ✓
+              <IconeFuncao funcao="confirmar" tamanho={14} />
             </button>
             <button type="button" className="btn-icone" onClick={onCancelarEdicao} title="Cancelar" aria-label="Cancelar">
-              ×
+              <IconeFuncao funcao="fechar" tamanho={14} />
             </button>
           </div>
         </div>
@@ -430,22 +602,11 @@ function IconeItem({
           type="button"
           className={`testes-icone-nome${pendenteExclusao ? ' testes-icone-nome-riscado' : ''}`}
           onClick={onIniciarEdicao}
-          disabled={!modoEdicao || icone.protegido || pendenteExclusao}
+          disabled={!modoEdicao || pendenteExclusao}
         >
           {nomeExibido}
-          {icone.protegido && ' *'}
         </button>
       )}
     </div>
-  );
-}
-
-/** Adicionar ícones — SVG desenhado inline, sem depender de arquivo no bucket. */
-function IconeMais() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
   );
 }

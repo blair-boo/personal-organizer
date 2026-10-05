@@ -4,7 +4,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } 
 import { CSS } from '@dnd-kit/utilities';
 import { ModalBase } from '../../components/ModalBase';
 import { ArquivoLink, BotaoBaixarArquivo } from '../../components/ArquivoLink';
-import { IconeSupabase } from '../../components/IconeSupabase';
+import { IconeFuncao } from '../../components/IconeUso';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
@@ -80,7 +80,7 @@ function EditorCampos({ campos, onChange }: { campos: LinhaCampo[]; onChange: (c
             title={campo.copiavel ? 'Tem botão de copiar' : 'Sem botão de copiar'}
             aria-label={campo.copiavel ? 'Desativar botão de copiar deste campo' : 'Ativar botão de copiar deste campo'}
           >
-            <IconeSupabase arquivo="save.svg" />
+            <IconeFuncao funcao="salvar" />
           </button>
           <button
             type="button"
@@ -89,7 +89,7 @@ function EditorCampos({ campos, onChange }: { campos: LinhaCampo[]; onChange: (c
             title="Remover campo"
             aria-label={`Remover campo ${campo.nome || 'sem nome'}`}
           >
-            <IconeSupabase arquivo="trash3.svg" />
+            <IconeFuncao funcao="excluir" />
           </button>
         </div>
       ))}
@@ -118,7 +118,7 @@ function ExibicaoCampos({ campos }: { campos: DocumentoCampo[] }) {
               title={`Copiar conteúdo de ${campo.nome}`}
               aria-label={`Copiar conteúdo de ${campo.nome}`}
             >
-              <IconeSupabase arquivo="save.svg" />
+              <IconeFuncao funcao="salvar" />
             </button>
           )}
         </div>
@@ -211,7 +211,7 @@ function SecaoAnexosDocumento({ documentoId }: { documentoId: string }) {
                   expiraEmSegundos={EXPIRACAO_URL_SEGUNDOS}
                 />
                 <button type="button" className="btn-icone btn-icone-perigo" onClick={() => handleRemover(anexo)} title="Remover anexo" aria-label={`Remover anexo ${anexo.nome}`}>
-                  <IconeSupabase arquivo="trash3.svg" />
+                  <IconeFuncao funcao="excluir" />
                 </button>
               </span>
             </li>
@@ -288,7 +288,7 @@ function SecaoAnexosPendentes({
           <li key={anexo.chave}>
             <span>{anexo.nome}</span>
             <button type="button" className="btn-icone btn-icone-perigo" onClick={() => handleRemover(anexo)} title="Remover anexo" aria-label={`Remover anexo ${anexo.nome}`}>
-              <IconeSupabase arquivo="trash3.svg" />
+              <IconeFuncao funcao="excluir" />
             </button>
           </li>
         ))}
@@ -371,7 +371,7 @@ function ItemDocumentoLinha({
     <div ref={sortable.setNodeRef} style={style} className={`documentos-item${pendente ? ' documentos-item-pendente' : ''}${renomeacaoPendente ? ' documentos-item-renomeado' : ''}`}>
       {modoEdicao && !pendente && (
         <button type="button" className="btn-icone documentos-arrastar" aria-label={`Arrastar ${tituloExibido}`} {...sortable.attributes} {...sortable.listeners}>
-          <IconeSupabase arquivo="broomstick.svg" />
+          <IconeFuncao funcao="editar" />
         </button>
       )}
       <button type="button" className="documentos-titulo-botao" onClick={() => (modoEdicao ? undefined : onExpandir())} disabled={pendente || modoEdicao}>
@@ -380,7 +380,7 @@ function ItemDocumentoLinha({
       </button>
       {modoEdicao && !pendente && (
         <button type="button" className="btn-icone" onClick={onIniciarRenomear} title="Renomear" aria-label={`Renomear ${tituloExibido}`}>
-          <IconeSupabase arquivo="save.svg" />
+          <IconeFuncao funcao="salvar" />
         </button>
       )}
       {!modoEdicao && (
@@ -395,7 +395,7 @@ function ItemDocumentoLinha({
           </button>
         ) : (
           <button type="button" className="btn-icone btn-icone-perigo" onClick={onMarcarExclusao} title={`Excluir ${tituloExibido}`} aria-label={`Excluir ${tituloExibido}`}>
-            <IconeSupabase arquivo="trash3.svg" />
+            <IconeFuncao funcao="excluir" />
           </button>
         ))}
     </div>
@@ -677,7 +677,7 @@ export function DocumentosAreaPage({ area }: { area: AreaDocumento }) {
           title={modoEdicao ? 'Sair do modo de edição' : 'Editar (arrastar/excluir)'}
           aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição'}
         >
-          <IconeSupabase arquivo="broomstick.svg" />
+          <IconeFuncao funcao="editar" />
         </button>
         <button
           type="button"
@@ -687,7 +687,7 @@ export function DocumentosAreaPage({ area }: { area: AreaDocumento }) {
           title="Salvar alterações"
           aria-label="Salvar alterações"
         >
-          <IconeSupabase arquivo="save.svg" />
+          <IconeFuncao funcao="salvar" />
         </button>
       </div>
 

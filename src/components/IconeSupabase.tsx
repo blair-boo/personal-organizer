@@ -11,24 +11,38 @@ export function urlIconeSupabase(arquivo: string): string {
 }
 
 /** Ícone "pintado" via mask: puxa o SVG do bucket `icones` do Supabase Storage e usa currentColor pra seguir a cor do botão/tema (mesma técnica do manga-lists). */
-export function IconeSupabase({ arquivo, tamanho = 16 }: { arquivo: string; tamanho?: number }) {
+export function IconeSupabase({
+  arquivo,
+  tamanho = 16,
+  cor,
+  titulo,
+}: {
+  arquivo: string;
+  tamanho?: number;
+  /** Cor CSS (ex.: `var(--accent)` ou `#112233`); sem ela segue currentColor. */
+  cor?: string;
+  /** Texto ao passar o mouse (nome da função do ícone). */
+  titulo?: string;
+}) {
   const url = urlIconeSupabase(arquivo);
   return (
     <span
       className="icone-mascarado"
       aria-hidden
+      title={titulo}
       style={{
         width: tamanho,
         height: tamanho,
         WebkitMaskImage: `url(${url})`,
         maskImage: `url(${url})`,
+        ...(cor ? { backgroundColor: cor } : {}),
       }}
     />
   );
 }
 
 /** Ícone ilustrativo colorido (PNG do bucket `icones`), renderizado como imagem normal — sem a máscara de currentColor, que jogaria fora as cores originais. */
-export function IconePng({ arquivo, tamanho = 18 }: { arquivo: string; tamanho?: number }) {
+export function IconePng({ arquivo, tamanho = 18, titulo }: { arquivo: string; tamanho?: number; titulo?: string }) {
   const url = urlIconeSupabase(arquivo);
-  return <img src={url} alt="" aria-hidden className="icone-png" width={tamanho} height={tamanho} />;
+  return <img src={url} alt="" aria-hidden title={titulo} className="icone-png" width={tamanho} height={tamanho} />;
 }

@@ -1,6 +1,8 @@
-/* Tokens, temas, resets, tipografia, controles genéricos, modal, toasts. */
+/* Tokens, temas, resets, tipografia, controles genéricos, modal, toasts.
+   [data-tema-previa] aplica o mesmo tema a um bloco isolado (prévia do ícone nos dois temas). */
 
-:root {
+:root,
+[data-tema-previa='light'] {
   --text: #1f1a24;
   --text-h: #0f2865;
   --bg: #ede8e5;
@@ -46,7 +48,8 @@
   }
 }
 
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+[data-tema-previa='dark'] {
   --text: #f3f4f6;
   --text-h: #998872;
   --bg: #243452;

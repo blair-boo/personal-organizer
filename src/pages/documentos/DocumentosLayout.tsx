@@ -1,14 +1,10 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
+import { NavAbas } from '../../components/NavAbas';
 
 export function DocumentosLayout() {
   return (
     <div>
-      <nav className="app-subnav">
-        <NavLink to="/documentos/pessoais">Pessoais</NavLink>
-        <NavLink to="/documentos/apartamento">Apartamento</NavLink>
-        <NavLink to="/documentos/arquivo">Arquivo</NavLink>
-        <NavLink to="/documentos/outros">Outros</NavLink>
-      </nav>
+      <NavAbas grupo="documentos" className="app-subnav" rota={(chave) => `/documentos/${chave.split(':')[1]}`} />
       <div className="app-subnav-conteudo">
         <Outlet />
       </div>

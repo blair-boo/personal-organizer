@@ -19,10 +19,13 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useToast } from './Toast';
+import { IconeFuncao } from './IconeUso';
+import { IconeChevron, IconeEngrenagem } from './IconesProvisorios';
+import { useCoresUsuario } from '../hooks/useCoresUsuario';
+import { APP_CORES } from '../lib/coresApp';
 import '../styles/seletor-cor.css';
 
 const COR_INICIAL = '#f3f4f6';
-const CHAVE_ARMAZENAMENTO = 'personal-organizer-testes-swatches';
 
 interface SeletorCorProps {
   /** Chamado sempre que a cor muda (hex com #, ex: "#ff0000"). */
@@ -35,23 +38,12 @@ interface SwatchCustom {
   label: string;
 }
 
-const APP_CORES: { cssVar: string; label: string }[] = [
-  { cssVar: '--text-h', label: '--text-h' },
-  { cssVar: '--text', label: '--text' },
-  { cssVar: '--bg', label: '--bg' },
-  { cssVar: '--bg-raised', label: '--bg-raised' },
-  { cssVar: '--border', label: '--border' },
-  { cssVar: '--accent', label: '--accent' },
-  { cssVar: '--danger', label: '--danger' },
-  { cssVar: '--ok', label: '--ok' },
-  { cssVar: '--warn', label: '--warn' },
-];
 
 function lerCssVar(cssVar: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
 }
 
-/** Seletor de cor pra prévia de fonte/ícones da aba Testes: paleta das cores do app + cores próprias salvas no localStorage (arrastar pra reordenar). */
+/** Seletor de cor pra prévia de fonte/ícones: paleta das cores do app + "Minhas cores", salvas no Supabase (arrastar pra reordenar). */
 export function SeletorCor(props: SeletorCorProps) {
   const { mostrarToast } = useToast();
   const [aberto, setAberto] = useState(false);
@@ -59,13 +51,7 @@ export function SeletorCor(props: SeletorCorProps) {
   const [painelAberto, setPainelAberto] = useState(false);
   const [grupoAppAberto, setGrupoAppAberto] = useState(false);
   const [grupoCustomAberto, setGrupoCustomAberto] = useState(false);
-  const [swatchesCustom, setSwatchesCustom] = useState<SwatchCustom[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(CHAVE_ARMAZENAMENTO) ?? '[]');
-    } catch {
-      return [];
-    }
-  });
+  const { cores: swatchesCustom, salvarLista } = useCoresUsuario();
   const [labelNovo, setLabelNovo] = useState('');
   const [swatchInfo, setSwatchInfo] = useState<{ hex: string; label: string } | null>(null);
   const [editandoLabelId, setEditandoLabelId] = useState<string | null>(null);
@@ -136,8 +122,7 @@ export function SeletorCor(props: SeletorCorProps) {
   }
 
   function salvarSwatches(lista: SwatchCustom[]) {
-    setSwatchesCustom(lista);
-    localStorage.setItem(CHAVE_ARMAZENAMENTO, JSON.stringify(lista));
+    salvarLista(lista.map((c, i) => ({ id: c.id, hex: c.hex, label: c.label, ordem: i })));
   }
 
   function adicionarSwatch() {
@@ -218,7 +203,7 @@ export function SeletorCor(props: SeletorCorProps) {
           title="Adicionar às minhas cores"
           aria-label="Adicionar às minhas cores"
         >
-          <IconeMais />
+          <IconeFuncao funcao="adicionar" tamanho={14} />
         </button>
 
         <button
@@ -244,7 +229,7 @@ export function SeletorCor(props: SeletorCorProps) {
             aria-label="Reordenar minhas cores"
             aria-pressed={reordenandoCustom}
           >
-            <IconeGrip />
+            <IconeFuncao funcao="mover" />
           </button>
         )}
       </div>
@@ -259,7 +244,7 @@ export function SeletorCor(props: SeletorCorProps) {
             aria-label="Copiar hex"
             onClick={() => void navigator.clipboard.writeText(swatchInfo.hex)}
           >
-            <IconeCopiar />
+            <IconeFuncao funcao="copiar" tamanho={14} />
           </button>
         </div>
       )}
@@ -334,7 +319,7 @@ export function SeletorCor(props: SeletorCorProps) {
                         aria-label="Copiar hex"
                         onClick={() => void navigator.clipboard.writeText(hex)}
                       >
-                        <IconeCopiar />
+                        <IconeFuncao funcao="copiar" tamanho={14} />
                       </button>
                     </li>
                   );
@@ -401,7 +386,7 @@ export function SeletorCor(props: SeletorCorProps) {
                           aria-label="Copiar hex"
                           onClick={() => void navigator.clipboard.writeText(sw.hex)}
                         >
-                          <IconeCopiar />
+                          <IconeFuncao funcao="copiar" tamanho={14} />
                         </button>
                         <button
                           type="button"
@@ -410,7 +395,7 @@ export function SeletorCor(props: SeletorCorProps) {
                           aria-label="Remover"
                           onClick={() => removerSwatch(sw.id)}
                         >
-                          <IconeX />
+                          <IconeFuncao funcao="fechar" tamanho={14} />
                         </button>
                       </li>
                     ))
@@ -467,7 +452,7 @@ function SwatchPainelSortable({ sw }: { sw: SwatchCustom }) {
   return (
     <li ref={setNodeRef} style={style} className={`seletor-cor-painel-item ${isDragging ? 'arrastando' : ''}`}>
       <span className="seletor-cor-painel-handle" {...attributes} {...listeners} aria-label="Arrastar para reordenar">
-        <IconeGrip />
+        <IconeFuncao funcao="mover" />
       </span>
       <span className="seletor-cor-swatch seletor-cor-swatch-custom" style={{ background: sw.hex }} />
       <span className="seletor-cor-painel-hex">{sw.hex}</span>
@@ -475,64 +460,5 @@ function SwatchPainelSortable({ sw }: { sw: SwatchCustom }) {
         {sw.label || sw.hex}
       </span>
     </li>
-  );
-}
-
-function IconeMais() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
-  );
-}
-
-/** Três tracinhos horizontais — alça de arraste e botão de reordenar. */
-function IconeGrip() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6h18" />
-      <path d="M3 12h18" />
-      <path d="M3 18h18" />
-    </svg>
-  );
-}
-
-function IconeEngrenagem() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
-
-function IconeCopiar() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  );
-}
-
-function IconeX() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
-
-function IconeChevron({ aberto }: { aberto: boolean }) {
-  return (
-    <svg
-      width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      style={{ transform: aberto ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
-    >
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
   );
 }
