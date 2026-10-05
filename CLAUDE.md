@@ -7,10 +7,10 @@ mensagens de commit e textos de interface.
 ## Antes de escrever qualquer código de interface
 
 Todo pedido que crie ou altere tela, formulário, campo, botão, anexo, lista,
-modal ou item de lista passa pela skill `padrao-ui` ANTES da primeira linha de
+modal ou item de lista passa pela skill `padrao-ps` (ex-`padrao-ui`) ANTES da primeira linha de
 código. Fluxo obrigatório:
 
-1. Ler `.claude/skills/padrao-ui/SKILL.md` por inteiro.
+1. Ler a skill `padrao-ps` por inteiro (o arquivo `.claude/skills/padrao-ui/SKILL.md` não existe neste repo).
 2. Fazer o bloco de perguntas de lá em UMA mensagem só, numerada, com a opção
    padrão já marcada em cada item.
 3. Esperar a resposta. Se a resposta cobrir só parte das perguntas, assumir o
@@ -49,15 +49,22 @@ devem ser usados sempre que couber:
 
 ## Ícones
 
-Todos vêm do bucket privado `icones` do Supabase Storage, via
-`<IconeSupabase arquivo="nome.svg" />` (SVG, aceita máscara com `currentColor`)
-ou `<IconePng arquivo="PNG/nome.png" />` (ilustração colorida).
+Todos vêm do bucket `icones` do Supabase Storage (público para leitura, ver
+migration 0009), via `<IconeSupabase arquivo="nome.svg" />` (SVG, aceita máscara
+com `currentColor`) ou `<IconePng arquivo="PNG/nome.png" />` (ilustração colorida).
 
-- Nunca usar emoji, caractere solto (`✎`, `×`, `👁`) ou biblioteca de ícones.
+- Nunca usar emoji, caractere solto (`✎`, `×`, `👁`) ou biblioteca de ícones,
+  exceto os substitutos provisórios descritos abaixo.
 - Em uso hoje: `broomstick.svg` (modo de edição), `save.svg` (salvar),
   `trash3.svg` (excluir).
-- Se o ícone necessário não existir no bucket, PARAR e perguntar qual arquivo
-  usar ou pedir que ele seja enviado. Nunca improvisar um substituto.
+- Se o ícone necessário não existir no bucket, NÃO parar. Usar um substituto
+  provisório: SVG inline simples, criado só em `src/components/IconesProvisorios.tsx`,
+  com o comentário `// PROVISORIO: trocar por <nome-sugerido>.svg`. Nunca emoji
+  nem caractere solto.
+- Todo substituto provisório entra na lista `ICONES_PENDENTES.md` (raiz do repo)
+  e deve ser citado na resposta final, para o usuário enviar o arquivo depois.
+- Quando o arquivo for enviado ao bucket, trocar o uso pelo ícone real, remover
+  o substituto de `IconesProvisorios.tsx` e apagar a linha da lista.
 
 ## Estilo
 
