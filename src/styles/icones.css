@@ -1,0 +1,303 @@
+/* Sistema de ícones: seções da página Ícones, modal de ícone, edição de abas. */
+
+.icone-provisorio {
+  display: block;
+  flex-shrink: 0;
+}
+
+.icone-chevron {
+  display: inline-flex;
+  transition: transform 0.15s;
+}
+
+.icone-chevron-aberto {
+  transform: rotate(90deg);
+}
+
+.icone-uso {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Botão de ícone que cresce com o ícone (tamanho escolhido pode passar de 20px). */
+.btn-icone.icone-uso-botao {
+  width: auto;
+  height: auto;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 2px;
+}
+
+/* Seções recolhíveis (Ícones (Settings) e Ícones (UI)). */
+.icones-secao-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-align: left;
+}
+
+.icones-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.icones-lista-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 96px;
+  text-align: center;
+  font-size: 11px;
+}
+
+.icones-lista-rotulo {
+  opacity: 0.7;
+  word-break: break-word;
+}
+
+.icones-contagem {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.icones-restaurar {
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+/* Caixas Fonte / Ícones do controle de tamanho. */
+.testes-tamanho-alvos {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+}
+
+.testes-tamanho-alvos label {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Pop-up de onde o ícone é usado. */
+.modal-usos {
+  width: 100%;
+  max-width: 420px;
+}
+
+.modal-usos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.modal-usos-lista label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Modal de seleção e configuração de ícone. */
+.modal-icone {
+  width: min(560px, calc(100vw - 40px));
+  max-width: none;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.modal-icone h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.modal-icone-secao {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-icone-linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.modal-icone-linha button.ativa,
+.modal-icone-abas button.ativa {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.modal-icone-abas {
+  display: flex;
+  gap: 6px;
+}
+
+.modal-icone-grade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.modal-icone-opcao {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border-color: transparent;
+}
+
+.modal-icone-opcao.selecionado,
+.modal-icone-cor.selecionado {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-border);
+}
+
+.modal-icone-novo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.modal-icone-fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-icone label.modal-icone-radio {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.modal-icone-cores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.modal-icone-cor {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.modal-icone-previas {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-icone-previa {
+  flex: 1;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  opacity: 0.55;
+}
+
+.modal-icone-previa.vale {
+  opacity: 1;
+  border-color: var(--accent-border);
+}
+
+.modal-icone-previa-caixa {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-icone-previa figcaption {
+  font-size: 11px;
+  color: var(--text);
+}
+
+.modal-icone-acoes {
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Painel do modo de edição de abas. */
+.painel-abas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--accent-border);
+  border-radius: 8px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.painel-abas-dica {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.painel-abas-grupo h2 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.painel-abas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.painel-abas-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.painel-abas-nome {
+  flex: 1;
+  min-width: 0;
+}
+
+.painel-abas-nome-invalido {
+  border-color: var(--danger);
+}

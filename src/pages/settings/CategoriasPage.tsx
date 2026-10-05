@@ -4,9 +4,13 @@ import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@d
 import { CSS } from '@dnd-kit/utilities';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
-import { IconePng, IconeSupabase } from '../../components/IconeSupabase';
+import { IconeFuncao, IconeUso } from '../../components/IconeUso';
+import { IconeChevron } from '../../components/IconesProvisorios';
+import { ModalIcone } from '../../components/ModalIcone';
 import { mensagemDeErro } from '../../lib/erros';
-import { ehIconeMascarado, iconesDaCategoria } from '../../lib/iconesCategorias';
+import { resolverUso } from '../../lib/iconesUsos';
+import { useIconesUsos, useRemoverUsoIcone, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
+import { useTemaEfetivo } from '../../hooks/useTema';
 import { TagsItensSecao } from './TagsItensSecao';
 import {
   useCategorias,
@@ -16,17 +20,7 @@ import {
   useReordenarCategorias,
   useUsoCategorias,
 } from '../../hooks/useCategorias';
-import type { Categoria, TipoCategoria } from '../../types';
-
-function IconeGrip() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-      <path d="M3 6h18" />
-      <path d="M3 12h18" />
-      <path d="M3 18h18" />
-    </svg>
-  );
-}
+import type { Categoria, TipoCategoria, UsoIcone } from '../../types';
 
 function ItemLinha({
   item,
@@ -47,6 +41,7 @@ function ItemLinha({
   onMarcarExclusao,
   onDesfazerExclusao,
   onAdicionarSubcategoria,
+  onEditarIcone,
 }: {
   item: Categoria;
   nomeExibido: string;
@@ -66,10 +61,10 @@ function ItemLinha({
   onMarcarExclusao: () => void;
   onDesfazerExclusao: () => void;
   onAdicionarSubcategoria?: () => void;
+  onEditarIcone: () => void;
 }) {
   const sortable = useSortable({ id: item.id });
   const style = { transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition };
-  const icones = isRaiz ? iconesDaCategoria(item.nome) : [];
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
@@ -86,10 +81,10 @@ function ItemLinha({
       <div ref={sortable.setNodeRef} style={style} className="categorias-item categorias-item-editando">
         <input value={rascunho} onChange={(e) => onRascunhoChange(e.target.value)} onKeyDown={handleKeyDown} autoFocus aria-label={`Renomear ${nomeExibido}`} />
         <button type="button" className="btn-icone" onClick={onConfirmarEdicao} title="Confirmar" aria-label="Confirmar">
-          ✓
+          <IconeFuncao funcao="confirmar" tamanho={14} />
         </button>
         <button type="button" className="btn-icone" onClick={onCancelarEdicao} title="Cancelar" aria-label="Cancelar">
-          ×
+          <IconeFuncao funcao="fechar" tamanho={14} />
         </button>
       </div>
     );
@@ -103,20 +98,12 @@ function ItemLinha({
     >
       {modoEdicao && !pendente && (
         <button type="button" className="btn-icone categorias-arrastar" aria-label={`Arrastar ${nomeExibido}`} {...sortable.attributes} {...sortable.listeners}>
-          <IconeGrip />
+          <IconeFuncao funcao="mover" tamanho={14} />
         </button>
       )}
-      {icones.length > 0 && (
-        <span className="categorias-icones-raiz">
-          {icones.map((arquivo) =>
-            ehIconeMascarado(arquivo) ? (
-              <IconeSupabase key={arquivo} arquivo={arquivo} tamanho={18} />
-            ) : (
-              <IconePng key={arquivo} arquivo={arquivo} tamanho={18} />
-            )
-          )}
-        </span>
-      )}
+      <span className="categorias-icones-raiz">
+        <IconeUso alvoTipo="categoria" alvoId={item.id} rotulo={nomeExibido} tamanhoBase={18} modoEdicao={modoEdicao && !pendente} onEditar={onEditarIcone} />
+      </span>
       <button
         type="button"
         className={`categorias-nome${isRaiz ? ' categorias-raiz-clicavel' : ''}`}
@@ -124,7 +111,11 @@ function ItemLinha({
         disabled={pendente || (!modoEdicao && !isRaiz)}
       >
         <span className="categorias-nome-texto">
-          {isRaiz && <span className="categorias-seta">{expandido ? '▾' : '▸'}</span>}
+          {isRaiz && (
+            <span className="categorias-seta">
+              <IconeChevron aberto={expandido} />
+            </span>
+          )}
           {nomeExibido}
         </span>
         {isRaiz && subCount != null && <span className="categorias-contagem-subs">({subCount})</span>}
@@ -136,7 +127,7 @@ function ItemLinha({
       )}
       {onAdicionarSubcategoria && (
         <button type="button" className="btn-icone" onClick={onAdicionarSubcategoria} disabled={pendente} title={`Nova subcategoria em ${nomeExibido}`} aria-label={`Nova subcategoria em ${nomeExibido}`}>
-          +
+          <IconeFuncao funcao="adicionar" tamanho={14} />
         </button>
       )}
       {modoEdicao && (
@@ -146,7 +137,7 @@ function ItemLinha({
           </button>
         ) : (
           <button type="button" className="btn-icone btn-icone-perigo" onClick={onMarcarExclusao} title={`Excluir ${nomeExibido}`} aria-label={`Excluir ${nomeExibido}`}>
-            <IconeSupabase arquivo="trash3.svg" />
+            <IconeFuncao funcao="excluir" />
           </button>
         )
       )}
@@ -165,6 +156,39 @@ export function CategoriasPage() {
   const reordenar = useReordenarCategorias(tipo);
   const { confirmar, pedirTexto } = useDialogos();
   const { mostrarToast } = useToast();
+
+  const { data: usos = [] } = useIconesUsos();
+  const temaEfetivo = useTemaEfetivo();
+  const salvarUso = useSalvarUsoIcone();
+  const removerUso = useRemoverUsoIcone();
+  const [iconeAlvo, setIconeAlvo] = useState<Categoria | null>(null);
+
+  async function aplicarIcone(categoria: Categoria, uso: UsoIcone) {
+    try {
+      await salvarUso.mutateAsync(uso);
+      mostrarToast(`Ícone de ${categoria.nome} salvo.`);
+      setIconeAlvo(null);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  async function removerIcone(categoria: Categoria) {
+    const ok = await confirmar({
+      titulo: 'Remover ícone?',
+      mensagem: `O ícone sai de "${categoria.nome}". O arquivo continua disponível na lista de ícones.`,
+      confirmarRotulo: 'Remover',
+      perigoso: true,
+    });
+    if (!ok) return;
+    try {
+      await removerUso.mutateAsync({ alvoTipo: 'categoria', alvoId: categoria.id });
+      mostrarToast(`Ícone de ${categoria.nome} removido.`);
+      setIconeAlvo(null);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
 
   const [busca, setBusca] = useState('');
   const [edicaoAtivaId, setEdicaoAtivaId] = useState<string | null>(null);
@@ -421,8 +445,8 @@ export function CategoriasPage() {
               aria-label="Buscar categorias"
               disabled={haAlteracoesOrdem}
             />
-            <button type="button" onClick={adicionarRaiz} disabled={modoEdicao}>
-              + Categoria
+            <button type="button" className="btn-icone" onClick={adicionarRaiz} disabled={modoEdicao} title="Nova categoria" aria-label="Nova categoria">
+              <IconeFuncao funcao="adicionar" />
             </button>
             <button
               type="button"
@@ -431,7 +455,7 @@ export function CategoriasPage() {
               title={modoEdicao ? 'Sair do modo de edição' : 'Editar (arrastar/excluir)'}
               aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição'}
             >
-              <IconeSupabase arquivo="broomstick.svg" />
+              <IconeFuncao funcao="editar" />
             </button>
             <button
               type="button"
@@ -441,7 +465,7 @@ export function CategoriasPage() {
               title="Salvar alterações"
               aria-label="Salvar alterações"
             >
-              <IconeSupabase arquivo="save.svg" />
+              <IconeFuncao funcao="salvar" />
             </button>
           </div>
         )}
@@ -481,6 +505,7 @@ export function CategoriasPage() {
                         onMarcarExclusao={() => marcarExclusao(raiz)}
                         onDesfazerExclusao={() => desfazerExclusao(raiz)}
                         onAdicionarSubcategoria={() => adicionarSubcategoria(raiz)}
+                        onEditarIcone={() => setIconeAlvo(raiz)}
                       />
                     </div>
                     {expandido &&
@@ -507,6 +532,7 @@ export function CategoriasPage() {
                                 onCancelarEdicao={cancelarEdicao}
                                 onMarcarExclusao={() => marcarExclusao(sub)}
                                 onDesfazerExclusao={() => desfazerExclusao(sub)}
+                                onEditarIcone={() => setIconeAlvo(sub)}
                               />
                             ))}
                           </div>
@@ -518,6 +544,20 @@ export function CategoriasPage() {
             </SortableContext>
           </div>
         </DndContext>
+      )}
+      {iconeAlvo && (
+        <ModalIcone
+          aberto
+          rotuloAlvo={iconeAlvo.nome}
+          alvoTipo="categoria"
+          alvoId={iconeAlvo.id}
+          inicial={resolverUso(usos, 'categoria', iconeAlvo.id, temaEfetivo)}
+          tamanhoBase={18}
+          permiteRemover
+          onConfirmar={(uso) => void aplicarIcone(iconeAlvo, uso)}
+          onRemover={() => void removerIcone(iconeAlvo)}
+          onFechar={() => setIconeAlvo(null)}
+        />
       )}
     </div>
   );

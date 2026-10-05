@@ -3,17 +3,9 @@ import { supabase } from '../lib/supabaseClient';
 import { urlIconeSupabase } from '../components/IconeSupabase';
 import { caminhoIcone } from '../lib/storage';
 import { mensagemDeErro } from '../lib/erros';
-import { ICONES_CATEGORIAS_PROTEGIDOS } from '../lib/iconesCategorias';
 import type { IconeArquivo } from '../types';
 
 const BUCKET = 'icones';
-
-/** Ícones de ação usados por nome fixo em botões do app inteiro (vassoura/salvar/excluir) — nunca renomear/excluir por aqui. */
-const ICONES_ACAO_PROTEGIDOS = new Set(['broomstick.svg', 'save.svg', 'trash3.svg']);
-
-function ehProtegido(pasta: string, nome: string): boolean {
-  return pasta === '' ? ICONES_ACAO_PROTEGIDOS.has(nome) : ICONES_CATEGORIAS_PROTEGIDOS.has(nome);
-}
 
 function queryKey(pasta: string) {
   return ['icones_galeria', pasta];
@@ -58,7 +50,6 @@ export function useIconesGaleria(pasta: string) {
             nome: item.name,
             url: urlIconeSupabase(caminhoIcone(pasta, item.name)),
             ordem: meta.ordem,
-            protegido: ehProtegido(pasta, item.name),
           };
         })
         .sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome));
@@ -117,6 +108,7 @@ export function useRenomearIcone(pasta: string) {
   });
 }
 
+/** Exclui o arquivo e o metadado. Quem chama deve garantir que o ícone não está em uso (ver `arquivosEmUso`). */
 export function useExcluirIcone(pasta: string) {
   const qc = useQueryClient();
   return useMutation({

@@ -1,16 +1,24 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
+import { useAbasEdicao } from '../../components/AbasEdicao';
+import { IconeFuncao } from '../../components/IconeUso';
+import { NavAbas } from '../../components/NavAbas';
 
 export function SettingsLayout() {
+  const edicao = useAbasEdicao();
   return (
     <div>
-      <nav className="app-subnav">
-        <NavLink to="/settings/categorias">Categorias</NavLink>
-        <NavLink to="/settings/icones">Ícones</NavLink>
-        <NavLink to="/settings/contas">Contas e Cartões</NavLink>
-        <NavLink to="/settings/banco-lancamentos">Banco de Lançamentos</NavLink>
-        <NavLink to="/settings/classificacoes-tarefas">Classificações de Tarefas</NavLink>
-        <NavLink to="/settings/calendario">Calendário</NavLink>
-      </nav>
+      <NavAbas grupo="settings" className="app-subnav" rota={(chave) => `/settings/${chave.split(':')[1]}`}>
+        <button
+          type="button"
+          className={`btn-icone icone-uso-botao${edicao.editando ? ' categorias-modo-ativo' : ''}`}
+          onClick={() => (edicao.editando ? void edicao.cancelar() : edicao.iniciar())}
+          title={edicao.editando ? 'Sair do modo de edição das abas' : 'Editar abas (nome, ícone e ordem)'}
+          aria-label={edicao.editando ? 'Sair do modo de edição das abas' : 'Entrar no modo de edição das abas'}
+          aria-pressed={edicao.editando}
+        >
+          <IconeFuncao funcao="editar_abas" tamanho={18} />
+        </button>
+      </NavAbas>
       <div className="app-subnav-conteudo">
         <Outlet />
       </div>

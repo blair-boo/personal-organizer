@@ -59,3 +59,23 @@ export function useTema() {
 
   return { tema, setTema, ciclarTema };
 }
+
+/** Tema realmente em uso ('claro' ou 'escuro'), acompanhando `data-theme` no <html> e a preferência do sistema. */
+export function useTemaEfetivo(): 'claro' | 'escuro' {
+  const calcular = () => (temaResolvido(lerTemaSalvo()) === 'dark' ? 'escuro' : 'claro');
+  const [efetivo, setEfetivo] = useState<'claro' | 'escuro'>(calcular);
+
+  useEffect(() => {
+    const atualizar = () => setEfetivo(calcular());
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    mq.addEventListener('change', atualizar);
+    const observador = new MutationObserver(atualizar);
+    observador.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => {
+      mq.removeEventListener('change', atualizar);
+      observador.disconnect();
+    };
+  }, []);
+
+  return efetivo;
+}

@@ -57,6 +57,15 @@ com `currentColor`) ou `<IconePng arquivo="PNG/nome.png" />` (ilustração color
   exceto os substitutos provisórios descritos abaixo.
 - Em uso hoje: `broomstick.svg` (modo de edição), `save.svg` (salvar),
   `trash3.svg` (excluir).
+- Ícone de ação (salvar, editar, excluir, adicionar, mover, copiar, fechar,
+  confirmar, atualizar, selecionar): sempre `<IconeFuncao funcao="salvar" />`,
+  nunca `<IconeSupabase arquivo="save.svg" />`. O arquivo de cada função é
+  escolhido em Settings > Ícones > Ícones (Settings) e vale para o app todo
+  (registro em `src/lib/iconesFuncoes.ts`). Função nova entra nesse registro.
+- Ícone que ilustra título (categoria, aba): `<IconeUso alvoTipo alvoId rotulo />`,
+  com `modoEdicao`/`onEditar` abrindo `ModalIcone`. Dados em `icones_usos`.
+- Abas (principais e sub-abas) usam `<NavAbas grupo="..." />`; nome, ícone e
+  ordem vêm de `abas_config`. Aba nova entra em `src/lib/abas.ts`.
 - Se o ícone necessário não existir no bucket, NÃO parar. Usar um substituto
   provisório: SVG inline simples, criado só em `src/components/IconesProvisorios.tsx`,
   com o comentário `// PROVISORIO: trocar por <nome-sugerido>.svg`. Nunca emoji

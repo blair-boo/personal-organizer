@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { IconeSupabase } from '../../components/IconeSupabase';
+import { IconeFuncao } from '../../components/IconeUso';
 import { ModalBase } from '../../components/ModalBase';
 import { ArquivoLink } from '../../components/ArquivoLink';
 import { TagMultiSelect } from '../../components/TagMultiSelect';
@@ -90,7 +90,7 @@ function SecaoDocumentos({ item }: { item: Item }) {
                 {doc.descricao ? ` — ${doc.descricao}` : ''}
               </ArquivoLink>
               <button type="button" className="btn-icone btn-icone-perigo" onClick={() => handleRemover(doc)} aria-label="Remover">
-                <IconeSupabase arquivo="trash3.svg" />
+                <IconeFuncao funcao="excluir" />
               </button>
             </li>
           ))}

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { ModalBase } from '../../components/ModalBase';
-import { IconeSupabase } from '../../components/IconeSupabase';
+import { IconeFuncao } from '../../components/IconeUso';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
@@ -207,7 +207,7 @@ export function CalendarioPage() {
                   title={`Excluir ${feed.nome}`}
                   aria-label={`Excluir ${feed.nome}`}
                 >
-                  <IconeSupabase arquivo="trash3.svg" />
+                  <IconeFuncao funcao="excluir" />
                 </button>
               </div>
             </li>

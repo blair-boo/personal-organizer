@@ -1,7 +1,13 @@
 import { Navigate, NavLink, Outlet, useParams } from 'react-router-dom';
+import { NavAbas } from '../../components/NavAbas';
 import { competenciaAtual, formatarCompetenciaExtenso, somarMeses } from '../../lib/datas';
 
 const COMPETENCIA_RE = /^\d{4}-\d{2}$/;
+
+function rotaFinancas(chave: string, competencia: string): string {
+  const aba = chave.split(':')[1];
+  return aba === 'resumo-geral' || aba === 'parcelamentos' ? `/financas/${aba}` : `/financas/${competencia}/${aba}`;
+}
 
 export function FinancasLayout() {
   const { competencia } = useParams<{ competencia: string }>();
@@ -21,13 +27,7 @@ export function FinancasLayout() {
           ›
         </NavLink>
       </div>
-      <nav className="app-subnav">
-        <NavLink to={`/financas/${competencia}/conta-corrente`}>Conta Corrente</NavLink>
-        <NavLink to={`/financas/${competencia}/cartao-credito`}>Cartão de Crédito</NavLink>
-        <NavLink to={`/financas/${competencia}/resumo`}>Resumo do Mês</NavLink>
-        <NavLink to="/financas/resumo-geral">Resumo Geral</NavLink>
-        <NavLink to="/financas/parcelamentos">Parcelamentos</NavLink>
-      </nav>
+      <NavAbas grupo="financas" className="app-subnav" rota={(chave) => rotaFinancas(chave, competencia)} />
       <div className="app-subnav-conteudo">
         <Outlet />
       </div>

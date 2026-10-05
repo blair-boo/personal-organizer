@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { IconeSupabase } from '../../components/IconeSupabase';
+import { IconeFuncao } from '../../components/IconeUso';
 import { ModalBase } from '../../components/ModalBase';
 import { ArquivoLink } from '../../components/ArquivoLink';
 import { useDialogos } from '../../components/Dialogo';
@@ -76,7 +76,7 @@ function SecaoAnexos({ projeto }: { projeto: Projeto }) {
                 {anexo.descricao ?? anexo.nome_arquivo}
               </ArquivoLink>
               <button type="button" className="btn-icone btn-icone-perigo" onClick={() => handleRemover(anexo)} aria-label="Remover">
-                <IconeSupabase arquivo="trash3.svg" />
+                <IconeFuncao funcao="excluir" />
               </button>
             </li>
           ))}

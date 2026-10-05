@@ -174,8 +174,39 @@ export interface IconeArquivo {
   nome: string;
   url: string;
   ordem: number;
-  /** Referenciado por nome fixo em algum lugar do código — não pode ser renomeado nem excluído pela aba Ícones. */
-  protegido: boolean;
+}
+
+export type AlvoIcone = 'funcao' | 'categoria' | 'aba';
+export type TemaIcone = 'claro' | 'escuro' | 'ambos';
+export type CorOrigemIcone = 'padrao' | 'app' | 'minha';
+
+/** Qual ícone do bucket aparece em uma função, categoria ou aba, e como (tamanho, máscara, cor, tema). */
+export interface UsoIcone {
+  id?: string;
+  alvo_tipo: AlvoIcone;
+  alvo_id: string;
+  icone_pasta: string;
+  icone_arquivo: string;
+  tamanho_delta: number;
+  mascara: boolean;
+  cor_origem: CorOrigemIcone;
+  /** 'app': nome da variável CSS (ex.: --accent); 'minha': hex. */
+  cor_valor: string | null;
+  tema: TemaIcone;
+}
+
+export interface AbaConfig {
+  chave: string;
+  /** null = nome padrão; '' = só o ícone aparece. */
+  nome: string | null;
+  ordem: number;
+}
+
+export interface CorUsuario {
+  id: string;
+  hex: string;
+  label: string;
+  ordem: number;
 }
 
 export interface CalendarioFeed {
