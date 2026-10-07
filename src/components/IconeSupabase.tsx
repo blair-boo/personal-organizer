@@ -3,11 +3,8 @@ import { supabase } from '../lib/supabaseClient';
 const ICONS_BUCKET = 'icones';
 
 export function urlIconeSupabase(arquivo: string): string {
-  const caminho = arquivo
-    .split('/')
-    .map((parte) => encodeURIComponent(parte))
-    .join('/');
-  return supabase.storage.from(ICONS_BUCKET).getPublicUrl(caminho).data.publicUrl;
+  // O getPublicUrl já codifica o caminho; codificar antes duplicaria (espaço viraria %2520) e o arquivo daria 400.
+  return supabase.storage.from(ICONS_BUCKET).getPublicUrl(arquivo).data.publicUrl;
 }
 
 /** Ícone "pintado" via mask: puxa o SVG do bucket `icones` do Supabase Storage e usa currentColor pra seguir a cor do botão/tema (mesma técnica do manga-lists). */

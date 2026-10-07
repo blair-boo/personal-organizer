@@ -18,6 +18,16 @@ export function SettingsLayout() {
         >
           <IconeFuncao funcao="editar_abas" tamanho={18} />
         </button>
+        <button
+          type="button"
+          className="btn-icone icone-uso-botao"
+          onClick={() => void edicao.salvar()}
+          disabled={!edicao.editando || !edicao.temAlteracoes || edicao.salvando}
+          title="Salvar alterações das abas"
+          aria-label="Salvar alterações das abas"
+        >
+          <IconeFuncao funcao="salvar" tamanho={18} />
+        </button>
       </NavAbas>
       <div className="app-subnav-conteudo">
         <Outlet />

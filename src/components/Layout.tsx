@@ -4,7 +4,6 @@ import { useTema, type TemaPref } from '../hooks/useTema';
 import { APP_NAME } from '../config';
 import { DialogosProvider } from './Dialogo';
 import { AbasEdicaoProvider, useAbasEdicaoOpcional } from './AbasEdicao';
-import { IconeFuncao } from './IconeUso';
 import { IconeLua, IconeMonitor, IconeSol } from './IconesProvisorios';
 import { NavAbas } from './NavAbas';
 import { PainelEdicaoAbas } from './PainelEdicaoAbas';
@@ -43,30 +42,6 @@ function LayoutInterno({ children }: { children: ReactNode }) {
       <header className="app-header">
         <div className="app-header-top">
           <h1 className="app-title">{APP_NAME}</h1>
-          {editando && edicao && (
-            <>
-              <button
-                type="button"
-                className="btn-icone icone-uso-botao"
-                onClick={() => void edicao.cancelar()}
-                disabled={edicao.salvando}
-                title="Sair do modo de edição e cancelar alterações"
-                aria-label="Sair do modo de edição e cancelar alterações"
-              >
-                <IconeFuncao funcao="fechar" />
-              </button>
-              <button
-                type="button"
-                className="btn-icone icone-uso-botao"
-                onClick={() => void edicao.salvar()}
-                disabled={edicao.salvando}
-                title="Salvar alterações das abas"
-                aria-label="Salvar alterações das abas"
-              >
-                <IconeFuncao funcao="salvar" />
-              </button>
-            </>
-          )}
           <button type="button" onClick={ciclarTema} className="tema-toggle" title={TEMA_INFO[tema].titulo} aria-label={TEMA_INFO[tema].titulo}>
             {tema === 'light' ? <IconeSol /> : tema === 'dark' ? <IconeLua /> : <IconeMonitor />}
           </button>
