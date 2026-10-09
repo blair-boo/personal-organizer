@@ -99,6 +99,17 @@ export function IconeSelecionar({ tamanho = 16 }: Props) {
   );
 }
 
+// PROVISORIO: trocar por export.svg
+export function IconeExportar({ tamanho = 16 }: Props) {
+  return (
+    <Svg tamanho={tamanho}>
+      <path d="M12 3v12" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M5 21h14" />
+    </Svg>
+  );
+}
+
 // PROVISORIO: trocar por gear.svg
 export function IconeEngrenagem({ tamanho = 16 }: Props) {
   return (
@@ -158,4 +169,5 @@ export const PROVISORIOS_FUNCAO: Partial<Record<FuncaoIcone, (props: Props) => R
   confirmar: IconeCheck,
   atualizar: IconeAtualizar,
   selecionar: IconeSelecionar,
+  exportar: IconeExportar,
 };

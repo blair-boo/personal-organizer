@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react';
+import { BotaoExportarCsv } from '../../components/BotaoExportarCsv';
 import { IconeFuncao } from '../../components/IconeUso';
 import { ModalBase } from '../../components/ModalBase';
 import { ArquivoLink } from '../../components/ArquivoLink';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
+import { formatarData } from '../../lib/datas';
 import {
   useAtualizarProjeto,
   useCriarProjeto,
@@ -211,9 +213,22 @@ export function ProjetosPage() {
   return (
     <div className="settings-secao">
       <h2>Projetos do apartamento</h2>
-      <button type="button" onClick={abrirNovo}>
-        + Projeto
-      </button>
+      <div className="apartamento-barra">
+        <button type="button" onClick={abrirNovo}>
+          + Projeto
+        </button>
+        <BotaoExportarCsv
+          nome="Projetos do apartamento"
+          linhas={projetos}
+          colunas={[
+            { titulo: 'Nome', valor: (p: Projeto) => p.nome },
+            { titulo: 'Status', valor: (p: Projeto) => STATUS_LABEL[p.status] ?? p.status },
+            { titulo: 'Início', valor: (p: Projeto) => (p.data_inicio ? formatarData(p.data_inicio) : null) },
+            { titulo: 'Conclusão', valor: (p: Projeto) => (p.data_conclusao ? formatarData(p.data_conclusao) : null) },
+            { titulo: 'Descrição', valor: (p: Projeto) => p.descricao },
+          ]}
+        />
+      </div>
       {isLoading ? (
         <p>Carregando…</p>
       ) : (

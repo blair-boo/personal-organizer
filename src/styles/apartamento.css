@@ -55,3 +55,10 @@
   flex: 1;
   min-width: 140px;
 }
+
+/* Linha com o botão de criar e o de exportar CSV, no topo das telas do Apartamento. */
+.apartamento-barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

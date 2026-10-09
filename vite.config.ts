@@ -10,6 +10,8 @@ const BASE_PATH = '/personal-organizer/';
 const APP_NAME = 'Personal Organizer';
 
 export default defineConfig(({ command }) => ({
+  // Hora do build, mostrada em Settings > App pra saber qual versão está rodando.
+  define: { __BUILD_ISO__: JSON.stringify(new Date().toISOString()) },
   base: command === 'build' ? BASE_PATH : '/',
   plugins: [
     react(),
@@ -48,19 +50,14 @@ export default defineConfig(({ command }) => ({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
+          // Respostas da API (/rest/v1/) e arquivos privados (Storage autenticado e URLs
+          // assinadas) NÃO ficam no cache do service worker: dados pessoais guardados
+          // ali não seriam apagados ao sair da conta nem por "Apagar dados offline".
+          // O offline de Apartamento e Documentos tem cache próprio (IndexedDB e
+          // Cache Storage "arquivos-offline"), apagado nesses dois casos.
           {
-            // Chamadas REST do Supabase: tenta rede primeiro, cai pro cache se offline.
-            urlPattern: ({ url }) => url.pathname.startsWith('/rest/v1/'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api-cache',
-              networkTimeoutSeconds: 5,
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          {
-            // Ícones visuais de categorias/classificações (bucket "icones" do Storage, privado).
-            urlPattern: ({ url }) => url.pathname.includes('/storage/v1/object/'),
+            // Só os ícones públicos do bucket "icones" (URL estável), pra aparecerem offline.
+            urlPattern: ({ url }) => url.pathname.includes('/storage/v1/object/public/'),
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'storage-cache',

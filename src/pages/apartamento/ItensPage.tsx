@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { IconeFuncao } from '../../components/IconeUso';
+import { BotaoExportarCsv } from '../../components/BotaoExportarCsv';
 import { ModalBase } from '../../components/ModalBase';
 import { ArquivoLink } from '../../components/ArquivoLink';
 import { TagMultiSelect } from '../../components/TagMultiSelect';
@@ -260,9 +261,25 @@ export function ItensPage() {
   return (
     <div className="settings-secao">
       <h2>Itens do apartamento</h2>
-      <button type="button" onClick={abrirNovo}>
-        + Item
-      </button>
+      <div className="apartamento-barra">
+        <button type="button" onClick={abrirNovo}>
+          + Item
+        </button>
+        <BotaoExportarCsv
+          nome="Itens do apartamento"
+          linhas={itens}
+          colunas={[
+            { titulo: 'Nome', valor: (i: Item) => i.nome },
+            { titulo: 'Marca', valor: (i: Item) => i.marca },
+            { titulo: 'Modelo', valor: (i: Item) => i.modelo },
+            { titulo: 'Data da compra', valor: (i: Item) => (i.data_compra ? formatarData(i.data_compra) : null) },
+            { titulo: 'Garantia até', valor: (i: Item) => (i.garantia_ate ? formatarData(i.garantia_ate) : null) },
+            { titulo: 'Valor', valor: (i: Item) => i.valor },
+            { titulo: 'Tags', valor: (i: Item) => (itemTags?.get(i.id) ?? []).map((t) => t.nome).join(' | ') },
+            { titulo: 'Observações', valor: (i: Item) => i.observacoes },
+          ]}
+        />
+      </div>
       {isLoading ? (
         <p>Carregando…</p>
       ) : (

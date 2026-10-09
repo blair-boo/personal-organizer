@@ -11,6 +11,7 @@ export type FuncaoIcone =
   | 'confirmar'
   | 'atualizar'
   | 'selecionar'
+  | 'exportar'
   | 'editar_abas';
 
 export interface DefinicaoFuncao {
@@ -32,6 +33,7 @@ export const FUNCOES_ICONE: DefinicaoFuncao[] = [
   { chave: 'confirmar', rotulo: 'Confirmar', arquivoPadrao: null },
   { chave: 'atualizar', rotulo: 'Atualizar', arquivoPadrao: null },
   { chave: 'selecionar', rotulo: 'Selecionar', arquivoPadrao: null },
+  { chave: 'exportar', rotulo: 'Exportar', arquivoPadrao: null },
   { chave: 'editar_abas', rotulo: 'Editar abas', arquivoPadrao: 'UI_Icon_UGCComponent_Effect.png' },
 ];
 

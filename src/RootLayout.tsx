@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import { RequireAuth } from './components/RequireAuth';
 import { Layout } from './components/Layout';
+import { OfflineProvider } from './components/OfflineContext';
 import { ToastProvider } from './components/Toast';
 
 export function RootLayout() {
@@ -9,9 +10,11 @@ export function RootLayout() {
     <AuthProvider>
       <RequireAuth>
         <ToastProvider>
-          <Layout>
-            <Outlet />
-          </Layout>
+          <OfflineProvider>
+            <Layout>
+              <Outlet />
+            </Layout>
+          </OfflineProvider>
         </ToastProvider>
       </RequireAuth>
     </AuthProvider>

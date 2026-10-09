@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { obterUrlAssinada } from '../lib/storage';
+import { obterBlobDoArquivo, obterUrlParaAbrir } from '../lib/offline/abrirArquivo';
 import { useToast } from './Toast';
 import { mensagemDeErro } from '../lib/erros';
 
@@ -21,7 +21,7 @@ export function ArquivoLink({
   async function abrir() {
     setAbrindo(true);
     try {
-      const url = await obterUrlAssinada(bucket, caminho, expiraEmSegundos);
+      const url = await obterUrlParaAbrir(bucket, caminho, expiraEmSegundos);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
@@ -37,7 +37,7 @@ export function ArquivoLink({
   );
 }
 
-/** Baixa um arquivo de bucket privado (busca a URL assinada e força o download, em vez de abrir em nova aba). */
+/** Baixa um arquivo de bucket privado (força o download, em vez de abrir em nova aba). Sem internet usa a cópia guardada no aparelho. */
 export function BotaoBaixarArquivo({
   bucket,
   caminho,
@@ -55,10 +55,7 @@ export function BotaoBaixarArquivo({
   async function baixar() {
     setBaixando(true);
     try {
-      const url = await obterUrlAssinada(bucket, caminho, expiraEmSegundos);
-      const resposta = await fetch(url);
-      if (!resposta.ok) throw new Error('Não foi possível baixar o arquivo.');
-      const blob = await resposta.blob();
+      const blob = await obterBlobDoArquivo(bucket, caminho, expiraEmSegundos);
       const urlBlob = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = urlBlob;
