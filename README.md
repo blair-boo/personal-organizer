@@ -91,9 +91,15 @@ Tabelas e buckets são descobertos no próprio Supabase a cada execução, entã
 
 **Aba Settings → Backup:** lista os backups que existem hoje (os já apagados pela retenção não aparecem), mostra o próximo backup e o tamanho do bucket. O navegador não alcança o R2, então no fim de cada execução o workflow publica esse resumo na tabela `backup_status` do Supabase (migration `0016_backup_status.sql`) e a aba lê de lá. Se a tabela não existir, o backup continua funcionando e o workflow só registra um aviso. O tamanho mostrado é o do fim do último backup, não o do instante. A data do próximo backup é calculada no app a partir do cron (`src/lib/backup.ts`); se mudar o horário em `backup.yml`, mude lá também.
 
-**Restaurar**
-- Tabela: baixe `db/semanal/<data>/<tabela>.json` (ou `mensal`) pelo painel do R2 ou com `rclone copy` e reimporte (ex.: `upsert` pela API do Supabase). Os JSON são o conteúdo cru das tabelas.
-- Arquivos: `rclone copy r2:<bucket-do-r2>/storage/<bucket-do-supabase> <destino>` e suba de volta pelo Storage do Supabase.
+**Verificação semanal:** logo depois de gravar, o workflow lê o backup de volta do R2 e confere a integridade (JSON legível e contagem de linhas igual à do `manifest.json`). Se algo estiver errado, o workflow fica vermelho. Dá pra rodar à mão: `node scripts/restaurar-supabase.mjs --verificar` (com `R2_BUCKET` e `RCLONE_CONFIG_R2_*` no ambiente).
+
+**Restaurar** (`scripts/restaurar-supabase.mjs`)
+1. Aplique as migrations (`supabase/migrations`, inclusive buckets e policies) no projeto Supabase de destino. O backup guarda os dados, não o schema, e também não guarda os usuários do Auth: crie o login no destino.
+2. Ensaio, que não escreve nada:
+   `ALVO_SUPABASE_URL=https://xxxx.supabase.co ALVO_SUPABASE_SERVICE_ROLE_KEY=... node scripts/restaurar-supabase.mjs --restaurar --confirmo xxxx.supabase.co`
+3. Para gravar de verdade, acrescente `--executar` (e `--arquivos` para restaurar também o Storage). `--backup db/semanal/AAAA-MM-DD` (ou `db/mensal/AAAA-MM`) escolhe outro backup; sem ele usa o semanal mais novo.
+4. As variáveis do destino são `ALVO_*` de propósito, para nunca reaproveitar por engano as chaves de produção do backup. `--confirmo` precisa repetir o host do destino.
+5. Ao final o script confere as contagens de cada tabela no destino. Teste primeiro num projeto Supabase de teste.
 
 ## Estrutura de pastas
 

@@ -122,13 +122,26 @@ export function tabelasDoOpenApi(spec) {
   return tabelas;
 }
 
+/** Só as tabelas com chave primária declarada (marcada com `<pk/>`), no formato
+ *  tabela -> colunas da chave. Usado na restauração: upsert exige chave. */
+export function chavesPrimariasDoOpenApi(spec) {
+  const chaves = {};
+  for (const [nome, def] of Object.entries(spec?.definitions ?? {})) {
+    const pk = Object.entries(def?.properties ?? {})
+      .filter(([, prop]) => String(prop?.description ?? '').includes('<pk/>'))
+      .map(([coluna]) => coluna);
+    if (pk.length > 0) chaves[nome] = pk;
+  }
+  return chaves;
+}
+
 // --- Supabase ----------------------------------------------------------------
 
-function cabecalhos(chave) {
+export function cabecalhos(chave) {
   return { apikey: chave, Authorization: `Bearer ${chave}` };
 }
 
-async function requisitar(url, opcoes = {}) {
+export async function requisitar(url, opcoes = {}) {
   const resposta = await fetch(url, { ...opcoes, signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!resposta.ok) {
     const corpo = (await resposta.text()).slice(0, 300);
@@ -203,7 +216,7 @@ async function baixarObjeto(base, chave, bucket, caminho, destino) {
 
 // --- rclone ------------------------------------------------------------------
 
-async function rclone(...args) {
+export async function rclone(...args) {
   try {
     const { stdout } = await executar('rclone', args, { maxBuffer: 512 * 1024 * 1024 });
     return stdout;

@@ -71,7 +71,9 @@ com `currentColor`) ou `<IconePng arquivo="PNG/nome.png" />` (ilustração color
   com o comentário `// PROVISORIO: trocar por <nome-sugerido>.svg`. Nunca emoji
   nem caractere solto.
 - Todo substituto provisório entra na lista `ICONES_PENDENTES.md` (raiz do repo)
-  e deve ser citado na resposta final, para o usuário enviar o arquivo depois.
+  e também na tabela "personal-organizer: ícones pendentes" do backlog
+  compartilhado (ver o fim deste arquivo), e deve ser citado na resposta final,
+  para o usuário enviar o arquivo depois.
 - Quando o arquivo for enviado ao bucket, trocar o uso pelo ícone real, remover
   o substituto de `IconesProvisorios.tsx` e apagar a linha da lista.
 
@@ -112,3 +114,16 @@ avisar de forma explícita. Não declarar pronto sem ter rodado.
 
 Se alguma parte do pedido não foi feita, dizer qual e por quê. Entregar parcial
 dizendo que está completo é o pior resultado possível.
+
+## Backlog compartilhado
+
+O que combinamos fazer "depois", de todos os projetos, fica no documento
+compartilhado "Backlog dos projetos" (Claude Docs):
+https://claude.ai/code/artifact/16715225-4af5-4a33-8479-1837e75eb556
+Cada projeto tem um tópico (este é "personal-organizer"). Regras:
+
+- Quando a usuária disser que algo fica para depois, registrar lá na hora, sem
+  ela precisar pedir. Ao fazer um item, apagar a linha.
+- Ler o tópico antes de propor algo novo, para não repetir o que já foi
+  combinado ou descartado.
+- Se não conseguir abrir o documento, avisar a usuária em vez de seguir sem ele.

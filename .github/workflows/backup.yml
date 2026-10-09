@@ -20,6 +20,18 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET || 'personal-organizer-backup' }}
+      # rclone configurado só por variáveis (sem arquivo de config).
+      # NO_CHECK_BUCKET: o token do R2 é restrito a este bucket e não pode criá-lo.
+      RCLONE_CONFIG_R2_TYPE: s3
+      RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+      RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      RCLONE_CONFIG_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      RCLONE_S3_NO_CHECK_BUCKET: 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -33,16 +45,10 @@ jobs:
           sudo apt-get install -y -qq rclone
 
       - name: Backup
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET || 'personal-organizer-backup' }}
-          # rclone configurado só por variáveis (sem arquivo de config).
-          # NO_CHECK_BUCKET: o token do R2 é restrito a este bucket e não pode criá-lo.
-          RCLONE_CONFIG_R2_TYPE: s3
-          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
-          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          RCLONE_CONFIG_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          RCLONE_S3_NO_CHECK_BUCKET: 'true'
         run: node scripts/backup-supabase.mjs
+
+      # Lê de volta do R2 o backup que acabou de ser gravado e confere a
+      # integridade (JSON legível e contagem de linhas igual à do manifest).
+      # Se falhar, o workflow fica vermelho e o GitHub avisa por e-mail.
+      - name: Verificar backup gravado
+        run: node scripts/restaurar-supabase.mjs --verificar
