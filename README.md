@@ -89,6 +89,8 @@ Tabelas e buckets são descobertos no próprio Supabase a cada execução, entã
 
 **Atenção:** o backup inclui os buckets privados (documentos, comprovantes, `confidencial`). Mantenha o bucket do R2 privado e o token restrito a ele.
 
+**Aba Settings → Backup:** lista os backups que existem hoje (os já apagados pela retenção não aparecem), mostra o próximo backup e o tamanho do bucket. O navegador não alcança o R2, então no fim de cada execução o workflow publica esse resumo na tabela `backup_status` do Supabase (migration `0016_backup_status.sql`) e a aba lê de lá. Se a tabela não existir, o backup continua funcionando e o workflow só registra um aviso. O tamanho mostrado é o do fim do último backup, não o do instante. A data do próximo backup é calculada no app a partir do cron (`src/lib/backup.ts`); se mudar o horário em `backup.yml`, mude lá também.
+
 **Restaurar**
 - Tabela: baixe `db/semanal/<data>/<tabela>.json` (ou `mensal`) pelo painel do R2 ou com `rclone copy` e reimporte (ex.: `upsert` pela API do Supabase). Os JSON são o conteúdo cru das tabelas.
 - Arquivos: `rclone copy r2:<bucket-do-r2>/storage/<bucket-do-supabase> <destino>` e suba de volta pelo Storage do Supabase.

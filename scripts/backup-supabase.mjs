@@ -16,6 +16,11 @@
 // janeiro e julho (primeiro domingo) também apaga do R2 o que já não existe no
 // Supabase, com uma trava de segurança contra listagens vazias/incompletas.
 //
+// No fim, publica um resumo (backups existentes + tamanho do bucket) na tabela
+// backup_status do Supabase, que a aba Settings > Backup do app lê (o navegador
+// não alcança o R2). Essa etapa NÃO derruba o backup se falhar (ex.: migration
+// 0016 ainda não aplicada): o backup em si já terminou nesse ponto.
+//
 // Falha alto de propósito: qualquer erro sai com código != 0, pra nunca tratar
 // um backup parcial como válido (e a poda de backups antigos só roda depois do
 // envio). Só usa módulos nativos do Node 22 e o rclone (configurado por variáveis
@@ -83,6 +88,24 @@ export function caminhoLocalSeguro(raiz, relativo) {
   const alvo = path.resolve(raiz, relativo);
   const rel = path.relative(path.resolve(raiz), alvo);
   return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel) ? alvo : null;
+}
+
+/** Linha única de backup_status. `total` e `arquivos` = [bytes, objetos]. Backups
+ *  ordenados do mais novo pro mais antigo, semanais antes dos mensais. */
+export function montarStatus(snapshots, total, bytesBanco, arquivos) {
+  const maisNovosPrimeiro = [...snapshots].sort((a, b) => b.nome.localeCompare(a.nome));
+  const ordenados = [
+    ...maisNovosPrimeiro.filter((b) => b.tipo === 'semanal'),
+    ...maisNovosPrimeiro.filter((b) => b.tipo !== 'semanal'),
+  ];
+  return {
+    id: 1,
+    snapshots: ordenados,
+    tamanho_total_bytes: total[0],
+    tamanho_db_bytes: bytesBanco,
+    tamanho_arquivos_bytes: arquivos[0],
+    objetos_arquivos: arquivos[1],
+  };
 }
 
 /** Tabelas (e views) do OpenAPI do PostgREST -> colunas de ordenação. Usa a
@@ -194,6 +217,50 @@ async function listarR2(prefixo) {
   return Object.fromEntries(JSON.parse(saida || '[]').map((item) => [item.Path, Number(item.Size)]));
 }
 
+/** [bytes, objetos] sob um prefixo; [0, 0] se ele ainda não existe. */
+async function tamanhoR2(prefixo) {
+  try {
+    const { bytes, count } = JSON.parse(await rclone('size', '--json', prefixo));
+    return [Number(bytes), Number(count)];
+  } catch {
+    return [0, 0];
+  }
+}
+
+async function coletarSnapshots(raizR2) {
+  const snapshots = [];
+  for (const tipo of ['semanal', 'mensal']) {
+    const pastas = (await rclone('lsf', '--dirs-only', `${raizR2}/db/${tipo}`)).split('\n').filter(Boolean).map((p) => p.replace(/\/$/, ''));
+    for (const nome of pastas) {
+      const caminho = `${raizR2}/db/${tipo}/${nome}`;
+      let linhas = null;
+      try {
+        linhas = Object.values(JSON.parse(await rclone('cat', `${caminho}/manifest.json`)).linhas).reduce((soma, n) => soma + n, 0);
+      } catch {
+        // manifest ausente ou ilegível: mostra o backup sem a contagem de linhas
+      }
+      snapshots.push({ tipo, nome, tamanho_bytes: (await tamanhoR2(caminho))[0], linhas });
+    }
+  }
+  return snapshots;
+}
+
+async function publicarStatus(base, chave, raizR2) {
+  const status = montarStatus(
+    await coletarSnapshots(raizR2),
+    await tamanhoR2(raizR2),
+    (await tamanhoR2(`${raizR2}/db`))[0],
+    await tamanhoR2(`${raizR2}/storage`)
+  );
+  status.atualizado_em = new Date().toISOString();
+  await requisitar(`${base}/rest/v1/backup_status`, {
+    method: 'POST',
+    headers: { ...cabecalhos(chave), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(status),
+  });
+  console.log(`  status publicado: ${status.snapshots.length} backups, bucket ${status.tamanho_total_bytes} bytes`);
+}
+
 // --- Orquestração ------------------------------------------------------------
 
 async function exportarBanco(base, chave, destino) {
@@ -280,6 +347,13 @@ async function principal() {
     await enviarBanco(raizR2, path.join(tmp, 'db'), hoje);
     console.log('Espelhando arquivos do Storage');
     await espelharStorage(base, chave, raizR2, tmp, hoje);
+    console.log('Publicando status no Supabase');
+    try {
+      await publicarStatus(base, chave, raizR2);
+    } catch (erro) {
+      // O backup já terminou; só o painel do app fica sem atualizar.
+      console.log(`::warning::Backup ok, mas não consegui publicar o status: ${erro.message}`);
+    }
   } finally {
     await rm(tmp, { recursive: true, force: true });
   }

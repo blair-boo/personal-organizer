@@ -6,6 +6,7 @@ import {
   deveGravarMensal,
   deveLimparArquivos,
   limpezaSegura,
+  montarStatus,
   planejarStorage,
   tabelasDoOpenApi,
 } from './backup-supabase.mjs';
@@ -126,5 +127,26 @@ describe('tabelasDoOpenApi', () => {
   it('spec vazia ou ausente não quebra', () => {
     expect(tabelasDoOpenApi({})).toEqual({});
     expect(tabelasDoOpenApi(undefined)).toEqual({});
+  });
+});
+
+describe('montarStatus', () => {
+  it('ordena semanais antes dos mensais, do mais novo ao mais antigo', () => {
+    const snapshots = [
+      { tipo: 'mensal', nome: '2026-09', tamanho_bytes: 1, linhas: 1 },
+      { tipo: 'semanal', nome: '2026-09-20', tamanho_bytes: 1, linhas: 1 },
+      { tipo: 'mensal', nome: '2026-10', tamanho_bytes: 1, linhas: 1 },
+      { tipo: 'semanal', nome: '2026-10-04', tamanho_bytes: 1, linhas: 1 },
+    ];
+    const status = montarStatus(snapshots, [1000, 7], 100, [900, 6]);
+    expect(status.snapshots.map((b) => `${b.tipo}:${b.nome}`)).toEqual([
+      'semanal:2026-10-04',
+      'semanal:2026-09-20',
+      'mensal:2026-10',
+      'mensal:2026-09',
+    ]);
+    expect(status.id).toBe(1);
+    expect([status.tamanho_total_bytes, status.tamanho_db_bytes]).toEqual([1000, 100]);
+    expect([status.tamanho_arquivos_bytes, status.objetos_arquivos]).toEqual([900, 6]);
   });
 });

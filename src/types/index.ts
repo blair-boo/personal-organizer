@@ -217,3 +217,22 @@ export interface CalendarioFeed {
   /** Pessoas incluídas nesse link. Vazio = todas as pessoas. */
   pessoas: PessoaDocumentos[];
 }
+
+/** Um backup que existe hoje no R2 (db/semanal/<nome> ou db/mensal/<nome>). */
+export interface BackupSnapshot {
+  tipo: 'semanal' | 'mensal';
+  /** AAAA-MM-DD (semanal) ou AAAA-MM (mensal). */
+  nome: string;
+  tamanho_bytes: number;
+  linhas: number | null;
+}
+
+/** Linha única de backup_status, publicada pelo workflow de backup. */
+export interface BackupStatus {
+  atualizado_em: string;
+  snapshots: BackupSnapshot[];
+  tamanho_total_bytes: number;
+  tamanho_db_bytes: number;
+  tamanho_arquivos_bytes: number;
+  objetos_arquivos: number;
+}
