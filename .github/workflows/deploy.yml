@@ -2,7 +2,7 @@ name: Deploy PWA to GitHub Pages
 
 on:
   push:
-    branches: [claude/personal-organizer-pwa-89jq90]
+    branches: [main-po]
   workflow_dispatch: {}
 
 permissions:
