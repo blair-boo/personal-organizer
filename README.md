@@ -59,6 +59,40 @@ categorizar um lançamento na revisão, a escolha fica salva no "banco de
 lançamentos" (Settings → Banco de Lançamentos): da próxima vez que aparecer
 uma descrição parecida, a categoria já vem preenchida sozinha.
 
+## Backup para o Cloudflare R2
+
+O workflow `.github/workflows/backup.yml` roda todo domingo (06:00 UTC, 03:00 em Brasília) e também sob demanda (Actions → Backup → Run workflow). O código está em `scripts/backup-supabase.mjs`. O agendamento só roda a partir da branch padrão do repositório.
+
+**Secrets necessários** (Settings → Secrets and variables → Actions):
+
+| Secret | Valor |
+|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | chave `service_role` do projeto (Project Settings → API). Ignora RLS, por isso fica só aqui, nunca no app |
+| `SUPABASE_URL` | opcional: se não existir, usa `VITE_SUPABASE_URL` |
+| `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | token do R2 com Object Read & Write restrito ao bucket de backup |
+| `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
+| `R2_BUCKET` | opcional: se não existir, usa `personal-organizer-backup` |
+
+**O que fica no bucket**
+
+| Caminho | Conteúdo | Retenção |
+|---|---|---|
+| `db/semanal/AAAA-MM-DD/` | um `.json` por tabela + `manifest.json` | 4 mais novos |
+| `db/mensal/AAAA-MM/` | o mesmo, gravado no primeiro domingo do mês | 4 mais novos |
+| `storage/<bucket>/` | espelho dos arquivos do Storage | ver abaixo |
+
+Semanal só substitui semanal e mensal só substitui mensal. A poda só roda depois de o envio do dia dar certo.
+
+Tabelas e buckets são descobertos no próprio Supabase a cada execução, então tabela ou bucket novo entra no backup sozinho (sem editar o script).
+
+**Arquivos do Storage:** a cada execução só é baixado do Supabase o que falta no R2 (ou mudou de tamanho), pra poupar o tráfego do Supabase. Nada é apagado do R2 durante o ano, então uma exclusão acidental continua recuperável. Em janeiro e julho (primeiro domingo) o que já não existe no Supabase é removido do R2. Essa limpeza é abortada se a listagem do Supabase vier vazia ou com menos da metade do que o R2 já guarda. Limitação: um arquivo substituído por outro com exatamente o mesmo tamanho não é reenviado.
+
+**Atenção:** o backup inclui os buckets privados (documentos, comprovantes, `confidencial`). Mantenha o bucket do R2 privado e o token restrito a ele.
+
+**Restaurar**
+- Tabela: baixe `db/semanal/<data>/<tabela>.json` (ou `mensal`) pelo painel do R2 ou com `rclone copy` e reimporte (ex.: `upsert` pela API do Supabase). Os JSON são o conteúdo cru das tabelas.
+- Arquivos: `rclone copy r2:<bucket-do-r2>/storage/<bucket-do-supabase> <destino>` e suba de volta pelo Storage do Supabase.
+
 ## Estrutura de pastas
 
 ```
