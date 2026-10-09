@@ -143,3 +143,14 @@
   padding-left: 8px;
   border-left: 2px solid var(--border);
 }
+
+/* Backup: textos de apoio e informação secundária de cada linha (Settings > Backup). */
+.backup-nota,
+.backup-item-info {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.backup-nota {
+  margin: 0;
+}

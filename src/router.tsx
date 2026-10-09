@@ -31,6 +31,7 @@ import { BancoDeLancamentosPage } from './pages/settings/BancoDeLancamentosPage'
 import { ClassificacoesTarefasPage } from './pages/settings/ClassificacoesTarefasPage';
 import { CalendarioPage } from './pages/settings/CalendarioPage';
 import { IconesPage } from './pages/settings/IconesPage';
+import { BackupPage } from './pages/settings/BackupPage';
 
 export const router = createBrowserRouter(
   [
@@ -96,6 +97,7 @@ export const router = createBrowserRouter(
             { path: 'banco-lancamentos', element: <BancoDeLancamentosPage /> },
             { path: 'classificacoes-tarefas', element: <ClassificacoesTarefasPage /> },
             { path: 'calendario', element: <CalendarioPage /> },
+            { path: 'backup', element: <BackupPage /> },
           ],
         },
         { path: '*', element: <Navigate to="/" replace /> },
