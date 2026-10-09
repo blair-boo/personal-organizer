@@ -70,12 +70,13 @@ com `currentColor`) ou `<IconePng arquivo="PNG/nome.png" />` (ilustração color
   provisório: SVG inline simples, criado só em `src/components/IconesProvisorios.tsx`,
   com o comentário `// PROVISORIO: trocar por <nome-sugerido>.svg`. Nunca emoji
   nem caractere solto.
-- Todo substituto provisório entra na lista `ICONES_PENDENTES.md` (raiz do repo)
-  e também na seção "Ícones pendentes" da aba personal-organizer do backlog
-  compartilhado (ver o fim deste arquivo), e deve ser citado na resposta final,
-  para o usuário enviar o arquivo depois.
+- Todo substituto provisório entra na tabela "Ícones pendentes" da aba
+  personal-organizer do backlog compartilhado (ver o fim deste arquivo), com o
+  nome sugerido e, quando der, a imagem do ícone. Essa lista mora só lá: não
+  existe mais `ICONES_PENDENTES.md` no repositório. Citar o ícone na resposta
+  final, para o usuário enviar o arquivo depois.
 - Quando o arquivo for enviado ao bucket, trocar o uso pelo ícone real, remover
-  o substituto de `IconesProvisorios.tsx` e apagar a linha da lista.
+  o substituto de `IconesProvisorios.tsx` e apagar a linha da tabela no backlog.
 
 ## Estilo
 

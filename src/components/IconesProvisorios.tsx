@@ -3,7 +3,7 @@ import type { FuncaoIcone } from '../lib/iconesFuncoes';
 
 /**
  * Substitutos provisórios: SVGs inline para ícones que ainda não existem no
- * bucket `icones`. Cada um tem a linha correspondente em ICONES_PENDENTES.md.
+ * bucket `icones`. Cada um tem a linha correspondente na tabela "Ícones pendentes" do backlog compartilhado.
  * Quando o arquivo for enviado ao bucket, trocar o uso e apagar daqui.
  */
 function Svg({ tamanho, children }: { tamanho: number; children: ReactNode }) {
