@@ -71,7 +71,7 @@ com `currentColor`) ou `<IconePng arquivo="PNG/nome.png" />` (ilustração color
   com o comentário `// PROVISORIO: trocar por <nome-sugerido>.svg`. Nunca emoji
   nem caractere solto.
 - Todo substituto provisório entra na lista `ICONES_PENDENTES.md` (raiz do repo)
-  e também na tabela "personal-organizer: ícones pendentes" do backlog
+  e também na seção "Ícones pendentes" da aba personal-organizer do backlog
   compartilhado (ver o fim deste arquivo), e deve ser citado na resposta final,
   para o usuário enviar o arquivo depois.
 - Quando o arquivo for enviado ao bucket, trocar o uso pelo ícone real, remover
@@ -98,6 +98,27 @@ Classes já disponíveis, preferir a criar equivalente: `.btn-icone`,
   (padrão `caminhoXxx(...)`), nunca string montada dentro do componente.
 - Bucket sempre privado, acesso só autenticado, com policy na migration.
 
+## Offline (Apartamento e Documentos)
+
+Essas duas áreas abrem sem internet (README, seção "Uso offline"). O que isso exige de quem mexe:
+
+- Consulta nova de Apartamento ou Documentos entra na lista fechada
+  `CONSULTAS_OFFLINE` (`src/lib/offline/persistencia.ts`) E no aquecimento
+  (`src/components/AquecimentoOffline.tsx`), senão não existe offline. Finanças
+  não entra, de propósito.
+- Lista de anexos nova (campo `arquivo_url`) entra em `BUCKET_POR_CONSULTA`
+  (`src/lib/offline/arquivos.ts`); o arquivo é guardado pela chave bucket +
+  caminho, nunca pela URL assinada. Abrir ou baixar arquivo passa por
+  `ArquivoLink`/`BotaoBaixarArquivo`, que já usam a cópia local.
+- Mudou o formato de dados de uma consulta guardada: aumentar `VERSAO_DO_CACHE`.
+- Nunca passar de 2^31 - 1 ms em `setTimeout` nem em `gcTime` (cerca de 24,8 dias):
+  o temporizador dispara na hora e o react-query descarta as consultas.
+- O service worker não guarda resposta da API nem arquivo privado (`vite.config.ts`).
+  Dado pessoal guardado no aparelho precisa ser apagado ao sair da conta
+  (`src/lib/offline/limpar.ts`).
+- Sem internet toda alteração é recusada na hora (`onMutate` em `src/main.tsx`).
+  Editar offline com fila é um item do backlog compartilhado, não está feito.
+
 ## Feedback, erros e estados
 
 - Sucesso e erro sempre com `mostrarToast(...)`, erro formatado por
@@ -120,7 +141,8 @@ dizendo que está completo é o pior resultado possível.
 O que combinamos fazer "depois", de todos os projetos, fica no documento
 compartilhado "Backlog dos projetos" (Claude Docs):
 https://claude.ai/code/artifact/16715225-4af5-4a33-8479-1837e75eb556
-Cada projeto tem um tópico (este é "personal-organizer"). Regras:
+Cada projeto tem uma aba (esta é "personal-organizer"), mais a aba "Brain dump"
+para ideias soltas. Regras:
 
 - Quando a usuária disser que algo fica para depois, registrar lá na hora, sem
   ela precisar pedir. Ao fazer um item, apagar a linha.

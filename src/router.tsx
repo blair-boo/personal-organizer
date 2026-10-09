@@ -32,6 +32,7 @@ import { ClassificacoesTarefasPage } from './pages/settings/ClassificacoesTarefa
 import { CalendarioPage } from './pages/settings/CalendarioPage';
 import { IconesPage } from './pages/settings/IconesPage';
 import { BackupPage } from './pages/settings/BackupPage';
+import { AppPage } from './pages/settings/AppPage';
 
 export const router = createBrowserRouter(
   [
@@ -98,6 +99,7 @@ export const router = createBrowserRouter(
             { path: 'classificacoes-tarefas', element: <ClassificacoesTarefasPage /> },
             { path: 'calendario', element: <CalendarioPage /> },
             { path: 'backup', element: <BackupPage /> },
+            { path: 'app', element: <AppPage /> },
           ],
         },
         { path: '*', element: <Navigate to="/" replace /> },

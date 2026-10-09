@@ -6,6 +6,7 @@ import { DialogosProvider } from './Dialogo';
 import { AbasEdicaoProvider, useAbasEdicaoOpcional } from './AbasEdicao';
 import { IconeLua, IconeMonitor, IconeSol } from './IconesProvisorios';
 import { NavAbas } from './NavAbas';
+import { useOffline } from './OfflineContext';
 import { PainelEdicaoAbas } from './PainelEdicaoAbas';
 
 const TEMA_INFO: Record<TemaPref, { titulo: string }> = {
@@ -31,6 +32,37 @@ export function Layout({ children }: { children: ReactNode }) {
   );
 }
 
+function formatarHora(data: Date): string {
+  return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Ponto de conexão e hora da última atualização dos dados; clicar atualiza (e guarda tudo para uso offline). */
+function IndicadorConexao() {
+  const { online, sincronizando, ultimaSincronizacao, sincronizarAgora } = useOffline();
+  const texto = sincronizando
+    ? 'Atualizando…'
+    : !online
+      ? ultimaSincronizacao
+        ? `Sem conexão · dados de ${formatarHora(ultimaSincronizacao)}`
+        : 'Sem conexão'
+      : ultimaSincronizacao
+        ? `Atualizado às ${formatarHora(ultimaSincronizacao)}`
+        : 'Atualizar';
+  return (
+    <button
+      type="button"
+      className="indicador-conexao"
+      onClick={() => void sincronizarAgora()}
+      disabled={sincronizando || !online}
+      title="Atualizar os dados e guardar os arquivos para uso sem internet"
+      aria-label={`${texto}. Atualizar os dados e guardar os arquivos para uso sem internet`}
+    >
+      <span className={`conexao-ponto ${online ? 'conexao-online' : 'conexao-offline'}`} aria-hidden="true" />
+      <span>{texto}</span>
+    </button>
+  );
+}
+
 function LayoutInterno({ children }: { children: ReactNode }) {
   const { signOut } = useAuth();
   const { tema, ciclarTema } = useTema();
@@ -42,6 +74,7 @@ function LayoutInterno({ children }: { children: ReactNode }) {
       <header className="app-header">
         <div className="app-header-top">
           <h1 className="app-title">{APP_NAME}</h1>
+          <IndicadorConexao />
           <button type="button" onClick={ciclarTema} className="tema-toggle" title={TEMA_INFO[tema].titulo} aria-label={TEMA_INFO[tema].titulo}>
             {tema === 'light' ? <IconeSol /> : tema === 'dark' ? <IconeLua /> : <IconeMonitor />}
           </button>

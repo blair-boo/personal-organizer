@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import { BotaoExportarCsv } from '../../components/BotaoExportarCsv';
 import { IconeFuncao } from '../../components/IconeUso';
 import { ModalBase } from '../../components/ModalBase';
 import { CalendarioMensal } from '../../components/CalendarioMensal';
@@ -193,9 +194,23 @@ export function ManutencaoPage() {
   return (
     <div className="settings-secao">
       <h2>Manutenção</h2>
-      <button type="button" onClick={abrirNova}>
-        + Tarefa
-      </button>
+      <div className="apartamento-barra">
+        <button type="button" onClick={abrirNova}>
+          + Tarefa
+        </button>
+        <BotaoExportarCsv
+          nome="Tarefas de manutenção"
+          linhas={tarefas}
+          colunas={[
+            { titulo: 'Nome', valor: (t: TarefaManutencao) => t.nome },
+            { titulo: 'Frequência (dias)', valor: (t: TarefaManutencao) => t.frequencia_dias },
+            { titulo: 'Última execução', valor: (t: TarefaManutencao) => (t.ultima_execucao ? formatarData(t.ultima_execucao) : null) },
+            { titulo: 'Próxima execução', valor: (t: TarefaManutencao) => formatarData(proximaExecucao(t)) },
+            { titulo: 'Ativa', valor: (t: TarefaManutencao) => t.ativo },
+            { titulo: 'Classificações', valor: (t: TarefaManutencao) => (tarefaClassificacoes?.get(t.id) ?? []).map((c) => c.nome).join(' | ') },
+          ]}
+        />
+      </div>
 
       {isLoading ? (
         <p>Carregando…</p>

@@ -32,6 +32,7 @@ export const ABAS_PADRAO: Record<GrupoAbas, AbaPadrao[]> = {
     { chave: 'settings:classificacoes-tarefas', rotulo: 'Classificações de Tarefas' },
     { chave: 'settings:calendario', rotulo: 'Calendário' },
     { chave: 'settings:backup', rotulo: 'Backup' },
+    { chave: 'settings:app', rotulo: 'App' },
   ],
   financas: [
     { chave: 'financas:conta-corrente', rotulo: 'Conta Corrente' },

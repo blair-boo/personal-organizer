@@ -59,6 +59,22 @@ categorizar um lançamento na revisão, a escolha fica salva no "banco de
 lançamentos" (Settings → Banco de Lançamentos): da próxima vez que aparecer
 uma descrição parecida, a categoria já vem preenchida sozinha.
 
+## Uso offline (Apartamento e Documentos)
+
+Apartamento e Documentos abrem sem internet, anexos incluídos. Finanças precisa de internet.
+
+- **O que fica no aparelho:** as consultas dessas duas áreas (IndexedDB, via `@tanstack/react-query-persist-client`, lista fechada em `src/lib/offline/persistencia.ts`) e os arquivos anexados (Cache Storage `arquivos-offline`, em `src/lib/offline/arquivos.ts`). Os arquivos não podem usar o cache do service worker porque os buckets são privados e a URL assinada muda a cada acesso.
+- **Como fica sincronizado:** com internet, `OfflineProvider` (`src/components/OfflineContext.tsx`) busca as consultas e baixa só os anexos que faltam ou mudaram, ao abrir o app, quando a conexão volta, ao voltar pro app depois de 30 min e quando um anexo novo aparece. Clicar no indicador do cabeçalho ("Atualizado às HH:MM") faz isso na hora.
+- **Sem internet:** o app usa o que está guardado. Alterações são recusadas com o aviso "Sem conexão com a internet. Esta ação precisa de internet." (editar offline fica para depois, ver o backlog compartilhado). Um arquivo só abre offline se já foi sincronizado.
+- **Sessão:** o token de acesso vence em ~1 h; sem internet ele não renova. O app mantém você logado com a sessão guardada (`src/auth/sessaoGuardada.ts`) e renova quando a internet volta.
+- **Settings → App:** verificar atualização do app, sincronizar, Recarregar tudo (apaga os arquivos guardados e baixa tudo de novo), Apagar dados offline e Esvaziar cache (nunca apaga os dados offline e é recusado sem internet, para o app continuar abrindo).
+- **Privacidade:** os dados guardados incluem os documentos, sem criptografia, no armazenamento do próprio navegador. Sair da conta apaga tudo (dados, arquivos e caches antigos). O service worker não guarda mais respostas da API nem arquivos privados.
+- **Se mudar o formato de uma consulta guardada:** aumente `VERSAO_DO_CACHE` em `persistencia.ts`; o que estava guardado é descartado.
+
+## Exportar CSV
+
+Botão de exportar no topo de Itens, Projetos e Manutenção (Apartamento). Separador `;`, vírgula decimal e UTF-8 com BOM (abre direto no Excel em português). Texto que começaria com `=`, `+`, `-` ou `@` ganha um apóstrofo, para a planilha não executar como fórmula. Documentos ficam fora de propósito (têm campos sensíveis).
+
 ## Backup para o Cloudflare R2
 
 O workflow `.github/workflows/backup.yml` roda todo domingo (06:00 UTC, 03:00 em Brasília) e também sob demanda (Actions → Backup → Run workflow). O código está em `scripts/backup-supabase.mjs`. O agendamento só roda a partir da branch padrão do repositório.
