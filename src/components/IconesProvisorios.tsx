@@ -111,6 +111,30 @@ export function IconeExportar({ tamanho = 16 }: Props) {
 }
 
 // PROVISORIO: trocar por gear.svg
+// PROVISORIO: trocar por camera.svg
+export function IconeCamera({ tamanho = 16 }: Props) {
+  return (
+    <Svg tamanho={tamanho}>
+      <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </Svg>
+  );
+}
+
+// PROVISORIO: trocar por qr-code.svg
+export function IconeQr({ tamanho = 16 }: Props) {
+  return (
+    <Svg tamanho={tamanho}>
+      <rect x="4" y="4" width="6" height="6" />
+      <rect x="14" y="4" width="6" height="6" />
+      <rect x="4" y="14" width="6" height="6" />
+      <path d="M14 14h2v2h-2z" />
+      <path d="M18 14h2v6h-4" />
+      <path d="M14 18v2" />
+    </Svg>
+  );
+}
+
 export function IconeEngrenagem({ tamanho = 16 }: Props) {
   return (
     <Svg tamanho={tamanho}>

@@ -16,6 +16,11 @@ import { useTodosItemTags } from '../hooks/useItemTags';
 import { useItens } from '../hooks/useItens';
 import { useProjetoAnexos } from '../hooks/useProjetoAnexos';
 import { useProjetos } from '../hooks/useProjetos';
+import { useStorageAnexos } from '../hooks/useStorageAnexos';
+import { useStorageCaixas } from '../hooks/useStorageCaixas';
+import { useStorageCategorias } from '../hooks/useStorageCategorias';
+import { useStorageItens } from '../hooks/useStorageItens';
+import { useStorageObs } from '../hooks/useStorageObs';
 import { useTagsItens } from '../hooks/useTagsItens';
 import { useTarefasManutencao } from '../hooks/useTarefasManutencao';
 import { useTodasTarefaClassificacoes } from '../hooks/useTarefaClassificacoes';
@@ -59,7 +64,7 @@ function AquecerDocumentos({ area, pessoaId }: { area: AreaDocumento; pessoaId?:
 
 /**
  * Não desenha nada: monta, por pouco tempo, as mesmas consultas que as telas de
- * Apartamento e Documentos usam, pra elas serem buscadas (e guardadas no cache
+ * Apartamento, Documentos e Storage usam, pra elas serem buscadas (e guardadas no cache
  * offline) mesmo sem a usuária ter aberto cada tela. Avisa `onTerminou` quando
  * as buscas assentam; quem monta este componente o desmonta em seguida.
  */
@@ -68,6 +73,11 @@ export function AquecimentoOffline({ onTerminou }: { onTerminou: () => void }) {
   const projetos = useProjetos();
   const tarefas = useTarefasManutencao();
   const pessoas = useDocumentosPessoas();
+  const caixas = useStorageCaixas();
+  useStorageItens();
+  useStorageObs();
+  useStorageAnexos();
+  useStorageCategorias();
   useTagsItens();
   useTodosItemTags();
   useClassificacoesTarefas();
@@ -77,7 +87,7 @@ export function AquecimentoOffline({ onTerminou }: { onTerminou: () => void }) {
   useIconesUsos();
 
   const buscando = useIsFetching({ predicate: (consulta) => chaveFicaOffline(consulta.queryKey) });
-  const topoAssentado = [itens, projetos, tarefas, pessoas].every((q) => q.status !== 'pending');
+  const topoAssentado = [itens, projetos, tarefas, pessoas, caixas].every((q) => q.status !== 'pending');
 
   useEffect(() => {
     if (buscando > 0 || !topoAssentado) return;

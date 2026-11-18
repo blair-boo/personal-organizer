@@ -20,6 +20,8 @@ import { ItensPage } from './pages/apartamento/ItensPage';
 import { ProjetosPage } from './pages/apartamento/ProjetosPage';
 import { ManutencaoPage } from './pages/apartamento/ManutencaoPage';
 
+import { StoragePage } from './pages/storage/StoragePage';
+
 import { DocumentosLayout } from './pages/documentos/DocumentosLayout';
 import { DocumentosPessoaisPage } from './pages/documentos/DocumentosPessoaisPage';
 import { DocumentosAreaPage } from './pages/documentos/DocumentosAreaPage';
@@ -76,6 +78,7 @@ export const router = createBrowserRouter(
             { path: 'manutencao', element: <ManutencaoPage /> },
           ],
         },
+        { path: 'storage', element: <StoragePage /> },
         {
           path: 'documentos',
           element: <DocumentosLayout />,

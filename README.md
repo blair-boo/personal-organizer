@@ -59,17 +59,27 @@ categorizar um lançamento na revisão, a escolha fica salva no "banco de
 lançamentos" (Settings → Banco de Lançamentos): da próxima vez que aparecer
 uma descrição parecida, a categoria já vem preenchida sozinha.
 
-## Uso offline (Apartamento e Documentos)
+## Uso offline (Apartamento, Documentos e Storage)
 
-Apartamento e Documentos abrem sem internet, anexos incluídos. Finanças precisa de internet.
+Apartamento, Documentos e Storage abrem sem internet, anexos incluídos. Finanças precisa de internet.
 
-- **O que fica no aparelho:** as consultas dessas duas áreas (IndexedDB, via `@tanstack/react-query-persist-client`, lista fechada em `src/lib/offline/persistencia.ts`) e os arquivos anexados (Cache Storage `arquivos-offline`, em `src/lib/offline/arquivos.ts`). Os arquivos não podem usar o cache do service worker porque os buckets são privados e a URL assinada muda a cada acesso.
+- **O que fica no aparelho:** as consultas dessas áreas (IndexedDB, via `@tanstack/react-query-persist-client`, lista fechada em `src/lib/offline/persistencia.ts`) e os arquivos anexados (Cache Storage `arquivos-offline`, em `src/lib/offline/arquivos.ts`). Os arquivos não podem usar o cache do service worker porque os buckets são privados e a URL assinada muda a cada acesso.
 - **Como fica sincronizado:** com internet, `OfflineProvider` (`src/components/OfflineContext.tsx`) busca as consultas e baixa só os anexos que faltam ou mudaram, ao abrir o app, quando a conexão volta, ao voltar pro app depois de 30 min e quando um anexo novo aparece. Clicar no indicador do cabeçalho ("Atualizado às HH:MM") faz isso na hora.
 - **Sem internet:** o app usa o que está guardado. Alterações são recusadas com o aviso "Sem conexão com a internet. Esta ação precisa de internet." (editar offline fica para depois, ver o backlog compartilhado). Um arquivo só abre offline se já foi sincronizado.
 - **Sessão:** o token de acesso vence em ~1 h; sem internet ele não renova. O app mantém você logado com a sessão guardada (`src/auth/sessaoGuardada.ts`) e renova quando a internet volta.
 - **Settings → App:** verificar atualização do app, sincronizar, Recarregar tudo (apaga os arquivos guardados e baixa tudo de novo), Apagar dados offline e Esvaziar cache (nunca apaga os dados offline e é recusado sem internet, para o app continuar abrindo).
 - **Privacidade:** os dados guardados incluem os documentos, sem criptografia, no armazenamento do próprio navegador. Sair da conta apaga tudo (dados, arquivos e caches antigos). O service worker não guarda mais respostas da API nem arquivos privados.
 - **Se mudar o formato de uma consulta guardada:** aumente `VERSAO_DO_CACHE` em `persistencia.ts`; o que estava guardado é descartado.
+
+## Storage (caixas com etiqueta)
+
+Aba **Storage**, ao lado de Apartamento: cadastro de caixas e do que há dentro de cada uma (itens com quantidade opcional, classificação, observações e fotos/anexos). Cada caixa tem um código (`C-014`) que vira a etiqueta.
+
+- **Ler código:** abre a câmera e lê o rMQR (ou QR comum) da etiqueta; mostra o conteúdo da caixa. Também lê de uma imagem.
+- **Nova caixa / Etiqueta:** cadastra a caixa e gera a etiqueta em rMQR (retangular, cabe em fita estreita). O PNG baixado tem módulos grandes para imprimir sem borrar.
+- **Biblioteca:** `zxing-wasm` (`src/lib/rmqr.ts`). Os `.wasm` vão no próprio app e entram no precache do service worker (`vite.config.ts`), então ler e gerar funcionam sem internet. O código é carregado só quando a tela do leitor ou da etiqueta abre.
+- **Dados:** tabelas `storage`, `storage_categorias`, `storage_itens`, `storage_obs` e `storage_anexos` (migration `0017_storage.sql`). Os arquivos ficam no bucket privado `confidencial`, subpasta `storage/`.
+- **Offline:** as cinco consultas estão em `CONSULTAS_OFFLINE` e no aquecimento, e `storage_anexos` em `BUCKET_POR_CONSULTA`.
 
 ## Exportar CSV
 

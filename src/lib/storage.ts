@@ -32,6 +32,12 @@ export async function removerArquivo(bucket: string, caminho: string): Promise<v
   if (error) throw error;
 }
 
+export async function removerArquivos(bucket: string, caminhos: string[]): Promise<void> {
+  if (caminhos.length === 0) return;
+  const { error } = await supabase.storage.from(bucket).remove(caminhos);
+  if (error) throw error;
+}
+
 /** Caminho de um documento de item (nota fiscal/manual/outro), seguindo a convenção {nome}_nf / _manual / _outros. */
 export function caminhoDocumentoItem(itemId: string, nomeItem: string, tipo: 'nota_fiscal' | 'manual' | 'outro', arquivo: File): string {
   const slug = slugify(nomeItem);
@@ -64,6 +70,13 @@ export function caminhoAnexoDocumento(subpasta: string, documentoId: string, nom
   const slug = slugify(nomeAnexo) || 'anexo';
   const ext = extensaoDe(arquivo.name);
   return `${subpasta}/${documentoId}/${slug}-${Date.now()}.${ext}`;
+}
+
+/** Caminho de um anexo de item de caixa (bucket confidencial), seguindo a convenção storage/{itemId}/{slug}-{timestamp}.{ext}. */
+export function caminhoAnexoStorage(itemId: string, nomeAnexo: string, arquivo: File): string {
+  const slug = slugify(nomeAnexo) || 'anexo';
+  const ext = extensaoDe(arquivo.name);
+  return `storage/${itemId}/${slug}-${Date.now()}.${ext}`;
 }
 
 /** Caminho de um ícone no bucket `icones` (pasta '' = raiz/SVG, 'PNG' = ilustrações). */

@@ -169,6 +169,44 @@ export interface DocumentoAnexo {
   nome_arquivo: string;
 }
 
+export interface CaixaStorage {
+  id: string;
+  /** Número da caixa; o código da etiqueta (C-014) sai dele. */
+  numero: number;
+  nome: string;
+  ordem: number;
+}
+
+export interface CategoriaStorage {
+  id: string;
+  nome: string;
+  ordem: number;
+}
+
+export interface ItemStorage {
+  id: string;
+  storage_id: string;
+  nome: string;
+  quantidade: number | null;
+  categoria_id: string | null;
+  ordem: number;
+}
+
+export interface ObsStorage {
+  id: string;
+  item_id: string;
+  texto: string;
+  ordem: number;
+}
+
+export interface AnexoStorage {
+  id: string;
+  item_id: string;
+  nome: string;
+  arquivo_url: string;
+  nome_arquivo: string;
+}
+
 export interface IconeArquivo {
   id: string;
   nome: string;

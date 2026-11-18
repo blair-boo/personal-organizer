@@ -18,6 +18,13 @@ describe('resolverAbas', () => {
   });
 });
 
+describe('abas principais', () => {
+  it('põe Storage logo depois de Apartamento', () => {
+    const nomes = resolverAbas('principal', []).map((a) => a.nome);
+    expect(nomes).toEqual(['Finanças', 'Apartamento', 'Storage', 'Documentos', 'Settings']);
+  });
+});
+
 describe('nomeVazioInvalido', () => {
   it('exige nome quando não há ícone', () => {
     expect(nomeVazioInvalido('', false)).toBe(true);
