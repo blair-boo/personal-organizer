@@ -18,9 +18,9 @@ const caixas: CaixaStorage[] = [
   { id: 'c3', numero: 3, nome: 'Vazia', ordem: 3 },
 ];
 const itens: ItemStorage[] = [
-  { id: 'i1', storage_id: 'c1', nome: 'Panela', quantidade: 2, categoria_id: null, ordem: 2 },
-  { id: 'i2', storage_id: 'c1', nome: 'Colher', quantidade: null, categoria_id: null, ordem: 1 },
-  { id: 'i3', storage_id: 'c2', nome: 'Martelo', quantidade: 1, categoria_id: null, ordem: 1 },
+  { id: 'i1', storage_id: 'c1', nome: 'Panela', quantidade: 2, tag_id: null, ordem: 2 },
+  { id: 'i2', storage_id: 'c1', nome: 'Colher', quantidade: null, tag_id: null, ordem: 1 },
+  { id: 'i3', storage_id: 'c2', nome: 'Martelo', quantidade: 1, tag_id: null, ordem: 1 },
 ];
 
 describe('codigoDaCaixa e numeroDoCodigo', () => {
@@ -72,7 +72,7 @@ describe('moverItem', () => {
     expect(moverItem(layout, 'i2', 'c1', 'i1').itens.c1).toEqual(['i1', 'i2']);
     const tres = criarLayout(
       [{ id: 'c', numero: 1, nome: 'C', ordem: 1 }],
-      ['a', 'b', 'c'].map((id, i) => ({ id, storage_id: 'c', nome: id, quantidade: null, categoria_id: null, ordem: i + 1 }))
+      ['a', 'b', 'c'].map((id, i) => ({ id, storage_id: 'c', nome: id, quantidade: null, tag_id: null, ordem: i + 1 }))
     );
     expect(moverItem(tres, 'a', 'c', 'c').itens.c).toEqual(['b', 'c', 'a']);
     expect(moverItem(tres, 'c', 'c', 'a').itens.c).toEqual(['c', 'a', 'b']);
