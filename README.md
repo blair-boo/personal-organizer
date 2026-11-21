@@ -73,14 +73,14 @@ Apartamento, Documentos e Storage abrem sem internet, anexos incluídos. Finanç
 
 ## Storage (caixas com etiqueta)
 
-Aba **Storage**, ao lado de Apartamento: cadastro de caixas e do que há dentro de cada uma (itens com quantidade opcional, classificação, observações e fotos/anexos). Cada caixa tem um código (`C-014`) que vira a etiqueta.
+Aba **Storage**, ao lado de Apartamento: cadastro de caixas e do que há dentro de cada uma (itens com quantidade opcional, tag, observações e fotos/anexos). Cada caixa tem um código (`C-014`) que vira a etiqueta.
 
 - **Ler código:** abre a câmera e lê o rMQR (ou QR comum) da etiqueta; mostra o conteúdo da caixa. Também lê de uma imagem.
-- **Classificações:** botão ao lado da busca; criar, renomear, reordenar e excluir (modo vassoura, pendente até salvar). Excluir deixa os itens sem classificação.
+- **Tags:** o item da caixa usa as mesmas tags (cômodos) dos itens de Apartamento (`tags_itens`, geridas em Settings). Excluir uma tag deixa os itens sem tag.
 - **Nova caixa / Etiqueta:** cadastra a caixa e gera a etiqueta em rMQR (retangular, cabe em fita estreita). O PNG baixado tem módulos grandes para imprimir sem borrar.
 - **Biblioteca:** `zxing-wasm` (`src/lib/rmqr.ts`). Os `.wasm` vão no próprio app e entram no precache do service worker (`vite.config.ts`), então ler e gerar funcionam sem internet. O código é carregado só quando a tela do leitor ou da etiqueta abre.
-- **Dados:** tabelas `storage`, `storage_categorias`, `storage_itens`, `storage_obs` e `storage_anexos` (migration `0017_storage.sql`). Os arquivos ficam no bucket privado `confidencial`, subpasta `storage/`.
-- **Offline:** as cinco consultas estão em `CONSULTAS_OFFLINE` e no aquecimento, e `storage_anexos` em `BUCKET_POR_CONSULTA`.
+- **Dados:** tabelas `storage`, `storage_itens`, `storage_obs` e `storage_anexos` (migrations `0017_storage.sql` e `0018_storage_usa_tags_itens.sql`). Os arquivos ficam no bucket privado `confidencial`, subpasta `storage/`.
+- **Offline:** as consultas de Storage estão em `CONSULTAS_OFFLINE` e no aquecimento, e `storage_anexos` em `BUCKET_POR_CONSULTA`.
 
 ## Exportar CSV
 

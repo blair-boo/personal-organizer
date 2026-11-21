@@ -6,11 +6,8 @@ import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
 import { caminhoAnexoStorage, enviarArquivo, removerArquivo, removerArquivos } from '../../lib/storage';
 import { BUCKET_STORAGE, useSalvarCaixa, type ItemParaSalvar } from '../../hooks/useStorageCaixas';
-import { useCriarCategoriaStorage } from '../../hooks/useStorageCategorias';
-import type { AnexoStorage, CaixaStorage, CategoriaStorage } from '../../types';
+import type { AnexoStorage, CaixaStorage, TagItem } from '../../types';
 import type { DadosStorage } from './CaixaConteudo';
-
-const NOVA_CATEGORIA = '__nova__';
 
 interface RascunhoAnexo {
   chave: string;
@@ -32,7 +29,7 @@ interface RascunhoItem {
   existente: boolean;
   nome: string;
   quantidade: string;
-  categoriaId: string;
+  tagId: string;
   obs: RascunhoObs[];
   anexos: RascunhoAnexo[];
   anexosRemovidos: AnexoStorage[];
@@ -40,7 +37,7 @@ interface RascunhoItem {
 }
 
 function novoItem(): RascunhoItem {
-  return { id: crypto.randomUUID(), existente: false, nome: '', quantidade: '', categoriaId: '', obs: [], anexos: [], anexosRemovidos: [], anexosAbertos: false };
+  return { id: crypto.randomUUID(), existente: false, nome: '', quantidade: '', tagId: '', obs: [], anexos: [], anexosRemovidos: [], anexosAbertos: false };
 }
 
 function itensIniciais(caixa: CaixaStorage | null, dados: DadosStorage): RascunhoItem[] {
@@ -50,7 +47,7 @@ function itensIniciais(caixa: CaixaStorage | null, dados: DadosStorage): Rascunh
     existente: true,
     nome: item.nome,
     quantidade: item.quantidade === null ? '' : String(item.quantidade),
-    categoriaId: item.categoria_id ?? '',
+    tagId: item.tag_id ?? '',
     obs: (dados.obsPorItem.get(item.id) ?? []).map((o) => ({ chave: o.id, texto: o.texto })),
     anexos: (dados.anexosPorItem.get(item.id) ?? []).map((a) => ({
       chave: a.id,
@@ -70,7 +67,7 @@ function assinatura(nome: string, itens: RascunhoItem[], removidos: string[]): s
   return JSON.stringify([
     nome,
     removidos,
-    itens.map((i) => [i.id, i.nome, i.quantidade, i.categoriaId, i.obs.map((o) => o.texto), i.anexos.map((a) => a.chave), i.anexosRemovidos.length]),
+    itens.map((i) => [i.id, i.nome, i.quantidade, i.tagId, i.obs.map((o) => o.texto), i.anexos.map((a) => a.chave), i.anexosRemovidos.length]),
   ]);
 }
 
@@ -82,7 +79,8 @@ interface CaixaModalProps {
   /** null = caixa nova. */
   caixa: CaixaStorage | null;
   dados: DadosStorage;
-  categorias: CategoriaStorage[];
+  /** Tags (cômodos), as mesmas dos itens de Apartamento. */
+  tags: TagItem[];
   /** Posição da caixa nova (última + 1). */
   ordemNova: number;
   onFechar: () => void;
@@ -90,12 +88,11 @@ interface CaixaModalProps {
   onSalvo: (caixaId: string) => void;
 }
 
-/** Formulário da caixa: nome e lista de itens (nome, quantidade, classificação, observações e anexos). Padrões A e B da skill padrao-ps. */
-export function CaixaModal({ caixa, dados, categorias, ordemNova, onFechar, onSalvo }: CaixaModalProps) {
-  const { confirmar, pedirTexto } = useDialogos();
+/** Formulário da caixa: nome e lista de itens (nome, quantidade, tag, observações e anexos). Padrões A e B da skill padrao-ps. */
+export function CaixaModal({ caixa, dados, tags, ordemNova, onFechar, onSalvo }: CaixaModalProps) {
+  const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
   const salvarCaixa = useSalvarCaixa();
-  const criarCategoria = useCriarCategoriaStorage();
 
   // O id nasce no navegador pra os anexos enviados durante a criação já terem a pasta certa.
   const [caixaId] = useState(() => caixa?.id ?? crypto.randomUUID());
@@ -115,26 +112,6 @@ export function CaixaModal({ caixa, dados, categorias, ordemNova, onFechar, onSa
 
   function atualizarItem(id: string, patch: Partial<RascunhoItem>) {
     setItens((atual) => atual.map((i) => (i.id === id ? { ...i, ...patch } : i)));
-  }
-
-  async function escolherCategoria(item: RascunhoItem, valor: string) {
-    if (valor !== NOVA_CATEGORIA) {
-      atualizarItem(item.id, { categoriaId: valor });
-      return;
-    }
-    const nomeNovo = await pedirTexto({ titulo: 'Nova classificação', mensagem: 'Nome da classificação', confirmarRotulo: 'Criar' });
-    if (!nomeNovo?.trim()) return;
-    const existente = categorias.find((c) => c.nome.toLowerCase() === nomeNovo.trim().toLowerCase());
-    if (existente) {
-      atualizarItem(item.id, { categoriaId: existente.id });
-      return;
-    }
-    try {
-      const criada = await criarCategoria.mutateAsync({ nome: nomeNovo.trim(), ordem: categorias.length + 1 });
-      atualizarItem(item.id, { categoriaId: criada.id });
-    } catch (err) {
-      mostrarToast(mensagemDeErro(err), 'erro');
-    }
   }
 
   async function removerItem(item: RascunhoItem) {
@@ -185,7 +162,7 @@ export function CaixaModal({ caixa, dados, categorias, ordemNova, onFechar, onSa
       mostrarToast('Dê um nome à caixa.', 'erro');
       return;
     }
-    const preenchidos = itens.filter((i) => i.nome.trim() || i.quantidade.trim() || i.obs.some((o) => o.texto.trim()) || i.anexos.length > 0 || i.categoriaId);
+    const preenchidos = itens.filter((i) => i.nome.trim() || i.quantidade.trim() || i.obs.some((o) => o.texto.trim()) || i.anexos.length > 0 || i.tagId);
     if (preenchidos.some((i) => !i.nome.trim())) {
       mostrarToast('Dê um nome ao item antes de salvar.', 'erro');
       return;
@@ -200,7 +177,7 @@ export function CaixaModal({ caixa, dados, categorias, ordemNova, onFechar, onSa
       id: i.id,
       nome: i.nome.trim(),
       quantidade: i.quantidade.trim() ? Number(i.quantidade.trim()) : null,
-      categoria_id: i.categoriaId || null,
+      tag_id: i.tagId || null,
       obs: i.obs.map((o) => o.texto.trim()).filter(Boolean),
       anexosNovos: i.anexos.filter((a) => !a.existente).map((a) => ({ nome: a.nome, arquivo_url: a.caminho, nome_arquivo: a.nomeArquivo })),
       anexosRemovidos: i.anexosRemovidos,
@@ -238,9 +215,8 @@ export function CaixaModal({ caixa, dados, categorias, ordemNova, onFechar, onSa
           <LinhaItem
             key={item.id}
             item={item}
-            categorias={categorias}
+            tags={tags}
             onChange={(patch) => atualizarItem(item.id, patch)}
-            onCategoria={(valor) => escolherCategoria(item, valor)}
             onRemover={() => removerItem(item)}
           />
         ))}
@@ -264,15 +240,13 @@ export function CaixaModal({ caixa, dados, categorias, ordemNova, onFechar, onSa
 
 function LinhaItem({
   item,
-  categorias,
+  tags,
   onChange,
-  onCategoria,
   onRemover,
 }: {
   item: RascunhoItem;
-  categorias: CategoriaStorage[];
+  tags: TagItem[];
   onChange: (patch: Partial<RascunhoItem>) => void;
-  onCategoria: (valor: string) => void;
   onRemover: () => void;
 }) {
   const rotulo = item.nome || 'item sem nome';
@@ -300,14 +274,13 @@ function LinhaItem({
         </button>
       </div>
       <div className="storage-form-item-linha">
-        <select value={item.categoriaId} onChange={(e) => onCategoria(e.target.value)} aria-label={`Classificação de ${rotulo}`}>
-          <option value="">Sem classificação</option>
-          {categorias.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nome}
+        <select value={item.tagId} onChange={(e) => onChange({ tagId: e.target.value })} aria-label={`Tag de ${rotulo}`}>
+          <option value="">Sem tag</option>
+          {tags.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.nome}
             </option>
           ))}
-          <option value={NOVA_CATEGORIA}>+ Nova classificação…</option>
         </select>
         <button
           type="button"

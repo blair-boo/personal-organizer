@@ -40,7 +40,7 @@ export interface ItemParaSalvar {
   id: string;
   nome: string;
   quantidade: number | null;
-  categoria_id: string | null;
+  tag_id: string | null;
   obs: string[];
   anexosNovos: AnexoNovo[];
   anexosRemovidos: AnexoStorage[];
@@ -87,7 +87,7 @@ export function useSalvarCaixa() {
         storage_id: id,
         nome: item.nome,
         quantidade: item.quantidade,
-        categoria_id: item.categoria_id,
+        tag_id: item.tag_id,
         ordem: indice + 1,
       }));
       const { error: erroItens } = await supabase.from('storage_itens').upsert(linhasItens);

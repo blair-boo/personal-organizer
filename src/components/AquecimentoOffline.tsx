@@ -18,7 +18,6 @@ import { useProjetoAnexos } from '../hooks/useProjetoAnexos';
 import { useProjetos } from '../hooks/useProjetos';
 import { useStorageAnexos } from '../hooks/useStorageAnexos';
 import { useStorageCaixas } from '../hooks/useStorageCaixas';
-import { useStorageCategorias } from '../hooks/useStorageCategorias';
 import { useStorageItens } from '../hooks/useStorageItens';
 import { useStorageObs } from '../hooks/useStorageObs';
 import { useTagsItens } from '../hooks/useTagsItens';
@@ -77,7 +76,6 @@ export function AquecimentoOffline({ onTerminou }: { onTerminou: () => void }) {
   useStorageItens();
   useStorageObs();
   useStorageAnexos();
-  useStorageCategorias();
   useTagsItens();
   useTodosItemTags();
   useClassificacoesTarefas();

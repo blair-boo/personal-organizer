@@ -61,12 +61,12 @@
 }
 
 .storage-item-quantidade,
-.storage-item-categoria {
+.storage-item-tag {
   font-size: 12px;
   opacity: 0.75;
 }
 
-.storage-item-categoria {
+.storage-item-tag {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0 8px;
@@ -186,18 +186,4 @@
 .storage-area-soltar-ativa {
   opacity: 1;
   border-color: var(--accent-border);
-}
-
-/* Modal de classificações */
-
-.storage-lista-classificacoes {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.storage-espaco {
-  flex: 1;
 }

@@ -33,11 +33,10 @@ import { useAplicarEdicaoStorage, useStorageCaixas } from '../../hooks/useStorag
 import { useStorageItens } from '../../hooks/useStorageItens';
 import { useStorageObs } from '../../hooks/useStorageObs';
 import { useStorageAnexos } from '../../hooks/useStorageAnexos';
-import { useStorageCategorias } from '../../hooks/useStorageCategorias';
+import { useTagsItens } from '../../hooks/useTagsItens';
 import type { AnexoStorage, CaixaStorage, ItemStorage, ObsStorage } from '../../types';
 import { CaixaConteudo, type DadosStorage } from './CaixaConteudo';
 import { CaixaModal } from './CaixaModal';
-import { ClassificacoesModal } from './ClassificacoesModal';
 import { EtiquetaModal } from './EtiquetaModal';
 import { LeitorModal } from './LeitorModal';
 
@@ -194,7 +193,7 @@ export function StoragePage() {
   const itensQ = useStorageItens();
   const obsQ = useStorageObs();
   const anexosQ = useStorageAnexos();
-  const categoriasQ = useStorageCategorias();
+  const tagsQ = useTagsItens();
   const aplicarEdicao = useAplicarEdicaoStorage();
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
@@ -214,7 +213,6 @@ export function StoragePage() {
   const [caixaModal, setCaixaModal] = useState<{ caixa: CaixaStorage | null } | null>(null);
   const [etiquetaDe, setEtiquetaDe] = useState<CaixaStorage | null>(null);
   const [detalheId, setDetalheId] = useState<string | null>(null);
-  const [classificacoesAberto, setClassificacoesAberto] = useState(false);
 
   const caixas = useMemo(() => caixasQ.data ?? [], [caixasQ.data]);
   const itens = useMemo(() => itensQ.data ?? [], [itensQ.data]);
@@ -230,9 +228,9 @@ export function StoragePage() {
       itensPorCaixa,
       obsPorItem: agrupar<ObsStorage>(obsQ.data ?? [], (o) => o.item_id),
       anexosPorItem: agrupar<AnexoStorage>(anexosQ.data ?? [], (a) => a.item_id),
-      categoriaPorId: new Map((categoriasQ.data ?? []).map((c) => [c.id, c])),
+      tagPorId: new Map((tagsQ.data ?? []).map((t) => [t.id, t])),
     };
-  }, [caixas, itens, obsQ.data, anexosQ.data, categoriasQ.data]);
+  }, [caixas, itens, obsQ.data, anexosQ.data, tagsQ.data]);
 
   const layoutBase = useMemo(() => criarLayout(caixas, itens), [caixas, itens]);
   const layout = layoutLocal ?? layoutBase;
@@ -246,8 +244,8 @@ export function StoragePage() {
   const idsNaBusca = useMemo(() => idsDeCaixasNaBusca(caixas, itens, q), [caixas, itens, q]);
   const caixasVisiveis = layout.caixas.map((id) => caixaPorId.get(id)).filter((c): c is CaixaStorage => !!c && idsNaBusca.has(c.id));
 
-  const carregando = caixasQ.isLoading || itensQ.isLoading || obsQ.isLoading || anexosQ.isLoading || categoriasQ.isLoading;
-  const erro = caixasQ.error ?? itensQ.error ?? obsQ.error ?? anexosQ.error ?? categoriasQ.error;
+  const carregando = caixasQ.isLoading || itensQ.isLoading || obsQ.isLoading || anexosQ.isLoading || tagsQ.isLoading;
+  const erro = caixasQ.error ?? itensQ.error ?? obsQ.error ?? anexosQ.error ?? tagsQ.error;
 
   function nomeAtual(caixa: CaixaStorage): string {
     return renomeacoes.get(caixa.id) ?? caixa.nome;
@@ -412,9 +410,6 @@ export function StoragePage() {
           aria-label="Buscar caixa ou item"
           disabled={modoEdicao}
         />
-        <button type="button" onClick={() => setClassificacoesAberto(true)} disabled={modoEdicao}>
-          Classificações
-        </button>
         <button
           type="button"
           className={`btn-icone${modoEdicao ? ' documentos-modo-ativo' : ''}`}
@@ -509,7 +504,7 @@ export function StoragePage() {
           key={caixaModal.caixa?.id ?? 'nova'}
           caixa={caixaModal.caixa}
           dados={dados}
-          categorias={categoriasQ.data ?? []}
+          tags={tagsQ.data ?? []}
           ordemNova={ordemNova}
           onFechar={() => setCaixaModal(null)}
           onSalvo={(id) => {
@@ -519,8 +514,6 @@ export function StoragePage() {
           }}
         />
       )}
-
-      {classificacoesAberto && <ClassificacoesModal categorias={categoriasQ.data ?? []} itens={itens} onFechar={() => setClassificacoesAberto(false)} />}
 
       {etiquetaDe && <EtiquetaModal caixa={etiquetaDe} onFechar={() => setEtiquetaDe(null)} />}
 
