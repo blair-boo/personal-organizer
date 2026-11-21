@@ -34,7 +34,8 @@ export default defineConfig(({ command }) => ({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // wasm: leitor e gerador de rMQR (Storage) precisam abrir sem internet.
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,wasm}'],
         // pdfjs-dist (chunk + worker) só é baixado quando ela realmente importa um
         // PDF — sem isso o precache inicial do PWA baixaria +1MB pra quem nunca
         // usa a importação financeira. Fica disponível via rede normal na primeira

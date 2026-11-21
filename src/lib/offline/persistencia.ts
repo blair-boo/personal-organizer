@@ -4,7 +4,7 @@ import type { PersistedClient, Persister } from '@tanstack/react-query-persist-c
 
 /**
  * Consultas que ficam guardadas no aparelho pra o app abrir sem internet:
- * Apartamento e Documentos, mais o que a interface precisa pra se desenhar
+ * Apartamento, Documentos e Storage, mais o que a interface precisa pra se desenhar
  * (abas e ícones). Lista fechada de propósito: consulta nova (principalmente de
  * Finanças, que não precisa de offline) só entra aqui se alguém decidir.
  */
@@ -18,6 +18,11 @@ const CONSULTAS_OFFLINE = new Set([
   'tarefas_manutencao',
   'classificacoes_tarefas',
   'tarefa_classificacoes',
+  'storage',
+  'storage_categorias',
+  'storage_itens',
+  'storage_obs',
+  'storage_anexos',
   'documentos',
   'documentos_pessoas',
   'documentos_proximos_vencimentos',
