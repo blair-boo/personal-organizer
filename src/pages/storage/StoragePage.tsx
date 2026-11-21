@@ -37,6 +37,7 @@ import { useStorageCategorias } from '../../hooks/useStorageCategorias';
 import type { AnexoStorage, CaixaStorage, ItemStorage, ObsStorage } from '../../types';
 import { CaixaConteudo, type DadosStorage } from './CaixaConteudo';
 import { CaixaModal } from './CaixaModal';
+import { ClassificacoesModal } from './ClassificacoesModal';
 import { EtiquetaModal } from './EtiquetaModal';
 import { LeitorModal } from './LeitorModal';
 
@@ -213,6 +214,7 @@ export function StoragePage() {
   const [caixaModal, setCaixaModal] = useState<{ caixa: CaixaStorage | null } | null>(null);
   const [etiquetaDe, setEtiquetaDe] = useState<CaixaStorage | null>(null);
   const [detalheId, setDetalheId] = useState<string | null>(null);
+  const [classificacoesAberto, setClassificacoesAberto] = useState(false);
 
   const caixas = useMemo(() => caixasQ.data ?? [], [caixasQ.data]);
   const itens = useMemo(() => itensQ.data ?? [], [itensQ.data]);
@@ -410,6 +412,9 @@ export function StoragePage() {
           aria-label="Buscar caixa ou item"
           disabled={modoEdicao}
         />
+        <button type="button" onClick={() => setClassificacoesAberto(true)} disabled={modoEdicao}>
+          Classificações
+        </button>
         <button
           type="button"
           className={`btn-icone${modoEdicao ? ' documentos-modo-ativo' : ''}`}
@@ -514,6 +519,8 @@ export function StoragePage() {
           }}
         />
       )}
+
+      {classificacoesAberto && <ClassificacoesModal categorias={categoriasQ.data ?? []} itens={itens} onFechar={() => setClassificacoesAberto(false)} />}
 
       {etiquetaDe && <EtiquetaModal caixa={etiquetaDe} onFechar={() => setEtiquetaDe(null)} />}
 

@@ -187,3 +187,17 @@
   opacity: 1;
   border-color: var(--accent-border);
 }
+
+/* Modal de classificações */
+
+.storage-lista-classificacoes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.storage-espaco {
+  flex: 1;
+}
