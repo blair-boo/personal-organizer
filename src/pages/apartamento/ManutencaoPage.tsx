@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { BotaoExportarCsv } from '../../components/BotaoExportarCsv';
 import { IconeFuncao } from '../../components/IconeUso';
+import { IconeKanban, IconeLista } from '../../components/IconesProvisorios';
 import { ModalBase } from '../../components/ModalBase';
 import { CalendarioMensal } from '../../components/CalendarioMensal';
 import { TagMultiSelect } from '../../components/TagMultiSelect';
@@ -8,7 +9,8 @@ import { TagsChips } from '../../components/TagsChips';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
-import { formatarData } from '../../lib/datas';
+import { formatarData, hojeIso } from '../../lib/datas';
+import { FILTROS_VAZIOS, filtrarTarefas, haFiltroAtivo, periodosDasTarefas, rotuloPeriodo, type FiltrosManutencao, type StatusTarefa } from '../../lib/filtrosManutencao';
 import { ocorrenciasNoIntervalo, proximaExecucao } from '../../lib/manutencao';
 import { useClassificacoesTarefas } from '../../hooks/useClassificacoesTarefas';
 import { useDefinirClassificacoesTarefa, useTodasTarefaClassificacoes } from '../../hooks/useTarefaClassificacoes';
@@ -21,6 +23,7 @@ import {
   type DadosTarefaManutencao,
 } from '../../hooks/useTarefasManutencao';
 import type { TarefaManutencao } from '../../types';
+import { ManutencaoKanban, type AgrupamentoKanban } from './ManutencaoKanban';
 
 const TAREFA_VAZIA: DadosTarefaManutencao = { nome: '', frequencia_dias: 30, ativo: true };
 
@@ -127,20 +130,35 @@ export function ManutencaoPage() {
 
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<TarefaManutencao | null>(null);
+  const [filtros, setFiltros] = useState<FiltrosManutencao>(FILTROS_VAZIOS);
+  const [visao, setVisao] = useState<'lista' | 'kanban'>('lista');
+  const [agrupamento, setAgrupamento] = useState<AgrupamentoKanban>('comodo');
+  const hojeDia = hojeIso();
   const hoje = new Date();
   const [mesCalendario, setMesCalendario] = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 });
+
+  const comodosPorTarefa = useMemo(() => tarefaClassificacoes ?? new Map(), [tarefaClassificacoes]);
+  const periodos = useMemo(() => periodosDasTarefas(tarefas ?? []), [tarefas]);
+  const tarefasFiltradas = useMemo(
+    () => filtrarTarefas(tarefas ?? [], comodosPorTarefa, filtros, hojeDia),
+    [tarefas, comodosPorTarefa, filtros, hojeDia]
+  );
+
+  function alternarNaLista<T>(lista: T[], valor: T): T[] {
+    return lista.includes(valor) ? lista.filter((v) => v !== valor) : [...lista, valor];
+  }
 
   const eventosCalendario = useMemo(() => {
     const inicio = `${mesCalendario.ano}-${String(mesCalendario.mes).padStart(2, '0')}-01`;
     const fim = `${mesCalendario.ano}-${String(mesCalendario.mes).padStart(2, '0')}-31`;
     const eventos: { data: string; rotulo: string }[] = [];
-    for (const tarefa of (tarefas ?? []).filter((t) => t.ativo)) {
+    for (const tarefa of tarefasFiltradas.filter((t) => t.ativo)) {
       for (const data of ocorrenciasNoIntervalo(tarefa, inicio, fim)) {
         eventos.push({ data, rotulo: tarefa.nome });
       }
     }
     return eventos;
-  }, [tarefas, mesCalendario]);
+  }, [tarefasFiltradas, mesCalendario]);
 
   function abrirNova() {
     setEditando(null);
@@ -193,14 +211,47 @@ export function ManutencaoPage() {
 
   return (
     <div className="settings-secao">
-      <h2>Manutenção</h2>
+      <div className="manutencao-titulo-linha">
+        <h2>Manutenção</h2>
+        <div className="manutencao-visoes">
+          <button
+            type="button"
+            className={`btn-icone${visao === 'lista' ? ' documentos-modo-ativo' : ''}`}
+            aria-pressed={visao === 'lista'}
+            onClick={() => setVisao('lista')}
+            title="Visualização em lista"
+            aria-label="Visualização em lista"
+          >
+            <IconeLista />
+          </button>
+          <button
+            type="button"
+            className={`btn-icone${visao === 'kanban' ? ' documentos-modo-ativo' : ''}`}
+            aria-pressed={visao === 'kanban'}
+            onClick={() => setVisao('kanban')}
+            title="Visualização em kanban"
+            aria-label="Visualização em kanban"
+          >
+            <IconeKanban />
+          </button>
+        </div>
+      </div>
+
       <div className="apartamento-barra">
+        <input
+          type="search"
+          className="manutencao-busca"
+          value={filtros.busca}
+          onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })}
+          placeholder="Buscar tarefa…"
+          aria-label="Buscar tarefa"
+        />
         <button type="button" onClick={abrirNova}>
           + Tarefa
         </button>
         <BotaoExportarCsv
           nome="Tarefas de manutenção"
-          linhas={tarefas}
+          linhas={tarefasFiltradas}
           colunas={[
             { titulo: 'Nome', valor: (t: TarefaManutencao) => t.nome },
             { titulo: 'Frequência (dias)', valor: (t: TarefaManutencao) => t.frequencia_dias },
@@ -212,32 +263,106 @@ export function ManutencaoPage() {
         />
       </div>
 
+      <div className="manutencao-filtros">
+        <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por cômodo">
+          {(classificacoes ?? []).map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={filtros.comodoIds.includes(c.id) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+              aria-pressed={filtros.comodoIds.includes(c.id)}
+              onClick={() => setFiltros({ ...filtros, comodoIds: alternarNaLista(filtros.comodoIds, c.id) })}
+            >
+              {c.nome}
+            </button>
+          ))}
+        </div>
+        <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por período">
+          {periodos.map((dias) => (
+            <button
+              key={dias}
+              type="button"
+              className={filtros.periodos.includes(dias) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+              aria-pressed={filtros.periodos.includes(dias)}
+              onClick={() => setFiltros({ ...filtros, periodos: alternarNaLista(filtros.periodos, dias) })}
+            >
+              {rotuloPeriodo(dias)}
+            </button>
+          ))}
+        </div>
+        <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por situação">
+          {([['feita', 'Feitas'], ['nao_feita', 'Não feitas']] as [StatusTarefa, string][]).map(([valor, rotulo]) => (
+            <button
+              key={valor}
+              type="button"
+              className={filtros.status.includes(valor) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+              aria-pressed={filtros.status.includes(valor)}
+              onClick={() => setFiltros({ ...filtros, status: alternarNaLista(filtros.status, valor) })}
+            >
+              {rotulo}
+            </button>
+          ))}
+          {haFiltroAtivo(filtros) && (
+            <button type="button" className="tag-opcao" onClick={() => setFiltros(FILTROS_VAZIOS)}>
+              Limpar filtros
+            </button>
+          )}
+        </div>
+      </div>
+
+      {visao === 'kanban' && (
+        <div className="manutencao-grupo-filtro" role="group" aria-label="Agrupar o kanban">
+          {([['comodo', 'Por cômodo'], ['semana', 'Por semana']] as [AgrupamentoKanban, string][]).map(([valor, rotulo]) => (
+            <button
+              key={valor}
+              type="button"
+              className={agrupamento === valor ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+              aria-pressed={agrupamento === valor}
+              onClick={() => setAgrupamento(valor)}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+      )}
+
       {isLoading ? (
         <p>Carregando…</p>
+      ) : tarefasFiltradas.length === 0 ? (
+        <p className="hierarquia-vazio">{tarefas?.length === 0 ? 'Nenhuma tarefa cadastrada ainda.' : 'Nenhuma tarefa com esses filtros.'}</p>
+      ) : visao === 'kanban' ? (
+        <ManutencaoKanban
+          tarefas={tarefasFiltradas}
+          comodos={classificacoes ?? []}
+          comodosPorTarefa={comodosPorTarefa}
+          agrupamento={agrupamento}
+          hoje={hojeDia}
+          onFeita={tratarMarcarFeita}
+          onEditar={abrirEdicao}
+        />
       ) : (
         <ul className="lista-contas">
-          {(tarefas ?? []).map((tarefa) => (
+          {tarefasFiltradas.map((tarefa) => (
             <li key={tarefa.id} className={tarefa.ativo ? '' : 'conta-inativa'}>
               <div>
                 <strong>{tarefa.nome}</strong>
                 <span className="conta-detalhe">
-                  <TagsChips tags={tarefaClassificacoes?.get(tarefa.id)} /> · próxima em {formatarData(proximaExecucao(tarefa))}
+                  <TagsChips tags={tarefaClassificacoes?.get(tarefa.id)} /> · {rotuloPeriodo(tarefa.frequencia_dias)} · próxima em {formatarData(proximaExecucao(tarefa))}
                 </span>
               </div>
               <div className="hierarquia-item-acoes">
                 <button type="button" onClick={() => tratarMarcarFeita(tarefa)}>
                   Feita hoje
                 </button>
-                <button type="button" className="btn-icone" onClick={() => abrirEdicao(tarefa)} aria-label="Editar">
-                  ✎
+                <button type="button" className="btn-icone" onClick={() => abrirEdicao(tarefa)} title={`Editar ${tarefa.nome}`} aria-label={`Editar ${tarefa.nome}`}>
+                  <IconeFuncao funcao="editar" />
                 </button>
-                <button type="button" className="btn-icone btn-icone-perigo" onClick={() => tratarExcluir(tarefa)} aria-label="Excluir">
+                <button type="button" className="btn-icone btn-icone-perigo" onClick={() => tratarExcluir(tarefa)} title={`Excluir ${tarefa.nome}`} aria-label={`Excluir ${tarefa.nome}`}>
                   <IconeFuncao funcao="excluir" />
                 </button>
               </div>
             </li>
           ))}
-          {tarefas?.length === 0 && <p className="hierarquia-vazio">Nenhuma tarefa cadastrada ainda.</p>}
         </ul>
       )}
 

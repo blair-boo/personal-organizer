@@ -82,6 +82,10 @@ Aba **Storage**, ao lado de Apartamento: cadastro de caixas e do que há dentro 
 - **Dados:** tabelas `storage`, `storage_itens`, `storage_obs` e `storage_anexos` (migrations `0017_storage.sql` e `0018_storage_usa_tags_itens.sql`). Os arquivos ficam no bucket privado `confidencial`, subpasta `storage/`.
 - **Offline:** as consultas de Storage estão em `CONSULTAS_OFFLINE` e no aquecimento, e `storage_anexos` em `BUCKET_POR_CONSULTA`.
 
+## Manutenção: filtros e kanban
+
+Em Apartamento > Manutenção, abaixo do título: busca (só no nome da tarefa) e botões de filtro por cômodo, período e situação (Feitas / Não feitas). Dentro de um grupo vale "ou"; entre grupos vale "e". O calendário e o CSV respeitam os filtros. Feita = já foi feita neste ciclo (próxima execução no futuro); nunca feita, vencida ou para hoje = não feita. Dois botões no título alternam entre lista e kanban; o kanban agrupa por cômodo (tarefa com vários cômodos aparece em cada um) ou por semana da próxima execução (lógica em `src/lib/filtrosManutencao.ts`).
+
 ## Exportar CSV
 
 Botão de exportar no topo de Itens, Projetos e Manutenção (Apartamento). Separador `;`, vírgula decimal e UTF-8 com BOM (abre direto no Excel em português). Texto que começaria com `=`, `+`, `-` ou `@` ganha um apóstrofo, para a planilha não executar como fórmula. Documentos ficam fora de propósito (têm campos sensíveis).
