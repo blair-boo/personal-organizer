@@ -114,3 +114,13 @@ export function idsDeCaixasNaBusca(caixas: CaixaStorage[], itens: ItemStorage[],
   }
   return encontradas;
 }
+
+/** Caixas que têm pelo menos um item com alguma das tags (vale qualquer uma). Sem tags escolhidas, todas. */
+export function idsDeCaixasComTags(caixas: CaixaStorage[], itens: ItemStorage[], tagIds: string[]): Set<string> {
+  if (tagIds.length === 0) return new Set(caixas.map((c) => c.id));
+  const encontradas = new Set<string>();
+  for (const item of itens) {
+    if (item.tag_id && tagIds.includes(item.tag_id)) encontradas.add(item.storage_id);
+  }
+  return encontradas;
+}

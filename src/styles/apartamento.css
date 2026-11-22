@@ -129,3 +129,55 @@
   background: var(--bg);
   min-width: 0;
 }
+
+.kanban-coluna-alvo {
+  border-color: var(--accent-border);
+}
+
+.kanban-cartao-topo {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.kanban-alca {
+  touch-action: none;
+  flex-shrink: 0;
+}
+
+.kanban-cartao-arrastando {
+  opacity: 0.7;
+  z-index: 1;
+}
+
+.manutencao-flag-atraso {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.manutencao-opcao-base {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-direction: row;
+  font-size: 14px;
+}
+
+.manutencao-historico-linha {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.manutencao-historico-topo,
+.manutencao-historico-atraso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}

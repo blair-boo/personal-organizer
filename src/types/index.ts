@@ -101,19 +101,28 @@ export interface ProjetoAnexo {
   nome_arquivo: string;
 }
 
-export interface ClassificacaoTarefa {
-  id: string;
-  nome: string;
-  cor: string | null;
-  icone_url: string | null;
-}
-
 export interface TarefaManutencao {
   id: string;
   nome: string;
   frequencia_dias: number;
   ultima_execucao: string | null;
+  /** Data de onde conta a próxima execução, quando difere de ultima_execucao (volta ao ciclo original após atraso). */
+  proxima_a_partir_de: string | null;
   ativo: boolean;
+}
+
+export type BaseProximaExecucao = 'execucao' | 'prevista';
+
+/** Uma vez em que a tarefa foi feita. */
+export interface HistoricoTarefa {
+  id: string;
+  tarefa_id: string;
+  data_execucao: string;
+  /** Quando deveria ter sido feita; se for anterior a data_execucao, foi feita com atraso. */
+  data_prevista: string | null;
+  base_proxima: BaseProximaExecucao;
+  observacao: string | null;
+  criado_em: string;
 }
 
 export interface PessoaDocumentos {

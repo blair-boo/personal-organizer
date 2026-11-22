@@ -22,6 +22,7 @@ import {
   caixaDoItem,
   codigoDaCaixa,
   criarLayout,
+  idsDeCaixasComTags,
   idsDeCaixasNaBusca,
   layoutIgual,
   moverCaixa,
@@ -38,6 +39,7 @@ import type { AnexoStorage, CaixaStorage, ItemStorage, ObsStorage } from '../../
 import { CaixaConteudo, type DadosStorage } from './CaixaConteudo';
 import { CaixaModal } from './CaixaModal';
 import { EtiquetaModal } from './EtiquetaModal';
+import { EtiquetasLoteModal } from './EtiquetasLoteModal';
 import { LeitorModal } from './LeitorModal';
 
 const PREFIXO_CAIXA = 'caixa:';
@@ -213,6 +215,8 @@ export function StoragePage() {
   const [caixaModal, setCaixaModal] = useState<{ caixa: CaixaStorage | null } | null>(null);
   const [etiquetaDe, setEtiquetaDe] = useState<CaixaStorage | null>(null);
   const [detalheId, setDetalheId] = useState<string | null>(null);
+  const [tagIdsFiltro, setTagIdsFiltro] = useState<string[]>([]);
+  const [loteAberto, setLoteAberto] = useState(false);
 
   const caixas = useMemo(() => caixasQ.data ?? [], [caixasQ.data]);
   const itens = useMemo(() => itensQ.data ?? [], [itensQ.data]);
@@ -242,7 +246,8 @@ export function StoragePage() {
   const itemPorId = useMemo(() => new Map(itens.map((i) => [i.id, i])), [itens]);
   const q = busca.trim();
   const idsNaBusca = useMemo(() => idsDeCaixasNaBusca(caixas, itens, q), [caixas, itens, q]);
-  const caixasVisiveis = layout.caixas.map((id) => caixaPorId.get(id)).filter((c): c is CaixaStorage => !!c && idsNaBusca.has(c.id));
+  const idsComTags = useMemo(() => idsDeCaixasComTags(caixas, itens, tagIdsFiltro), [caixas, itens, tagIdsFiltro]);
+  const caixasVisiveis = layout.caixas.map((id) => caixaPorId.get(id)).filter((c): c is CaixaStorage => !!c && idsNaBusca.has(c.id) && idsComTags.has(c.id));
 
   const carregando = caixasQ.isLoading || itensQ.isLoading || obsQ.isLoading || anexosQ.isLoading || tagsQ.isLoading;
   const erro = caixasQ.error ?? itensQ.error ?? obsQ.error ?? anexosQ.error ?? tagsQ.error;
@@ -398,6 +403,9 @@ export function StoragePage() {
         <button type="button" className="storage-botao-principal" onClick={() => setCaixaModal({ caixa: null })} disabled={modoEdicao}>
           <IconeQr /> Nova caixa
         </button>
+        <button type="button" className="storage-botao-principal" onClick={() => setLoteAberto(true)} disabled={modoEdicao}>
+          <IconeQr /> Etiquetas
+        </button>
       </div>
 
       <h3 className="storage-secao-titulo">Caixas</h3>
@@ -431,12 +439,34 @@ export function StoragePage() {
         </button>
       </div>
 
+      {(tagsQ.data ?? []).length > 0 && (
+        <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar caixas por tag">
+          {(tagsQ.data ?? []).map((tag) => (
+            <button
+              key={tag.id}
+              type="button"
+              className={tagIdsFiltro.includes(tag.id) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+              aria-pressed={tagIdsFiltro.includes(tag.id)}
+              disabled={modoEdicao}
+              onClick={() => setTagIdsFiltro((atual) => (atual.includes(tag.id) ? atual.filter((id) => id !== tag.id) : [...atual, tag.id]))}
+            >
+              {tag.nome}
+            </button>
+          ))}
+          {tagIdsFiltro.length > 0 && (
+            <button type="button" className="tag-opcao" disabled={modoEdicao} onClick={() => setTagIdsFiltro([])}>
+              Limpar filtro
+            </button>
+          )}
+        </div>
+      )}
+
       {carregando ? (
         <p>Carregando…</p>
       ) : erro ? (
         <p role="alert">{mensagemDeErro(erro)}</p>
       ) : caixasVisiveis.length === 0 ? (
-        <p className="documentos-vazio">{q ? 'Nenhum resultado.' : 'Nenhuma caixa ainda.'}</p>
+        <p className="documentos-vazio">{q || tagIdsFiltro.length > 0 ? 'Nenhum resultado.' : 'Nenhuma caixa ainda.'}</p>
       ) : modoEdicao ? (
         <DndContext sensors={sensors} collisionDetection={detectarColisao} onDragOver={aoArrastarSobre} onDragEnd={aoSoltar}>
           <SortableContext items={caixasVisiveis.map((c) => PREFIXO_CAIXA + c.id)} strategy={verticalListSortingStrategy}>
@@ -514,6 +544,8 @@ export function StoragePage() {
           }}
         />
       )}
+
+      {loteAberto && <EtiquetasLoteModal caixas={caixas} onFechar={() => setLoteAberto(false)} />}
 
       {etiquetaDe && <EtiquetaModal caixa={etiquetaDe} onFechar={() => setEtiquetaDe(null)} />}
 

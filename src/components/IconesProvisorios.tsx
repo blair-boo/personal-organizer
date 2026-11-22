@@ -160,6 +160,16 @@ export function IconeKanban({ tamanho = 16 }: Props) {
   );
 }
 
+// PROVISORIO: trocar por flag.svg
+export function IconeBandeira({ tamanho = 16 }: Props) {
+  return (
+    <Svg tamanho={tamanho}>
+      <path d="M5 21V4" />
+      <path d="M5 4h12l-2 4 2 4H5" />
+    </Svg>
+  );
+}
+
 export function IconeEngrenagem({ tamanho = 16 }: Props) {
   return (
     <Svg tamanho={tamanho}>

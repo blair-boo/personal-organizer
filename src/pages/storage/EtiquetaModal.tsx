@@ -5,36 +5,31 @@ import { mensagemDeErro } from '../../lib/erros';
 import { codigoDaCaixa } from '../../lib/caixas';
 import { slugify } from '../../lib/storage';
 import type { CaixaStorage } from '../../types';
-import type { ImagemRgba, SimboloRmqr } from '../../lib/rmqr';
+import type { SimboloRmqr } from '../../lib/rmqr';
+import { baixarBlob, canvasParaPng, desenharEtiqueta } from './desenharEtiquetas';
 
 /** Pixels por módulo no PNG baixado (grande, pra imprimir sem borrar). */
 const ESCALA_DOWNLOAD = 10;
+const ESCALA_PREVIA = 6;
 /** Altura máxima da etiqueta da impressora, em mm (só pra mostrar o tamanho do módulo). */
 const ALTURA_ETIQUETA_MM = 14;
 
-function desenhar(canvas: HTMLCanvasElement, imagem: ImagemRgba) {
-  canvas.width = imagem.width;
-  canvas.height = imagem.height;
-  canvas.getContext('2d')?.putImageData(new ImageData(new Uint8ClampedArray(imagem.data), imagem.width, imagem.height), 0, 0);
-}
-
-/** Mostra a etiqueta (rMQR com o código da caixa) e baixa o PNG pra imprimir. */
+/** Mostra a etiqueta (rMQR com o código da caixa, e o nome ao lado se quiser) e baixa o PNG pra imprimir. */
 export function EtiquetaModal({ caixa, onFechar }: { caixa: CaixaStorage; onFechar: () => void }) {
   const { mostrarToast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [simbolo, setSimbolo] = useState<SimboloRmqr | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [incluirNome, setIncluirNome] = useState(true);
   const codigo = codigoDaCaixa(caixa.numero);
 
   useEffect(() => {
     let ativo = true;
     void (async () => {
       try {
-        const { gerarSimboloRmqr, renderizarSimbolo } = await import('../../lib/rmqr');
+        const { gerarSimboloRmqr } = await import('../../lib/rmqr');
         const gerado = await gerarSimboloRmqr(codigo);
-        if (!ativo) return;
-        setSimbolo(gerado);
-        if (canvasRef.current) desenhar(canvasRef.current, renderizarSimbolo(gerado, 6));
+        if (ativo) setSimbolo(gerado);
       } catch (err) {
         if (ativo) setErro(mensagemDeErro(err));
       }
@@ -44,20 +39,16 @@ export function EtiquetaModal({ caixa, onFechar }: { caixa: CaixaStorage; onFech
     };
   }, [codigo]);
 
+  useEffect(() => {
+    if (simbolo && canvasRef.current) desenharEtiqueta(canvasRef.current, { codigo, nome: caixa.nome, simbolo }, ESCALA_PREVIA, incluirNome);
+  }, [simbolo, incluirNome, codigo, caixa.nome]);
+
   async function baixar() {
     if (!simbolo) return;
     try {
-      const { renderizarSimbolo } = await import('../../lib/rmqr');
       const canvas = document.createElement('canvas');
-      desenhar(canvas, renderizarSimbolo(simbolo, ESCALA_DOWNLOAD));
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-      if (!blob) throw new Error('Não foi possível gerar a imagem.');
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `etiqueta-${slugify(codigo)}.png`;
-      link.click();
-      URL.revokeObjectURL(url);
+      desenharEtiqueta(canvas, { codigo, nome: caixa.nome, simbolo }, ESCALA_DOWNLOAD, incluirNome);
+      baixarBlob(await canvasParaPng(canvas), `etiqueta-${slugify(codigo)}.png`);
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
     }
@@ -71,16 +62,15 @@ export function EtiquetaModal({ caixa, onFechar }: { caixa: CaixaStorage; onFech
       <p>
         <strong>{codigo}</strong> · {caixa.nome}
       </p>
-      {erro ? (
-        <p role="alert">{erro}</p>
-      ) : !simbolo ? (
-        <p>Carregando…</p>
-      ) : null}
+      {erro ? <p role="alert">{erro}</p> : !simbolo ? <p>Carregando…</p> : null}
       <canvas ref={canvasRef} className="storage-etiqueta" aria-label={`Código ${codigo}`} hidden={!simbolo} />
+      <label className="manutencao-opcao-base">
+        <input type="checkbox" checked={incluirNome} onChange={(e) => setIncluirNome(e.target.checked)} />
+        Incluir o nome da caixa ao lado do código
+      </label>
       {milimetrosPorModulo !== null && (
         <p className="hierarquia-vazio">
-          Em uma etiqueta de {ALTURA_ETIQUETA_MM} mm de altura, cada módulo do código fica com cerca de{' '}
-          {milimetrosPorModulo.toFixed(1).replace('.', ',')} mm.
+          Em uma etiqueta de {ALTURA_ETIQUETA_MM} mm de altura, cada módulo do código fica com cerca de {milimetrosPorModulo.toFixed(1).replace('.', ',')} mm.
         </p>
       )}
       <div className="modal-acoes">

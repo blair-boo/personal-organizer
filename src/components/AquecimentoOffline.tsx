@@ -9,7 +9,6 @@ import {
   useDocumentosPessoas,
   useProximosVencimentosPessoais,
 } from '../hooks/useDocumentos';
-import { useClassificacoesTarefas } from '../hooks/useClassificacoesTarefas';
 import { useIconesUsos } from '../hooks/useIconesUsos';
 import { useItemDocumentos } from '../hooks/useItemDocumentos';
 import { useTodosItemTags } from '../hooks/useItemTags';
@@ -21,6 +20,7 @@ import { useStorageCaixas } from '../hooks/useStorageCaixas';
 import { useStorageItens } from '../hooks/useStorageItens';
 import { useStorageObs } from '../hooks/useStorageObs';
 import { useTagsItens } from '../hooks/useTagsItens';
+import { useHistoricoTarefas } from '../hooks/useTarefasHistorico';
 import { useTarefasManutencao } from '../hooks/useTarefasManutencao';
 import { useTodasTarefaClassificacoes } from '../hooks/useTarefaClassificacoes';
 import { chaveFicaOffline } from '../lib/offline/persistencia';
@@ -78,7 +78,7 @@ export function AquecimentoOffline({ onTerminou }: { onTerminou: () => void }) {
   useStorageAnexos();
   useTagsItens();
   useTodosItemTags();
-  useClassificacoesTarefas();
+  useHistoricoTarefas();
   useTodasTarefaClassificacoes();
   useProximosVencimentosPessoais();
   useAbasConfig();

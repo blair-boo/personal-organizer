@@ -1,7 +1,8 @@
+import { tarefaAtrasada } from './historicoTarefa';
 import { proximaExecucao } from './manutencao';
-import type { ClassificacaoTarefa, TarefaManutencao } from '../types';
+import type { TagItem, TarefaManutencao } from '../types';
 
-export type StatusTarefa = 'feita' | 'nao_feita';
+export type StatusTarefa = 'feita' | 'nao_feita' | 'atrasada';
 
 export interface FiltrosManutencao {
   /** Busca no nome da tarefa. */
@@ -10,7 +11,7 @@ export interface FiltrosManutencao {
   comodoIds: string[];
   /** Frequências ligadas, em dias: a tarefa precisa ter uma delas. */
   periodos: number[];
-  /** Feitas e/ou não feitas. Vazio ou os dois = todas. */
+  /** Situações ligadas (feita, não feita, atrasada): vale qualquer uma. Vazio = todas. */
   status: StatusTarefa[];
 }
 
@@ -21,7 +22,7 @@ export function haFiltroAtivo(f: FiltrosManutencao): boolean {
 }
 
 /** Feita = já foi feita neste ciclo (a próxima execução está no futuro). Nunca feita, vencida ou para hoje = não feita. */
-export function tarefaFeita(tarefa: Pick<TarefaManutencao, 'ultima_execucao' | 'frequencia_dias'>, hoje: string): boolean {
+export function tarefaFeita(tarefa: Pick<TarefaManutencao, 'ultima_execucao' | 'frequencia_dias' | 'proxima_a_partir_de'>, hoje: string): boolean {
   return tarefa.ultima_execucao !== null && proximaExecucao(tarefa) > hoje;
 }
 
@@ -54,13 +55,11 @@ function normalizar(texto: string): string {
 /** Dentro de cada grupo vale "ou"; entre grupos vale "e". Grupo sem nada ligado não filtra. */
 export function filtrarTarefas(
   tarefas: TarefaManutencao[],
-  comodosPorTarefa: Map<string, Pick<ClassificacaoTarefa, 'id'>[]>,
+  comodosPorTarefa: Map<string, Pick<TagItem, 'id'>[]>,
   filtros: FiltrosManutencao,
   hoje: string
 ): TarefaManutencao[] {
   const q = normalizar(filtros.busca);
-  const apenasFeitas = filtros.status.includes('feita') && !filtros.status.includes('nao_feita');
-  const apenasNaoFeitas = filtros.status.includes('nao_feita') && !filtros.status.includes('feita');
   return tarefas.filter((tarefa) => {
     if (q && !normalizar(tarefa.nome).includes(q)) return false;
     if (filtros.comodoIds.length > 0) {
@@ -68,10 +67,10 @@ export function filtrarTarefas(
       if (!filtros.comodoIds.some((id) => ids.includes(id))) return false;
     }
     if (filtros.periodos.length > 0 && !filtros.periodos.includes(tarefa.frequencia_dias)) return false;
-    if (apenasFeitas || apenasNaoFeitas) {
+    if (filtros.status.length > 0) {
       const feita = tarefaFeita(tarefa, hoje);
-      if (apenasFeitas && !feita) return false;
-      if (apenasNaoFeitas && feita) return false;
+      const bate = filtros.status.some((s) => (s === 'feita' ? feita : s === 'nao_feita' ? !feita : tarefaAtrasada(tarefa, hoje)));
+      if (!bate) return false;
     }
     return true;
   });

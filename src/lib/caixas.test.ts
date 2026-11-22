@@ -3,6 +3,7 @@ import {
   caixaDoItem,
   codigoDaCaixa,
   criarLayout,
+  idsDeCaixasComTags,
   idsDeCaixasNaBusca,
   layoutIgual,
   moverCaixa,
@@ -145,5 +146,23 @@ describe('idsDeCaixasNaBusca', () => {
 
   it('devolve vazio quando nada bate', () => {
     expect(idsDeCaixasNaBusca(caixas, itens, 'serrote').size).toBe(0);
+  });
+});
+
+describe('idsDeCaixasComTags', () => {
+  const comTags: ItemStorage[] = [
+    { id: 'i1', storage_id: 'c1', nome: 'Panela', quantidade: null, tag_id: 't1', ordem: 1 },
+    { id: 'i2', storage_id: 'c1', nome: 'Colher', quantidade: null, tag_id: null, ordem: 2 },
+    { id: 'i3', storage_id: 'c2', nome: 'Martelo', quantidade: null, tag_id: 't2', ordem: 1 },
+  ];
+
+  it('sem tags escolhidas devolve todas as caixas', () => {
+    expect(idsDeCaixasComTags(caixas, comTags, []).size).toBe(3);
+  });
+
+  it('devolve as caixas que têm item com alguma das tags', () => {
+    expect([...idsDeCaixasComTags(caixas, comTags, ['t1'])]).toEqual(['c1']);
+    expect([...idsDeCaixasComTags(caixas, comTags, ['t1', 't2'])].sort()).toEqual(['c1', 'c2']);
+    expect(idsDeCaixasComTags(caixas, comTags, ['t9']).size).toBe(0);
   });
 });
