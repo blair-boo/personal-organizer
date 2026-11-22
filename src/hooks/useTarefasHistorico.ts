@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import { dataPrevistaParaNova, resumoDoHistorico } from '../lib/historicoTarefa';
+import { dataPrevistaParaNova } from '../lib/historicoTarefa';
+import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
+import { entradasDaTarefa } from '../lib/offline/executores';
+import { contarFila } from '../lib/offline/fila';
 import type { BaseProximaExecucao, HistoricoTarefa } from '../types';
 
 const CHAVE = ['tarefas_manutencao_historico'];
@@ -25,19 +28,6 @@ export function useHistoricoTarefas() {
   });
 }
 
-async function entradasDaTarefa(tarefaId: string): Promise<HistoricoTarefa[]> {
-  const { data, error } = await supabase.from('tarefas_manutencao_historico').select('*').eq('tarefa_id', tarefaId);
-  if (error) throw error;
-  return data as HistoricoTarefa[];
-}
-
-/** Recalcula, a partir do histórico, a última execução e a data-base da próxima, e grava na tarefa. */
-async function recalcularTarefa(tarefaId: string): Promise<void> {
-  const resumo = resumoDoHistorico(await entradasDaTarefa(tarefaId));
-  const { error } = await supabase.from('tarefas_manutencao').update(resumo).eq('id', tarefaId);
-  if (error) throw error;
-}
-
 export interface RegistroDeExecucao {
   tarefaId: string;
   dataExecucao: string;
@@ -46,21 +36,19 @@ export interface RegistroDeExecucao {
   base: BaseProximaExecucao;
 }
 
-/** Registra uma execução (hoje, pelo botão) e atualiza a tarefa. */
+/** Se já foi para o servidor ou ficou na fila (sem internet, ou com alterações esperando); só no primeiro caso as consultas são buscadas de novo. */
+function depois(qc: QueryClient) {
+  return (resultado: 'enviada' | 'enfileirada') => (resultado === 'enviada' ? invalidar(qc) : undefined);
+}
+
+/** Registra uma execução (hoje, pelo botão) e atualiza a tarefa. Funciona sem internet. */
 export function useRegistrarExecucaoTarefa() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ tarefaId, dataExecucao, dataPrevista, base }: RegistroDeExecucao) => {
-      const { error } = await supabase.from('tarefas_manutencao_historico').insert({
-        tarefa_id: tarefaId,
-        data_execucao: dataExecucao,
-        data_prevista: dataPrevista,
-        base_proxima: base,
-      });
-      if (error) throw error;
-      await recalcularTarefa(tarefaId);
-    },
-    onSuccess: () => invalidar(qc),
+    onMutate: () => undefined,
+    mutationFn: ({ tarefaId, dataExecucao, dataPrevista, base }: RegistroDeExecucao) =>
+      executarOuEnfileirar(qc, 'manutencao.inserirExecucao', { id: crypto.randomUUID(), tarefaId, dataExecucao, dataPrevista, base }),
+    onSuccess: depois(qc),
   });
 }
 
@@ -68,18 +56,22 @@ export function useRegistrarExecucaoTarefa() {
 export function useIncluirExecucaoTarefa() {
   const qc = useQueryClient();
   return useMutation({
+    onMutate: () => undefined,
     mutationFn: async ({ tarefaId, dataExecucao, frequenciaDias }: { tarefaId: string; dataExecucao: string; frequenciaDias: number }) => {
-      const prevista = dataPrevistaParaNova(await entradasDaTarefa(tarefaId), dataExecucao, frequenciaDias);
-      const { error } = await supabase.from('tarefas_manutencao_historico').insert({
-        tarefa_id: tarefaId,
-        data_execucao: dataExecucao,
-        data_prevista: prevista,
-        base_proxima: 'execucao',
+      // Com a fila cheia ou sem internet, o servidor não tem tudo: usa o que está no aparelho.
+      const usarAparelho = !navigator.onLine || (await contarFila()) > 0;
+      const entradas = usarAparelho
+        ? (qc.getQueryData<HistoricoTarefa[]>(CHAVE) ?? []).filter((e) => e.tarefa_id === tarefaId)
+        : await entradasDaTarefa(tarefaId);
+      return executarOuEnfileirar(qc, 'manutencao.inserirExecucao', {
+        id: crypto.randomUUID(),
+        tarefaId,
+        dataExecucao,
+        dataPrevista: dataPrevistaParaNova(entradas, dataExecucao, frequenciaDias),
+        base: 'execucao',
       });
-      if (error) throw error;
-      await recalcularTarefa(tarefaId);
     },
-    onSuccess: () => invalidar(qc),
+    onSuccess: depois(qc),
   });
 }
 
@@ -87,26 +79,18 @@ export function useIncluirExecucaoTarefa() {
 export function useAtualizarExecucaoTarefa() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, tarefaId, dataExecucao, base }: { id: string; tarefaId: string; dataExecucao?: string; base?: BaseProximaExecucao }) => {
-      const mudancas: Record<string, string> = {};
-      if (dataExecucao) mudancas.data_execucao = dataExecucao;
-      if (base) mudancas.base_proxima = base;
-      const { error } = await supabase.from('tarefas_manutencao_historico').update(mudancas).eq('id', id);
-      if (error) throw error;
-      await recalcularTarefa(tarefaId);
-    },
-    onSuccess: () => invalidar(qc),
+    onMutate: () => undefined,
+    mutationFn: (dados: { id: string; tarefaId: string; dataExecucao?: string; base?: BaseProximaExecucao }) =>
+      executarOuEnfileirar(qc, 'manutencao.atualizarExecucao', dados),
+    onSuccess: depois(qc),
   });
 }
 
 export function useExcluirExecucaoTarefa() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, tarefaId }: { id: string; tarefaId: string }) => {
-      const { error } = await supabase.from('tarefas_manutencao_historico').delete().eq('id', id);
-      if (error) throw error;
-      await recalcularTarefa(tarefaId);
-    },
-    onSuccess: () => invalidar(qc),
+    onMutate: () => undefined,
+    mutationFn: (dados: { id: string; tarefaId: string }) => executarOuEnfileirar(qc, 'manutencao.excluirExecucao', dados),
+    onSuccess: depois(qc),
   });
 }

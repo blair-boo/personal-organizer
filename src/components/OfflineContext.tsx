@@ -2,6 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useIsRestoring, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthContext';
 import { useOnline } from '../hooks/useOnline';
+import { useToast } from './Toast';
+import { mensagemDeErro } from '../lib/erros';
+import { enviarFila } from '../lib/offline/enviarFila';
+import { executarOperacao } from '../lib/offline/executores';
+import { aoPedirEnvio } from '../lib/offline/fila';
 import { urlIconeSupabase } from './IconeSupabase';
 import { caminhoDoUso } from '../lib/iconesUsos';
 import {
@@ -70,6 +75,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const online = useOnline();
   const restaurando = useIsRestoring();
+  const { mostrarToast } = useToast();
 
   const [aquecendo, setAquecendo] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
@@ -94,12 +100,26 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     await Promise.allSettled(usos.map((uso) => fetch(urlIconeSupabase(caminhoDoUso(uso)))));
   }, [queryClient]);
 
+  /** Envia as alterações feitas sem internet, na ordem. Devolve false se alguma falhou (ficam na fila pra próxima vez). */
+  const enviarPendentes = useCallback(async (): Promise<boolean> => {
+    if (!navigator.onLine) return true;
+    const resultado = await enviarFila(executarOperacao, mensagemDeErro);
+    if (resultado.erro) {
+      mostrarToast(`Não foi possível enviar as alterações feitas sem internet: ${resultado.erro}`, 'erro');
+      return false;
+    }
+    if (resultado.enviadas > 0) mostrarToast(resultado.enviadas === 1 ? '1 alteração feita sem internet foi enviada.' : `${resultado.enviadas} alterações feitas sem internet foram enviadas.`);
+    return true;
+  }, [mostrarToast]);
+
   const sincronizarAgora = useCallback(
     async ({ recarregarTudo = false }: OpcoesSincronizacao = {}) => {
       if (!navigator.onLine || emAndamento.current) return;
       emAndamento.current = true;
       setSincronizando(true);
       try {
+        // Primeiro o que foi feito sem internet; se falhar, não busca de novo (apagaria da tela o que ainda espera envio).
+        if (!(await enviarPendentes())) return;
         if (recarregarTudo) await apagarTodosOsArquivos();
         // Marca tudo como velho (e atualiza o que está na tela); o que está fora da tela é buscado pelo aquecimento.
         await queryClient.invalidateQueries({ predicate: (q) => chaveFicaOffline(q.queryKey) });
@@ -130,7 +150,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         emAndamento.current = false;
       }
     },
-    [queryClient, desejadosNoCache, aquecerIcones, atualizarEstatisticas]
+    [queryClient, desejadosNoCache, aquecerIcones, atualizarEstatisticas, enviarPendentes]
   );
 
   const apagar = useCallback(async () => {
@@ -144,6 +164,9 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     if (restaurando || !online || !session) return;
     void sincronizarAgora().catch((erro) => console.warn('Falha ao sincronizar para uso offline', erro));
   }, [restaurando, online, session, sincronizarAgora]);
+
+  // Uma alteração entrou na fila com internet (havia outras esperando): envia já.
+  useEffect(() => aoPedirEnvio(() => void sincronizarAgora().catch(() => undefined)), [sincronizarAgora]);
 
   // Voltou pro app depois de um tempo: confere se tem novidade.
   useEffect(() => {

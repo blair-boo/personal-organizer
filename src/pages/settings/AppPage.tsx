@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useDialogos } from '../../components/Dialogo';
+import { limparFila, pedirEnvioDaFila, usePendentes } from '../../lib/offline/fila';
 import { useOffline } from '../../components/OfflineContext';
 import { useToast } from '../../components/Toast';
 import { formatarBytes } from '../../lib/backup';
@@ -19,6 +20,7 @@ export function AppPage() {
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
   const { online, sincronizando, ultimaSincronizacao, arquivos, armazenamentoProtegido, sincronizarAgora, apagarDadosOffline } = useOffline();
+  const pendentes = usePendentes();
   const [verificando, setVerificando] = useState(false);
   const [ocupado, setOcupado] = useState(false);
 
@@ -107,6 +109,22 @@ export function AppPage() {
     }
   }
 
+  async function descartarPendentes() {
+    const ok = await confirmar({
+      titulo: 'Descartar alterações pendentes',
+      mensagem: `${pendentes === 1 ? '1 alteração feita' : `${pendentes} alterações feitas`} sem internet ${pendentes === 1 ? 'será descartada' : 'serão descartadas'} e não ${pendentes === 1 ? 'chegará' : 'chegarão'} ao servidor. Essa ação não pode ser desfeita.`,
+      confirmarRotulo: 'Descartar',
+      perigoso: true,
+    });
+    if (!ok) return;
+    try {
+      await limparFila();
+      mostrarToast('Alterações pendentes descartadas. Sincronize para voltar ao que está no servidor.');
+    } catch (erro) {
+      mostrarToast(mensagemDeErro(erro), 'erro');
+    }
+  }
+
   const desabilitado = ocupado || sincronizando;
 
   return (
@@ -152,6 +170,27 @@ export function AppPage() {
           </button>
           <button type="button" className="botao-perigoso" onClick={() => void apagarOffline()} disabled={desabilitado}>
             Apagar dados offline
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <h3>Alterações pendentes</h3>
+        <p className="backup-nota">
+          Storage e a Manutenção (feita hoje e histórico) aceitam alterações sem internet. Elas ficam guardadas no aparelho e são enviadas, em ordem, quando a conexão volta.
+        </p>
+        <ul className="lista-contas">
+          <li>
+            <span>Esperando envio</span>
+            <span className="backup-item-info">{pendentes.toLocaleString('pt-BR')}</span>
+          </li>
+        </ul>
+        <div className="modal-acoes">
+          <button type="button" onClick={pedirEnvioDaFila} disabled={pendentes === 0 || !online || desabilitado}>
+            Enviar agora
+          </button>
+          <button type="button" className="botao-perigoso" onClick={() => void descartarPendentes()} disabled={pendentes === 0}>
+            Descartar pendências
           </button>
         </div>
       </section>

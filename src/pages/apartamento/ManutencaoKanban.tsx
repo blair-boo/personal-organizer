@@ -1,17 +1,20 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { DndContext, PointerSensor, pointerWithin, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { IconeFuncao } from '../../components/IconeUso';
 import { IconeBandeira } from '../../components/IconesProvisorios';
 import { TagsChips } from '../../components/TagsChips';
 import { formatarData } from '../../lib/datas';
+import { ROTULOS_DIA, resumoDosDias } from '../../lib/diasSemana';
 import { rotuloPeriodo } from '../../lib/filtrosManutencao';
 import { proximaExecucao } from '../../lib/manutencao';
 import type { HistoricoTarefa, TagItem, TarefaManutencao } from '../../types';
 
-export type AgrupamentoKanban = 'comodo' | 'periodo';
+export type AgrupamentoKanban = 'comodo' | 'periodo' | 'dia';
 
 export const CHAVE_SEM_COMODO = 'sem-comodo';
+export const CHAVE_SEM_DIA = 'sem-dia';
+export const PREFIXO_DIA = 'dia-';
 const PREFIXO_COLUNA = 'coluna:';
 const SEPARADOR = '@';
 
@@ -48,6 +51,17 @@ export function colunasPorPeriodo(tarefas: TarefaManutencao[]): Coluna[] {
     }));
 }
 
+/** Uma coluna por dia da semana (tarefa com dois dias aparece nos dois) e uma para as sem dia. */
+export function colunasPorDia(tarefas: TarefaManutencao[]): Coluna[] {
+  const colunas: Coluna[] = ROTULOS_DIA.map((titulo, dia) => ({ chave: `${PREFIXO_DIA}${dia}`, titulo, tarefas: [] }));
+  const semDia: Coluna = { chave: CHAVE_SEM_DIA, titulo: 'Sem dia', tarefas: [] };
+  for (const tarefa of tarefas) {
+    if (tarefa.dias_semana.length === 0) semDia.tarefas.push(tarefa);
+    for (const dia of tarefa.dias_semana) colunas[dia]?.tarefas.push(tarefa);
+  }
+  return [...colunas, semDia];
+}
+
 interface CartaoProps {
   tarefa: TarefaManutencao;
   colunaChave: string;
@@ -61,6 +75,7 @@ interface CartaoProps {
 }
 
 function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, onFeita, onEditar, onHistorico }: CartaoProps) {
+  const [aberto, setAberto] = useState(false);
   const arrastavel = useDraggable({ id: `${tarefa.id}${SEPARADOR}${colunaChave}` });
   const style = { transform: CSS.Translate.toString(arrastavel.transform) };
   return (
@@ -76,17 +91,25 @@ function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, onFeita, on
         >
           <IconeFuncao funcao="mover" />
         </button>
-        <strong>{tarefa.nome}</strong>
+        {tarefa.instrucoes ? (
+          <button type="button" className="manutencao-nome-botao" aria-expanded={aberto} onClick={() => setAberto((a) => !a)} title={aberto ? 'Ocultar instruções' : 'Mostrar instruções'}>
+            {tarefa.nome}
+          </button>
+        ) : (
+          <strong>{tarefa.nome}</strong>
+        )}
       </div>
+      {aberto && tarefa.instrucoes && <p className="manutencao-instrucoes">{tarefa.instrucoes}</p>}
+      {tarefa.dias_semana.length > 0 && agrupamento !== 'dia' && <span className="tag-chip">{resumoDosDias(tarefa.dias_semana)}</span>}
       <span className="conta-detalhe">
-        {agrupamento === 'comodo' ? `${rotuloPeriodo(tarefa.frequencia_dias)} · ` : ''}próxima em {formatarData(proximaExecucao(tarefa))}
+        {agrupamento !== 'periodo' ? `${rotuloPeriodo(tarefa.frequencia_dias)} · ` : ''}próxima em {formatarData(proximaExecucao(tarefa))}
       </span>
       {atraso?.data_prevista && (
         <span className="manutencao-flag-atraso" title={`Feita com atraso em ${formatarData(atraso.data_execucao)}`}>
           <IconeBandeira /> Feita com atraso (devia ser {formatarData(atraso.data_prevista)})
         </span>
       )}
-      {agrupamento === 'periodo' && <TagsChips tags={comodos} />}
+      {agrupamento !== 'comodo' && <TagsChips tags={comodos} />}
       <div className="hierarquia-item-acoes">
         <button type="button" onClick={() => onFeita(tarefa)}>
           Feita hoje
@@ -130,7 +153,8 @@ interface KanbanProps {
 /** Quadro de tarefas por cômodo ou por período (diária, semanal, mensal...). Arrastar o cartão para outra coluna muda o cômodo ou o período. */
 export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamento, atrasoPorTarefa, onFeita, onEditar, onHistorico, onMover }: KanbanProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-  const colunas = agrupamento === 'comodo' ? colunasPorComodo(tarefas, comodos, comodosPorTarefa) : colunasPorPeriodo(tarefas);
+  const colunas =
+    agrupamento === 'comodo' ? colunasPorComodo(tarefas, comodos, comodosPorTarefa) : agrupamento === 'dia' ? colunasPorDia(tarefas) : colunasPorPeriodo(tarefas);
   const tarefaPorId = new Map(tarefas.map((t) => [t.id, t]));
 
   function aoSoltar({ active, over }: DragEndEvent) {
@@ -145,7 +169,7 @@ export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamen
 
   return (
     <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={aoSoltar}>
-      <div className="kanban" role="list" aria-label={agrupamento === 'comodo' ? 'Tarefas por cômodo' : 'Tarefas por período'}>
+      <div className="kanban" role="list" aria-label={agrupamento === 'comodo' ? 'Tarefas por cômodo' : agrupamento === 'dia' ? 'Tarefas por dia da semana' : 'Tarefas por período'}>
         {colunas.map((coluna) => (
           <ColunaKanban key={coluna.chave} coluna={coluna}>
             {coluna.tarefas.map((tarefa) => (

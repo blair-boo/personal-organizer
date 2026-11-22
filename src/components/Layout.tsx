@@ -4,9 +4,10 @@ import { useAuth } from '../auth/AuthContext';
 import { useTema, type TemaPref } from '../hooks/useTema';
 import { useTarefasManutencao } from '../hooks/useTarefasManutencao';
 import { hojeIso } from '../lib/datas';
+import { contarFila, pedirEnvioDaFila, usePendentes } from '../lib/offline/fila';
 import { tarefaAtrasada } from '../lib/historicoTarefa';
 import { APP_NAME } from '../config';
-import { DialogosProvider } from './Dialogo';
+import { DialogosProvider, useDialogos } from './Dialogo';
 import { AbasEdicaoProvider, useAbasEdicaoOpcional } from './AbasEdicao';
 import { IconeLua, IconeMonitor, IconeSol } from './IconesProvisorios';
 import { NavAbas } from './NavAbas';
@@ -92,23 +93,61 @@ function IndicadorAtrasadas() {
   );
 }
 
+/** Quantas alterações feitas sem internet esperam para ser enviadas; tocar tenta enviar. */
+function IndicadorPendentes() {
+  const pendentes = usePendentes();
+  const { online } = useOffline();
+  if (pendentes === 0) return null;
+  const texto = pendentes === 1 ? '1 alteração pendente' : `${pendentes} alterações pendentes`;
+  return (
+    <button
+      type="button"
+      className="indicador-conexao"
+      onClick={pedirEnvioDaFila}
+      disabled={!online}
+      title={online ? `${texto}: enviar agora` : `${texto}: serão enviadas quando houver internet`}
+      aria-label={online ? `${texto}: enviar agora` : `${texto}: serão enviadas quando houver internet`}
+    >
+      <span className="conexao-ponto conexao-offline" aria-hidden="true" />
+      <span>{texto}</span>
+    </button>
+  );
+}
+
 function LayoutInterno({ children }: { children: ReactNode }) {
   const { signOut } = useAuth();
+  const { confirmar } = useDialogos();
   const { tema, ciclarTema } = useTema();
   const edicao = useAbasEdicaoOpcional();
   const editando = edicao?.editando ?? false;
+
+  /** Sair apaga tudo do aparelho, inclusive o que ainda não foi enviado: pergunta antes. */
+  async function sair() {
+    const pendentes = await contarFila();
+    if (pendentes > 0) {
+      const ok = await confirmar({
+        titulo: 'Há alterações sem enviar',
+        mensagem: `${pendentes === 1 ? '1 alteração feita' : `${pendentes} alterações feitas`} sem internet ainda não ${pendentes === 1 ? 'foi enviada' : 'foram enviadas'}. Se você sair agora, ${pendentes === 1 ? 'ela será perdida' : 'elas serão perdidas'}.`,
+        confirmarRotulo: 'Sair e perder',
+        perigoso: true,
+      });
+      if (!ok) return;
+    }
+    await signOut();
+  }
 
   return (
     <div className="app-layout">
       <header className="app-header">
         <div className="app-header-top">
           <h1 className="app-title">{APP_NAME}</h1>
+          <IndicadorPendentes />
           <IndicadorAtrasadas />
           <IndicadorConexao />
           <button type="button" onClick={ciclarTema} className="tema-toggle" title={TEMA_INFO[tema].titulo} aria-label={TEMA_INFO[tema].titulo}>
             {tema === 'light' ? <IconeSol /> : tema === 'dark' ? <IconeLua /> : <IconeMonitor />}
           </button>
-          <button type="button" onClick={signOut} className="logout-button">
+          <button type="button" onClick={sair} className="logout-button">
             Sair
           </button>
         </div>
