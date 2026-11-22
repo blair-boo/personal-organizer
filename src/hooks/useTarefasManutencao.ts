@@ -8,6 +8,8 @@ export interface DadosTarefaManutencao {
   nome: string;
   frequencia_dias: number;
   ativo: boolean;
+  dias_semana: number[];
+  instrucoes: string | null;
 }
 
 export function useTarefasManutencao() {

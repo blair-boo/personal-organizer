@@ -13,7 +13,7 @@ import type { TarefaManutencao } from '../types';
 const HOJE = '2026-11-18';
 
 function tarefa(id: string, nome: string, frequencia_dias: number, ultima_execucao: string | null): TarefaManutencao {
-  return { id, nome, frequencia_dias, ultima_execucao, proxima_a_partir_de: null, ativo: true };
+  return { id, nome, frequencia_dias, ultima_execucao, proxima_a_partir_de: null, dias_semana: id === 't2' ? [0, 4] : [], instrucoes: null, ativo: true };
 }
 
 const tarefas = [
@@ -72,6 +72,13 @@ describe('filtrarTarefas', () => {
     // t3 venceu em 29/09; t2 nunca foi feita (para hoje, não atrasada)
     expect(filtrar({ status: ['atrasada'] })).toEqual(['t3']);
     expect(filtrar({ status: ['atrasada', 'feita'] })).toEqual(['t1', 't3', 't4']);
+  });
+
+  it('dias da semana: vale qualquer um dos ligados', () => {
+    expect(filtrar({ dias: [0] })).toEqual(['t2']);
+    expect(filtrar({ dias: [4, 6] })).toEqual(['t2']);
+    expect(filtrar({ dias: [2] })).toEqual([]);
+    expect(haFiltroAtivo({ ...FILTROS_VAZIOS, dias: [1] })).toBe(true);
   });
 
   it('entre grupos vale "e"', () => {

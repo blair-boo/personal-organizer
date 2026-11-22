@@ -5,6 +5,7 @@ import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
 import { caminhoAnexoStorage, enviarArquivo, removerArquivo, removerArquivos } from '../../lib/storage';
+import { guardarArquivo } from '../../lib/offline/arquivos';
 import { BUCKET_STORAGE, useSalvarCaixa, type ItemParaSalvar } from '../../hooks/useStorageCaixas';
 import type { AnexoStorage, CaixaStorage, TagItem } from '../../types';
 import type { DadosStorage } from './CaixaConteudo';
@@ -17,6 +18,8 @@ interface RascunhoAnexo {
   /** Veio do banco. Os novos já estão no bucket, mas só entram no banco ao salvar. */
   existente: boolean;
   id?: string;
+  /** Foto escolhida sem internet: fica no aparelho e sobe com a fila ao salvar a caixa. */
+  arquivoLocal?: File;
 }
 
 interface RascunhoObs {
@@ -72,7 +75,7 @@ function assinatura(nome: string, itens: RascunhoItem[], removidos: string[]): s
 }
 
 function anexosNovosDe(itens: RascunhoItem[]): string[] {
-  return itens.flatMap((i) => i.anexos.filter((a) => !a.existente).map((a) => a.caminho));
+  return itens.flatMap((i) => i.anexos.filter((a) => !a.existente && !a.arquivoLocal).map((a) => a.caminho));
 }
 
 interface CaixaModalProps {
@@ -83,13 +86,15 @@ interface CaixaModalProps {
   tags: TagItem[];
   /** Posição da caixa nova (última + 1). */
   ordemNova: number;
+  /** Número da caixa nova (o maior + 1): vira o código da etiqueta e é definido já aqui pra valer também sem internet. */
+  numeroNovo: number;
   onFechar: () => void;
   /** Depois de salvar; recebe o id da caixa. */
   onSalvo: (caixaId: string) => void;
 }
 
 /** Formulário da caixa: nome e lista de itens (nome, quantidade, tag, observações e anexos). Padrões A e B da skill padrao-ps. */
-export function CaixaModal({ caixa, dados, tags, ordemNova, onFechar, onSalvo }: CaixaModalProps) {
+export function CaixaModal({ caixa, dados, tags, ordemNova, numeroNovo, onFechar, onSalvo }: CaixaModalProps) {
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
   const salvarCaixa = useSalvarCaixa();
@@ -116,6 +121,7 @@ export function CaixaModal({ caixa, dados, tags, ordemNova, onFechar, onSalvo }:
 
   async function removerItem(item: RascunhoItem) {
     const novos = item.anexos.filter((a) => !a.existente);
+    const enviados = novos.filter((a) => !a.arquivoLocal);
     if (novos.length > 0) {
       const ok = await confirmar({
         titulo: 'Remover item?',
@@ -125,7 +131,7 @@ export function CaixaModal({ caixa, dados, tags, ordemNova, onFechar, onSalvo }:
       });
       if (!ok) return;
       try {
-        await removerArquivos(BUCKET_STORAGE, novos.map((a) => a.caminho));
+        if (enviados.length > 0) await removerArquivos(BUCKET_STORAGE, enviados.map((a) => a.caminho));
       } catch (err) {
         mostrarToast(mensagemDeErro(err), 'erro');
         return;
@@ -179,20 +185,21 @@ export function CaixaModal({ caixa, dados, tags, ordemNova, onFechar, onSalvo }:
       quantidade: i.quantidade.trim() ? Number(i.quantidade.trim()) : null,
       tag_id: i.tagId || null,
       obs: i.obs.map((o) => o.texto.trim()).filter(Boolean),
-      anexosNovos: i.anexos.filter((a) => !a.existente).map((a) => ({ nome: a.nome, arquivo_url: a.caminho, nome_arquivo: a.nomeArquivo })),
+      anexosNovos: i.anexos.filter((a) => !a.existente).map((a) => ({ id: a.chave, nome: a.nome, arquivo_url: a.caminho, nome_arquivo: a.nomeArquivo, arquivoLocal: a.arquivoLocal })),
       anexosRemovidos: i.anexosRemovidos,
     }));
     setSalvando(true);
     try {
-      await salvarCaixa.mutateAsync({
+      const resultado = await salvarCaixa.mutateAsync({
         id: caixaId,
+        ...(editando ? {} : { numero: numeroNovo }),
         nome: nome.trim(),
         novo: !editando,
         ordemNova,
         itens: itensParaSalvar,
         itensRemovidos: [...removidos, ...vazios.filter((i) => i.existente).map((i) => i.id)],
       });
-      mostrarToast('Caixa salva.');
+      mostrarToast(resultado === 'enfileirada' ? 'Caixa salva no aparelho. Será enviada quando houver internet.' : 'Caixa salva.');
       onSalvo(caixaId);
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
@@ -342,8 +349,15 @@ function AnexosDoItem({ item, onChange }: { item: RascunhoItem; onChange: (patch
     setEnviando(true);
     try {
       const caminho = caminhoAnexoStorage(item.id, nome.trim(), arquivo);
-      await enviarArquivo(BUCKET_STORAGE, caminho, arquivo);
-      onChange({ anexos: [...item.anexos, { chave: crypto.randomUUID(), nome: nome.trim(), caminho, nomeArquivo: arquivo.name, existente: false }] });
+      const chave = crypto.randomUUID();
+      if (navigator.onLine) {
+        await enviarArquivo(BUCKET_STORAGE, caminho, arquivo);
+        onChange({ anexos: [...item.anexos, { chave, nome: nome.trim(), caminho, nomeArquivo: arquivo.name, existente: false }] });
+      } else {
+        // Sem internet: guarda a foto no aparelho (aparece mesmo assim) e ela sobe com a fila.
+        await guardarArquivo({ bucket: BUCKET_STORAGE, caminho, versao: chave }, arquivo);
+        onChange({ anexos: [...item.anexos, { chave, nome: nome.trim(), caminho, nomeArquivo: arquivo.name, existente: false, arquivoLocal: arquivo }] });
+      }
       setArquivo(null);
       setNome('');
     } catch (err) {
@@ -368,7 +382,7 @@ function AnexosDoItem({ item, onChange }: { item: RascunhoItem; onChange: (patch
       return;
     }
     try {
-      await removerArquivo(BUCKET_STORAGE, anexo.caminho);
+      if (!anexo.arquivoLocal) await removerArquivo(BUCKET_STORAGE, anexo.caminho);
       onChange({ anexos: item.anexos.filter((a) => a.chave !== anexo.chave) });
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');

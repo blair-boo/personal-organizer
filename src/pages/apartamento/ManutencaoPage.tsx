@@ -11,6 +11,7 @@ import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
 import { formatarData, hojeIso } from '../../lib/datas';
+import { aceitaDiaDaSemana, alternarDia, DIAS_DA_SEMANA, resumoDosDias, ROTULOS_DIA, ROTULOS_DIA_CURTO } from '../../lib/diasSemana';
 import { dataPrevistaDaTarefa, entradaAtrasada, tarefaAtrasada, ultimaEntrada } from '../../lib/historicoTarefa';
 import { FILTROS_VAZIOS, filtrarTarefas, haFiltroAtivo, periodosDasTarefas, rotuloPeriodo, type FiltrosManutencao, type StatusTarefa } from '../../lib/filtrosManutencao';
 import { ocorrenciasNoIntervalo, proximaExecucao } from '../../lib/manutencao';
@@ -27,9 +28,13 @@ import {
 import type { BaseProximaExecucao, HistoricoTarefa, TarefaManutencao } from '../../types';
 import { EscolhaBaseModal } from './EscolhaBaseModal';
 import { HistoricoTarefaModal } from './HistoricoTarefaModal';
-import { CHAVE_SEM_COMODO, ManutencaoKanban, type AgrupamentoKanban } from './ManutencaoKanban';
+import { CHAVE_SEM_COMODO, CHAVE_SEM_DIA, ManutencaoKanban, PREFIXO_DIA, type AgrupamentoKanban } from './ManutencaoKanban';
 
-const TAREFA_VAZIA: DadosTarefaManutencao = { nome: '', frequencia_dias: 30, ativo: true };
+const TAREFA_VAZIA: DadosTarefaManutencao = { nome: '', frequencia_dias: 30, ativo: true, dias_semana: [], instrucoes: null };
+
+function dadosDaTarefa(t: TarefaManutencao): DadosTarefaManutencao {
+  return { nome: t.nome, frequencia_dias: t.frequencia_dias, ativo: t.ativo, dias_semana: t.dias_semana, instrucoes: t.instrucoes };
+}
 
 const PRESETS_FREQUENCIA = [1, 7, 15, 30, 60, 90, 120, 180, 365, 730].map((dias) => ({ label: rotuloPeriodo(dias), dias }));
 
@@ -54,7 +59,8 @@ function FormularioTarefa({
     e.preventDefault();
     setSalvando(true);
     try {
-      await onSalvar(dados, classificacaoIds);
+      const dadosFinais = { ...dados, dias_semana: aceitaDiaDaSemana(dados.frequencia_dias) ? dados.dias_semana : [], instrucoes: dados.instrucoes?.trim() || null };
+      await onSalvar(dadosFinais, classificacaoIds);
     } finally {
       setSalvando(false);
     }
@@ -97,6 +103,29 @@ function FormularioTarefa({
           />
         </label>
       )}
+      {aceitaDiaDaSemana(dados.frequencia_dias) && (
+        <div className="manutencao-form-dias">
+          <span>Dias da semana</span>
+          <div className="manutencao-grupo-filtro" role="group" aria-label="Dias da semana da tarefa">
+            {DIAS_DA_SEMANA.map((dia) => (
+              <button
+                key={dia}
+                type="button"
+                className={dados.dias_semana.includes(dia) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+                aria-pressed={dados.dias_semana.includes(dia)}
+                aria-label={ROTULOS_DIA[dia]}
+                onClick={() => setDados({ ...dados, dias_semana: alternarDia(dados.dias_semana, dia) })}
+              >
+                {ROTULOS_DIA_CURTO[dia]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <label>
+        Instruções
+        <textarea value={dados.instrucoes ?? ''} onChange={(e) => setDados({ ...dados, instrucoes: e.target.value })} rows={3} />
+      </label>
       <label>
         <input type="checkbox" checked={dados.ativo} onChange={(e) => setDados({ ...dados, ativo: e.target.checked })} />
         Ativa
@@ -131,6 +160,7 @@ export function ManutencaoPage() {
   const [filtros, setFiltros] = useState<FiltrosManutencao>(FILTROS_VAZIOS);
   const [visao, setVisao] = useState<'lista' | 'kanban'>('lista');
   const [agrupamento, setAgrupamento] = useState<AgrupamentoKanban>('comodo');
+  const [instrucoesAbertas, setInstrucoesAbertas] = useState<Set<string>>(new Set());
   const [escolhaBase, setEscolhaBase] = useState<{ tarefa: TarefaManutencao; dataPrevista: string } | null>(null);
   const [historicoDe, setHistoricoDe] = useState<TarefaManutencao | null>(null);
   const [params, setParams] = useSearchParams();
@@ -168,6 +198,15 @@ export function ManutencaoPage() {
     () => filtrarTarefas(tarefas ?? [], comodosPorTarefa, filtros, hojeDia),
     [tarefas, comodosPorTarefa, filtros, hojeDia]
   );
+
+  function alternarInstrucoes(id: string) {
+    setInstrucoesAbertas((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
 
   function alternarNaLista<T>(lista: T[], valor: T): T[] {
     return lista.includes(valor) ? lista.filter((v) => v !== valor) : [...lista, valor];
@@ -220,8 +259,8 @@ export function ManutencaoPage() {
 
   async function registrarFeita(tarefa: TarefaManutencao, base: BaseProximaExecucao, dataPrevista: string | null) {
     try {
-      await registrarExecucao.mutateAsync({ tarefaId: tarefa.id, dataExecucao: hojeDia, dataPrevista, base });
-      mostrarToast('Marcada como feita hoje.');
+      const resultado = await registrarExecucao.mutateAsync({ tarefaId: tarefa.id, dataExecucao: hojeDia, dataPrevista, base });
+      mostrarToast(resultado === 'enfileirada' ? 'Marcada como feita hoje. Será enviada quando houver internet.' : 'Marcada como feita hoje.');
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
     }
@@ -243,8 +282,20 @@ export function ManutencaoPage() {
     try {
       if (agrupamento === 'periodo') {
         const dias = Number(destino.replace('periodo-', ''));
-        await atualizar.mutateAsync({ id: tarefa.id, dados: { nome: tarefa.nome, frequencia_dias: dias, ativo: tarefa.ativo } });
+        await atualizar.mutateAsync({ id: tarefa.id, dados: { ...dadosDaTarefa(tarefa), frequencia_dias: dias, dias_semana: aceitaDiaDaSemana(dias) ? tarefa.dias_semana : [] } });
         mostrarToast(`Tarefa movida para ${rotuloPeriodo(dias)}.`);
+        return;
+      }
+      if (agrupamento === 'dia') {
+        if (destino !== CHAVE_SEM_DIA && !aceitaDiaDaSemana(tarefa.frequencia_dias)) {
+          mostrarToast('Só tarefas semanais podem ter dia da semana.', 'erro');
+          return;
+        }
+        const restantes = tarefa.dias_semana.filter((d) => `${PREFIXO_DIA}${d}` !== origem);
+        const dia = destino === CHAVE_SEM_DIA ? null : Number(destino.replace(PREFIXO_DIA, ''));
+        const novos = dia === null || restantes.includes(dia) ? restantes : alternarDia(restantes, dia);
+        await atualizar.mutateAsync({ id: tarefa.id, dados: { ...dadosDaTarefa(tarefa), dias_semana: novos } });
+        mostrarToast(`Tarefa movida para ${dia === null ? 'Sem dia' : ROTULOS_DIA[dia]}.`);
         return;
       }
       const atuais = (comodosPorTarefa.get(tarefa.id) ?? []).map((c: { id: string }) => c.id).filter((id: string) => id !== origem);
@@ -311,6 +362,8 @@ export function ManutencaoPage() {
             { titulo: 'Frequência (dias)', valor: (t: TarefaManutencao) => t.frequencia_dias },
             { titulo: 'Última execução', valor: (t: TarefaManutencao) => (t.ultima_execucao ? formatarData(t.ultima_execucao) : null) },
             { titulo: 'Próxima execução', valor: (t: TarefaManutencao) => formatarData(proximaExecucao(t)) },
+            { titulo: 'Dias da semana', valor: (t: TarefaManutencao) => resumoDosDias(t.dias_semana) },
+            { titulo: 'Instruções', valor: (t: TarefaManutencao) => t.instrucoes },
             { titulo: 'Ativa', valor: (t: TarefaManutencao) => t.ativo },
             { titulo: 'Classificações', valor: (t: TarefaManutencao) => (tarefaClassificacoes?.get(t.id) ?? []).map((c) => c.nome).join(' | ') },
           ]}
@@ -344,6 +397,20 @@ export function ManutencaoPage() {
             </button>
           ))}
         </div>
+        <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por dia da semana">
+          {DIAS_DA_SEMANA.map((dia) => (
+            <button
+              key={dia}
+              type="button"
+              className={filtros.dias.includes(dia) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+              aria-pressed={filtros.dias.includes(dia)}
+              aria-label={ROTULOS_DIA[dia]}
+              onClick={() => setFiltros({ ...filtros, dias: alternarNaLista(filtros.dias, dia) })}
+            >
+              {ROTULOS_DIA_CURTO[dia]}
+            </button>
+          ))}
+        </div>
         <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por situação">
           {([['feita', 'Feitas'], ['nao_feita', 'Não feitas'], ['atrasada', 'Atrasadas']] as [StatusTarefa, string][]).map(([valor, rotulo]) => (
             <button
@@ -366,7 +433,7 @@ export function ManutencaoPage() {
 
       {visao === 'kanban' && (
         <div className="manutencao-grupo-filtro" role="group" aria-label="Agrupar o kanban">
-          {([['comodo', 'Por cômodo'], ['periodo', 'Por período']] as [AgrupamentoKanban, string][]).map(([valor, rotulo]) => (
+          {([['comodo', 'Por cômodo'], ['periodo', 'Por período'], ['dia', 'Por dia da semana']] as [AgrupamentoKanban, string][]).map(([valor, rotulo]) => (
             <button
               key={valor}
               type="button"
@@ -401,9 +468,16 @@ export function ManutencaoPage() {
           {tarefasFiltradas.map((tarefa) => (
             <li key={tarefa.id} className={tarefa.ativo ? '' : 'conta-inativa'}>
               <div>
-                <strong>{tarefa.nome}</strong>
+                {tarefa.instrucoes ? (
+                  <button type="button" className="manutencao-nome-botao" aria-expanded={instrucoesAbertas.has(tarefa.id)} onClick={() => alternarInstrucoes(tarefa.id)} title={instrucoesAbertas.has(tarefa.id) ? 'Ocultar instruções' : 'Mostrar instruções'}>
+                    {tarefa.nome}
+                  </button>
+                ) : (
+                  <strong>{tarefa.nome}</strong>
+                )}
+                {instrucoesAbertas.has(tarefa.id) && tarefa.instrucoes && <p className="manutencao-instrucoes">{tarefa.instrucoes}</p>}
                 <span className="conta-detalhe">
-                  <TagsChips tags={tarefaClassificacoes?.get(tarefa.id)} /> · {rotuloPeriodo(tarefa.frequencia_dias)} · próxima em {formatarData(proximaExecucao(tarefa))}
+                  <TagsChips tags={tarefaClassificacoes?.get(tarefa.id)} /> · {rotuloPeriodo(tarefa.frequencia_dias)}{tarefa.dias_semana.length > 0 ? ` (${resumoDosDias(tarefa.dias_semana)})` : ''} · próxima em {formatarData(proximaExecucao(tarefa))}
                 </span>
                 {atrasoPorTarefa.get(tarefa.id)?.data_prevista && (
                   <span className="manutencao-flag-atraso" title={`Feita com atraso em ${formatarData(atrasoPorTarefa.get(tarefa.id)?.data_execucao ?? '')}`}>
@@ -469,7 +543,7 @@ export function ManutencaoPage() {
       <ModalBase aberto={modalAberto} rotulo={editando ? 'Editar tarefa' : 'Nova tarefa'} onFechar={() => setModalAberto(false)} classe="modal-edicao">
         <h3 className="modal-titulo">{editando ? 'Editar tarefa' : 'Nova tarefa'}</h3>
         <FormularioTarefa
-          inicial={editando ? { nome: editando.nome, frequencia_dias: editando.frequencia_dias, ativo: editando.ativo } : TAREFA_VAZIA}
+          inicial={editando ? dadosDaTarefa(editando) : TAREFA_VAZIA}
           classificacoesIniciais={editando ? (tarefaClassificacoes?.get(editando.id) ?? []).map((c) => c.id) : []}
           todasClassificacoes={tags ?? []}
           onSalvar={salvar}

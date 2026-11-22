@@ -365,14 +365,14 @@ export function StoragePage() {
     setSalvando(true);
     try {
       const ordens = ordensParaSalvar(layoutBase, layout);
-      await aplicarEdicao.mutateAsync({
+      const resultado = await aplicarEdicao.mutateAsync({
         caixas: ordens.caixas,
         itens: ordens.itens,
         renomeacoes: [...renomeacoes].map(([id, nome]) => ({ id, nome })),
         caixasExcluidas: [...exclusoesCaixas],
         itensExcluidos: [...exclusoesItens],
       });
-      mostrarToast('Alterações salvas.');
+      mostrarToast(resultado === 'enfileirada' ? 'Alterações salvas no aparelho. Serão enviadas quando houver internet.' : 'Alterações salvas.');
       sairModoEdicao();
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
@@ -536,6 +536,7 @@ export function StoragePage() {
           dados={dados}
           tags={tagsQ.data ?? []}
           ordemNova={ordemNova}
+          numeroNovo={caixas.reduce((maior, c) => Math.max(maior, c.numero), 0) + 1}
           onFechar={() => setCaixaModal(null)}
           onSalvo={(id) => {
             const nova = caixaModal.caixa === null;

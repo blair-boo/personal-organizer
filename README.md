@@ -87,7 +87,19 @@ Aba **Storage**, ao lado de Apartamento: cadastro de caixas e do que há dentro 
 
 Em Apartamento > Manutenção, abaixo do título: busca (só no nome da tarefa) e botões de filtro por cômodo, período e situação (Feitas / Não feitas). Dentro de um grupo vale "ou"; entre grupos vale "e". O calendário e o CSV respeitam os filtros. Feita = já foi feita neste ciclo (próxima execução no futuro); nunca feita, vencida ou para hoje = não feita. Dois botões no título alternam entre lista e kanban; o kanban agrupa por cômodo (tarefa com vários cômodos aparece em cada um) ou por período (Diária, Semanal, Mensal, Bimestral, A cada 4 meses, Semestral, Anual, A cada 2 anos; lógica em `src/lib/filtrosManutencao.ts`). Arrastar um cartão para outra coluna troca o cômodo (por cômodo, mantendo os outros cômodos da tarefa) ou a frequência (por período). "Atrasadas" é um filtro à parte, e o cabeçalho mostra quantas tarefas estão atrasadas.
 
+**Dia da semana e instruções:** a tarefa semanal pode ter dias da semana (Seg a Dom; coluna `dias_semana`, 0 = segunda) e qualquer tarefa pode ter instruções (aparecem ao clicar no nome). Os dias só organizam: aparecem ao lado do período, têm filtro próprio e um terceiro agrupamento do kanban ("Por dia da semana"; arrastar entre dias troca o dia). A próxima execução continua contada pela frequência. Migration `0021`.
+
 **Feita hoje, histórico e atraso:** "Feita hoje" grava a data de hoje. Se a tarefa estava atrasada, pergunta de onde conta a próxima: voltar à data original (marcado de início) ou a partir de hoje. A tarefa feita com atraso ganha uma bandeira. O botão **Histórico** de cada tarefa deixa trocar a data de uma execução, incluir outra data à mão, excluir uma execução e mudar a escolha da base nas feitas com atraso (tabela `tarefas_manutencao_historico`, colunas `data_prevista` e `base_proxima`; migration `0020`; lógica em `src/lib/historicoTarefa.ts`).
+
+## Editar sem internet (Storage e Manutenção)
+
+Storage (caixas, itens, observações, tags e fotos) e, na Manutenção, "Feita hoje" e o Histórico aceitam alterações sem internet. Itens, Projetos e Documentos ainda recusam (fase 2, ver o backlog compartilhado).
+
+- **Como funciona:** sem internet a alteração aparece na tela na hora e entra numa fila guardada no IndexedDB do aparelho (`src/lib/offline/fila.ts`; aceita Blob, então as fotos tiradas sem sinal vão junto). Quando a conexão volta, o `OfflineProvider` envia a fila em ordem, antes de buscar as consultas de novo (`src/lib/offline/enviarFila.ts`). Se uma alteração falhar, o envio para nela, avisa o erro e tenta de novo na próxima vez.
+- **Onde fica cada peça:** os tipos de alteração em `operacoes.ts`, a gravação no servidor em `executores.ts` (a mesma usada com internet; aguenta rodar de novo, por isso usa upsert), o efeito na tela em `aplicarLocal.ts` (funções puras, com testes) e a decisão de rodar na hora ou enfileirar em `executarOuEnfileirar.ts`. Hook novo que queira funcionar offline: passa por `executarOuEnfileirar` e sobrescreve `onMutate: () => undefined` (o `main.tsx` recusa as demais).
+- **Códigos de caixa:** o número da caixa nova (o maior + 1) é definido no aparelho, pra valer também sem internet.
+- **Conflito:** vale a última alteração enviada. Fotos: a cópia local aparece normalmente e sobe com a fila.
+- **Indicador:** o cabeçalho mostra "N alterações pendentes" (toque para enviar). Settings > App tem "Enviar agora" e "Descartar pendências". Sair da conta com pendências pergunta antes, porque sair apaga tudo do aparelho.
 
 ## Exportar CSV
 

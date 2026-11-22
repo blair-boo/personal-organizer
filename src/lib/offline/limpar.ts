@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { apagarTodosOsArquivos } from './arquivos';
+import { limparFila } from './fila';
 import { chaveFicaOffline, persisterOffline } from './persistencia';
 
 /** Caches de versões anteriores do app, que guardavam respostas da API e arquivos privados. */
@@ -26,6 +27,7 @@ export async function apagarDadosOffline(queryClient: QueryClient): Promise<void
 
 /** Ao sair da conta nada de dados pessoais pode ficar no aparelho. */
 export async function limparTudoAoSair(queryClient: QueryClient): Promise<void> {
+  await limparFila();
   await apagarDadosOffline(queryClient);
   queryClient.clear();
 }
