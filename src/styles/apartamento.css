@@ -62,3 +62,70 @@
   align-items: center;
   gap: 8px;
 }
+
+/* Manutenção: título com visões, busca, filtros em botões e kanban */
+
+.manutencao-titulo-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.manutencao-visoes {
+  display: flex;
+  gap: 4px;
+}
+
+.manutencao-busca {
+  flex: 1;
+  min-width: 0;
+}
+
+.manutencao-filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.manutencao-grupo-filtro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kanban {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  align-items: flex-start;
+}
+
+.kanban-coluna {
+  flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+}
+
+.kanban-coluna-titulo {
+  margin: 0;
+  font-size: 14px;
+}
+
+.kanban-cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  min-width: 0;
+}

@@ -135,6 +135,31 @@ export function IconeQr({ tamanho = 16 }: Props) {
   );
 }
 
+// PROVISORIO: trocar por list.svg
+export function IconeLista({ tamanho = 16 }: Props) {
+  return (
+    <Svg tamanho={tamanho}>
+      <path d="M8 6h12" />
+      <path d="M8 12h12" />
+      <path d="M8 18h12" />
+      <path d="M4 6h.01" />
+      <path d="M4 12h.01" />
+      <path d="M4 18h.01" />
+    </Svg>
+  );
+}
+
+// PROVISORIO: trocar por kanban.svg
+export function IconeKanban({ tamanho = 16 }: Props) {
+  return (
+    <Svg tamanho={tamanho}>
+      <rect x="3" y="4" width="5" height="16" rx="1" />
+      <rect x="10" y="4" width="5" height="10" rx="1" />
+      <rect x="17" y="4" width="4" height="13" rx="1" />
+    </Svg>
+  );
+}
+
 export function IconeEngrenagem({ tamanho = 16 }: Props) {
   return (
     <Svg tamanho={tamanho}>
