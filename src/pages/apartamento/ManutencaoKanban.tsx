@@ -1,11 +1,11 @@
 import { IconeFuncao } from '../../components/IconeUso';
 import { TagsChips } from '../../components/TagsChips';
 import { formatarData } from '../../lib/datas';
-import { CHAVES_SEMANA, ROTULOS_SEMANA, rotuloPeriodo, semanaDaTarefa } from '../../lib/filtrosManutencao';
+import { rotuloPeriodo } from '../../lib/filtrosManutencao';
 import { proximaExecucao } from '../../lib/manutencao';
 import type { ClassificacaoTarefa, TarefaManutencao } from '../../types';
 
-export type AgrupamentoKanban = 'comodo' | 'semana';
+export type AgrupamentoKanban = 'comodo' | 'periodo';
 
 interface Coluna {
   chave: string;
@@ -33,12 +33,17 @@ function colunasPorComodo(
   return [...colunas, semComodo].filter((c) => c.tarefas.length > 0);
 }
 
-/** Uma coluna por semana, pela próxima execução. Atrasadas e Mais adiante só aparecem se tiverem tarefa. */
-function colunasPorSemana(tarefas: TarefaManutencao[], hoje: string): Coluna[] {
-  const colunas = CHAVES_SEMANA.map((chave) => ({ chave, titulo: ROTULOS_SEMANA[chave], tarefas: [] as TarefaManutencao[] }));
-  const porChave = new Map(colunas.map((c) => [c.chave, c]));
-  for (const tarefa of tarefas) porChave.get(semanaDaTarefa(tarefa, hoje))?.tarefas.push(tarefa);
-  return colunas.filter((c) => c.tarefas.length > 0 || !['atrasadas', 'depois'].includes(c.chave));
+/** Uma coluna por período (frequência da tarefa), do mais curto ao mais longo; dentro dela, pela próxima execução. */
+function colunasPorPeriodo(tarefas: TarefaManutencao[]): Coluna[] {
+  const porDias = new Map<number, TarefaManutencao[]>();
+  for (const tarefa of tarefas) porDias.set(tarefa.frequencia_dias, [...(porDias.get(tarefa.frequencia_dias) ?? []), tarefa]);
+  return [...porDias.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([dias, lista]) => ({
+      chave: `periodo-${dias}`,
+      titulo: rotuloPeriodo(dias),
+      tarefas: lista.sort((a, b) => proximaExecucao(a).localeCompare(proximaExecucao(b)) || a.nome.localeCompare(b.nome, 'pt-BR')),
+    }));
 }
 
 interface KanbanProps {
@@ -46,16 +51,15 @@ interface KanbanProps {
   comodos: ClassificacaoTarefa[];
   comodosPorTarefa: Map<string, ClassificacaoTarefa[]>;
   agrupamento: AgrupamentoKanban;
-  hoje: string;
   onFeita: (tarefa: TarefaManutencao) => void;
   onEditar: (tarefa: TarefaManutencao) => void;
 }
 
-/** Quadro de tarefas por cômodo ou por semana. */
-export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamento, hoje, onFeita, onEditar }: KanbanProps) {
-  const colunas = agrupamento === 'comodo' ? colunasPorComodo(tarefas, comodos, comodosPorTarefa) : colunasPorSemana(tarefas, hoje);
+/** Quadro de tarefas por cômodo ou por período (diária, semanal, mensal...). */
+export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamento, onFeita, onEditar }: KanbanProps) {
+  const colunas = agrupamento === 'comodo' ? colunasPorComodo(tarefas, comodos, comodosPorTarefa) : colunasPorPeriodo(tarefas);
   return (
-    <div className="kanban" role="list" aria-label={agrupamento === 'comodo' ? 'Tarefas por cômodo' : 'Tarefas por semana'}>
+    <div className="kanban" role="list" aria-label={agrupamento === 'comodo' ? 'Tarefas por cômodo' : 'Tarefas por período'}>
       {colunas.map((coluna) => (
         <section key={coluna.chave} className="kanban-coluna" role="listitem" aria-label={coluna.titulo}>
           <h3 className="kanban-coluna-titulo">{coluna.titulo}</h3>
@@ -64,9 +68,9 @@ export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamen
             <article key={tarefa.id} className={`kanban-cartao${tarefa.ativo ? '' : ' conta-inativa'}`}>
               <strong>{tarefa.nome}</strong>
               <span className="conta-detalhe">
-                {rotuloPeriodo(tarefa.frequencia_dias)} · próxima em {formatarData(proximaExecucao(tarefa))}
+                {agrupamento === 'comodo' ? `${rotuloPeriodo(tarefa.frequencia_dias)} · ` : ''}próxima em {formatarData(proximaExecucao(tarefa))}
               </span>
-              {agrupamento === 'semana' && <TagsChips tags={comodosPorTarefa.get(tarefa.id)} />}
+              {agrupamento === 'periodo' && <TagsChips tags={comodosPorTarefa.get(tarefa.id)} />}
               <div className="hierarquia-item-acoes">
                 <button type="button" onClick={() => onFeita(tarefa)}>
                   Feita hoje

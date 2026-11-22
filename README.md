@@ -84,7 +84,7 @@ Aba **Storage**, ao lado de Apartamento: cadastro de caixas e do que há dentro 
 
 ## Manutenção: filtros e kanban
 
-Em Apartamento > Manutenção, abaixo do título: busca (só no nome da tarefa) e botões de filtro por cômodo, período e situação (Feitas / Não feitas). Dentro de um grupo vale "ou"; entre grupos vale "e". O calendário e o CSV respeitam os filtros. Feita = já foi feita neste ciclo (próxima execução no futuro); nunca feita, vencida ou para hoje = não feita. Dois botões no título alternam entre lista e kanban; o kanban agrupa por cômodo (tarefa com vários cômodos aparece em cada um) ou por semana da próxima execução (lógica em `src/lib/filtrosManutencao.ts`).
+Em Apartamento > Manutenção, abaixo do título: busca (só no nome da tarefa) e botões de filtro por cômodo, período e situação (Feitas / Não feitas). Dentro de um grupo vale "ou"; entre grupos vale "e". O calendário e o CSV respeitam os filtros. Feita = já foi feita neste ciclo (próxima execução no futuro); nunca feita, vencida ou para hoje = não feita. Dois botões no título alternam entre lista e kanban; o kanban agrupa por cômodo (tarefa com vários cômodos aparece em cada um) ou por período (Diária, Semanal, Mensal, Bimestral, A cada 4 meses, Semestral, Anual, A cada 2 anos; lógica em `src/lib/filtrosManutencao.ts`).
 
 ## Exportar CSV
 
