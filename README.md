@@ -101,6 +101,19 @@ Storage (caixas, itens, observações, tags e fotos) e, na Manutenção, "Feita 
 - **Conflito:** vale a última alteração enviada. Fotos: a cópia local aparece normalmente e sobe com a fila.
 - **Indicador:** o cabeçalho mostra "N alterações pendentes" (toque para enviar). Settings > App tem "Enviar agora" e "Descartar pendências". Sair da conta com pendências pergunta antes, porque sair apaga tudo do aparelho.
 
+## Exportar tarefas para planilha
+
+Em Apartamento > Manutenção, **Exportar planilha** gera um .xlsx no formato da aba Esqueleto da planilha de rotinas. Três abas: **Esqueleto** (blocos Monthly, Bi-Monthly, Quarterly or Every 4-Months, Bi Annual, Annual e 2 Years, com os 12 meses do ano), **Diárias e semanais** (mês e ano no topo e uma coluna por dia, com os blocos Daily, Weekly e Every 15 Days) e **Dados** (todas as colunas). Verde (DUE): feita no prazo ou ainda por vencer, com o dia na célula; vermelho (OVERDUE): feita fora da data prevista, só no mês ou dia em que foi feita. Tarefa de frequência fora desses blocos aparece só em Dados. Exporta as tarefas filtradas na tela (sem filtro, todas); o cômodo no nome da linha é opcional. Lógica em `src/lib/exportacaoTarefas.ts`, arquivo em `src/lib/xlsx.ts`.
+
+**Salvar no Google Drive (como Google Sheets):** o código (`src/lib/google.ts`) já faz login, escolha da pasta e envio, mas fica desligado até haver credenciais em `src/config.ts` (`GOOGLE_CLIENT_ID` e `GOOGLE_API_KEY`, ou `VITE_GOOGLE_CLIENT_ID` e `VITE_GOOGLE_API_KEY` no build; os dois são públicos). Para criar, no Google Cloud Console (pode ser pelo celular, no "site para computador"):
+
+1. Criar um projeto e ativar a **Google Drive API** e a **Google Picker API** (APIs e serviços > Biblioteca).
+2. Em **Tela de permissão OAuth**: tipo Externo, nome do app, e-mail de suporte; em "Usuários de teste", o seu e-mail.
+3. Em **Credenciais > Criar credenciais > ID do cliente OAuth > Aplicativo da Web**: origem JavaScript autorizada `https://blair-boo.github.io`. Isso dá o `GOOGLE_CLIENT_ID`.
+4. Em **Credenciais > Criar credenciais > Chave de API**: restringir a origem (referenciadores HTTP) a `https://blair-boo.github.io/*` e as APIs a Drive e Picker. Isso dá a `GOOGLE_API_KEY`.
+
+O escopo usado é `drive.file`: o app só enxerga o que ele cria e a pasta que você escolhe no seletor. Precisa de internet.
+
 ## Exportar CSV
 
 Botão de exportar no topo de Itens, Projetos e Manutenção (Apartamento). Separador `;`, vírgula decimal e UTF-8 com BOM (abre direto no Excel em português). Texto que começaria com `=`, `+`, `-` ou `@` ganha um apóstrofo, para a planilha não executar como fórmula. Documentos ficam fora de propósito (têm campos sensíveis).
