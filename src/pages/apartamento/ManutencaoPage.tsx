@@ -27,6 +27,7 @@ import {
 } from '../../hooks/useTarefasManutencao';
 import type { BaseProximaExecucao, HistoricoTarefa, TarefaManutencao } from '../../types';
 import { EscolhaBaseModal } from './EscolhaBaseModal';
+import { ExportarPlanilhaModal } from './ExportarPlanilhaModal';
 import { HistoricoTarefaModal } from './HistoricoTarefaModal';
 import { CHAVE_SEM_COMODO, CHAVE_SEM_DIA, ManutencaoKanban, PREFIXO_DIA, type AgrupamentoKanban } from './ManutencaoKanban';
 
@@ -161,6 +162,7 @@ export function ManutencaoPage() {
   const [visao, setVisao] = useState<'lista' | 'kanban'>('lista');
   const [agrupamento, setAgrupamento] = useState<AgrupamentoKanban>('comodo');
   const [instrucoesAbertas, setInstrucoesAbertas] = useState<Set<string>>(new Set());
+  const [exportarAberto, setExportarAberto] = useState(false);
   const [escolhaBase, setEscolhaBase] = useState<{ tarefa: TarefaManutencao; dataPrevista: string } | null>(null);
   const [historicoDe, setHistoricoDe] = useState<TarefaManutencao | null>(null);
   const [params, setParams] = useSearchParams();
@@ -354,6 +356,9 @@ export function ManutencaoPage() {
         <button type="button" onClick={abrirNova}>
           + Tarefa
         </button>
+        <button type="button" onClick={() => setExportarAberto(true)} disabled={!tarefas || tarefas.length === 0}>
+          Exportar planilha
+        </button>
         <BotaoExportarCsv
           nome="Tarefas de manutenção"
           linhas={tarefasFiltradas}
@@ -516,6 +521,14 @@ export function ManutencaoPage() {
         </button>
       </div>
       <CalendarioMensal ano={mesCalendario.ano} mes={mesCalendario.mes} eventos={eventosCalendario} />
+
+      {exportarAberto && (
+        <ExportarPlanilhaModal
+          dados={{ tarefas: tarefasFiltradas, historico: historico ?? [], comodosPorTarefa, hoje: hojeDia }}
+          origem={haFiltroAtivo(filtros) ? 'as filtradas na tela' : 'todas'}
+          onFechar={() => setExportarAberto(false)}
+        />
+      )}
 
       {escolhaBase && (
         <EscolhaBaseModal
