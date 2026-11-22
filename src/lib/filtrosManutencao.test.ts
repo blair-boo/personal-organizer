@@ -3,10 +3,8 @@ import {
   FILTROS_VAZIOS,
   filtrarTarefas,
   haFiltroAtivo,
-  inicioDaSemana,
   periodosDasTarefas,
   rotuloPeriodo,
-  semanaDaTarefa,
   tarefaFeita,
 } from './filtrosManutencao';
 import type { TarefaManutencao } from '../types';
@@ -89,37 +87,5 @@ describe('rotuloPeriodo e periodosDasTarefas', () => {
 
   it('lista as frequências sem repetir, da menor para a maior', () => {
     expect(periodosDasTarefas(tarefas)).toEqual([1, 7, 120, 730]);
-  });
-});
-
-describe('inicioDaSemana', () => {
-  it('devolve a segunda-feira da semana (segunda a domingo)', () => {
-    expect(inicioDaSemana('2026-11-18')).toBe('2026-11-16');
-    expect(inicioDaSemana('2026-11-16')).toBe('2026-11-16');
-    expect(inicioDaSemana('2026-11-22')).toBe('2026-11-16');
-    expect(inicioDaSemana('2026-11-23')).toBe('2026-11-23');
-  });
-});
-
-describe('semanaDaTarefa', () => {
-  const t = (ultima: string | null, dias: number) => semanaDaTarefa({ ultima_execucao: ultima, frequencia_dias: dias }, HOJE);
-
-  it('vencida cai em atrasadas', () => {
-    expect(t('2026-11-01', 7)).toBe('atrasadas');
-  });
-
-  it('para hoje ou nunca feita cai nesta semana', () => {
-    expect(t(null, 7)).toBe('esta');
-    expect(t('2026-11-11', 7)).toBe('esta');
-  });
-
-  it('cai na semana certa pela data da próxima execução', () => {
-    expect(t('2026-11-18', 4)).toBe('esta'); // domingo, dia 22
-    expect(t('2026-11-18', 5)).toBe('proxima'); // segunda, dia 23
-    expect(t('2026-11-18', 11)).toBe('proxima'); // domingo, dia 29
-    expect(t('2026-11-18', 12)).toBe('em2'); // segunda, dia 30
-    expect(t('2026-11-18', 14)).toBe('em2');
-    expect(t('2026-11-18', 21)).toBe('em3');
-    expect(t('2026-11-18', 60)).toBe('depois');
   });
 });

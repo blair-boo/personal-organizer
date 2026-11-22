@@ -312,7 +312,7 @@ export function ManutencaoPage() {
 
       {visao === 'kanban' && (
         <div className="manutencao-grupo-filtro" role="group" aria-label="Agrupar o kanban">
-          {([['comodo', 'Por cômodo'], ['semana', 'Por semana']] as [AgrupamentoKanban, string][]).map(([valor, rotulo]) => (
+          {([['comodo', 'Por cômodo'], ['periodo', 'Por período']] as [AgrupamentoKanban, string][]).map(([valor, rotulo]) => (
             <button
               key={valor}
               type="button"
@@ -336,7 +336,6 @@ export function ManutencaoPage() {
           comodos={classificacoes ?? []}
           comodosPorTarefa={comodosPorTarefa}
           agrupamento={agrupamento}
-          hoje={hojeDia}
           onFeita={tratarMarcarFeita}
           onEditar={abrirEdicao}
         />
