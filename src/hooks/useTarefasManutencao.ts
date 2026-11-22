@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import type { TarefaManutencao } from '../types';
+import type { ResponsavelTipo, TarefaManutencao } from '../types';
 
 const QUERY_KEY = ['tarefas_manutencao'];
 
@@ -10,6 +10,9 @@ export interface DadosTarefaManutencao {
   ativo: boolean;
   dias_semana: number[];
   instrucoes: string | null;
+  responsavel_tipo: ResponsavelTipo;
+  responsavel_pessoa_id: string | null;
+  responsavel_casal_id: string | null;
 }
 
 export function useTarefasManutencao() {

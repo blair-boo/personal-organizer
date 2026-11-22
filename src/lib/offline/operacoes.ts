@@ -51,6 +51,13 @@ export interface InserirExecucaoDados {
   dataExecucao: string;
   dataPrevista: string | null;
   base: BaseProximaExecucao;
+  /** Quem fez (uma ou mais pessoas). */
+  pessoaIds: string[];
+}
+
+export interface DefinirPessoasExecucaoDados {
+  historicoId: string;
+  pessoaIds: string[];
 }
 
 export interface AtualizarExecucaoDados {

@@ -4,6 +4,7 @@ import { caminhoAnexoDocumento, enviarArquivo, removerArquivo } from '../lib/sto
 import { hojeIso, somarDias } from '../lib/datas';
 import type {
   AreaDocumento,
+  CasalMembro,
   Documento,
   DocumentoAnexo,
   DocumentoCampo,
@@ -161,6 +162,61 @@ export function useExcluirPessoaDocumentos() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['documentos_pessoas'] }),
+  });
+}
+
+/** Quem faz parte de cada casal (um casal junta duas pessoas). */
+export function useCasalMembros() {
+  return useQuery({
+    queryKey: ['documentos_casal_membros'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('documentos_casal_membros').select('*');
+      if (error) throw error;
+      return data as CasalMembro[];
+    },
+  });
+}
+
+/** Documentos padrão de um casal novo (os mesmos do cadastro original do Casal). */
+export const MODELO_PADRAO_DOCUMENTOS_CASAL = [
+  'Certidão de Casamento',
+  'Escritura Pública de Pacto Antenupcial',
+  'Certidão de Registro do Pacto Antenupcial',
+];
+
+export interface NovoCasalDocumentos {
+  nome: string;
+  /** Pessoas que já existem. */
+  pessoaIds: string[];
+  /** Nomes de pessoas a criar na hora (com os documentos padrão delas) e juntar ao casal. */
+  novasPessoas: string[];
+}
+
+/** Cria o casal juntando duas pessoas (existentes e/ou criadas agora) e já semeia os documentos padrão do casal. */
+export function useCriarCasalDocumentos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ nome, pessoaIds, novasPessoas }: NovoCasalDocumentos) => {
+      const ids = [...pessoaIds];
+      for (const nomeNovo of novasPessoas) {
+        const { data: pessoa, error } = await supabase.from('documentos_pessoas').insert({ nome: nomeNovo }).select().single();
+        if (error) throw error;
+        const linhas = MODELO_PADRAO_DOCUMENTOS_PESSOAIS.map((titulo, i) => ({ area: 'pessoais' as const, pessoa_id: pessoa.id, titulo, ordem: i + 1 }));
+        const { error: erroDocumentos } = await supabase.from('documentos').insert(linhas);
+        if (erroDocumentos) throw erroDocumentos;
+        ids.push(pessoa.id);
+      }
+      if (ids.length !== 2 || ids[0] === ids[1]) throw new Error('Um casal junta exatamente duas pessoas diferentes.');
+      const { data: casal, error: erroCasal } = await supabase.from('documentos_pessoas').insert({ nome, tipo: 'casal' }).select().single();
+      if (erroCasal) throw erroCasal;
+      const { error: erroMembros } = await supabase.from('documentos_casal_membros').insert(ids.map((pessoa_id) => ({ casal_id: casal.id, pessoa_id })));
+      if (erroMembros) throw erroMembros;
+      const documentos = MODELO_PADRAO_DOCUMENTOS_CASAL.map((titulo, i) => ({ area: 'pessoais' as const, pessoa_id: casal.id, titulo, ordem: i + 1 }));
+      const { error: erroDocumentosCasal } = await supabase.from('documentos').insert(documentos);
+      if (erroDocumentosCasal) throw erroDocumentosCasal;
+      return casal as PessoaDocumentos;
+    },
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: ['documentos_pessoas'] }), qc.invalidateQueries({ queryKey: ['documentos_casal_membros'] }), qc.invalidateQueries({ queryKey: ['documentos'] })]),
   });
 }
 

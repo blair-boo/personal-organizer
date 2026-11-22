@@ -8,9 +8,10 @@ import { formatarData } from '../../lib/datas';
 import { ROTULOS_DIA, resumoDosDias } from '../../lib/diasSemana';
 import { rotuloPeriodo } from '../../lib/filtrosManutencao';
 import { proximaExecucao } from '../../lib/manutencao';
-import type { HistoricoTarefa, TagItem, TarefaManutencao } from '../../types';
+import { colunaDoResponsavel, textoDoResponsavel } from '../../lib/responsaveis';
+import type { HistoricoTarefa, PessoaDocumentos, TagItem, TarefaManutencao } from '../../types';
 
-export type AgrupamentoKanban = 'comodo' | 'periodo' | 'dia';
+export type AgrupamentoKanban = 'comodo' | 'periodo' | 'dia' | 'pessoa';
 
 export const CHAVE_SEM_COMODO = 'sem-comodo';
 export const CHAVE_SEM_DIA = 'sem-dia';
@@ -62,6 +63,19 @@ export function colunasPorDia(tarefas: TarefaManutencao[]): Coluna[] {
   return [...colunas, semDia];
 }
 
+/** Uma coluna por pessoa, mais Qualquer um e Juntos (do casal) e Sem responsável. */
+export function colunasPorPessoa(tarefas: TarefaManutencao[], pessoas: PessoaDocumentos[], membros: Map<string, string[]>): Coluna[] {
+  const colunas: Coluna[] = [
+    ...pessoas.map((p): Coluna => ({ chave: `pessoa:${p.id}`, titulo: p.nome, tarefas: [] })),
+    { chave: 'qualquer', titulo: 'Qualquer um', tarefas: [] },
+    { chave: 'juntos', titulo: 'Juntos', tarefas: [] },
+    { chave: 'sem', titulo: 'Sem responsável', tarefas: [] },
+  ];
+  const porChave = new Map(colunas.map((c) => [c.chave, c]));
+  for (const tarefa of tarefas) (porChave.get(colunaDoResponsavel(tarefa, membros)) ?? porChave.get('sem'))?.tarefas.push(tarefa);
+  return colunas;
+}
+
 interface CartaoProps {
   tarefa: TarefaManutencao;
   colunaChave: string;
@@ -69,12 +83,14 @@ interface CartaoProps {
   comodos: TagItem[] | undefined;
   /** Última execução, se foi feita com atraso. */
   atraso: HistoricoTarefa | null;
+  /** Texto do responsável (vazio se não há). */
+  responsavel: string;
   onFeita: (tarefa: TarefaManutencao) => void;
   onEditar: (tarefa: TarefaManutencao) => void;
   onHistorico: (tarefa: TarefaManutencao) => void;
 }
 
-function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, onFeita, onEditar, onHistorico }: CartaoProps) {
+function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, responsavel, onFeita, onEditar, onHistorico }: CartaoProps) {
   const [aberto, setAberto] = useState(false);
   const arrastavel = useDraggable({ id: `${tarefa.id}${SEPARADOR}${colunaChave}` });
   const style = { transform: CSS.Translate.toString(arrastavel.transform) };
@@ -109,6 +125,7 @@ function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, onFeita, on
           <IconeBandeira /> Feita com atraso (devia ser {formatarData(atraso.data_prevista)})
         </span>
       )}
+      {agrupamento !== 'pessoa' && responsavel && <span className="tag-chip">{responsavel}</span>}
       {agrupamento !== 'comodo' && <TagsChips tags={comodos} />}
       <div className="hierarquia-item-acoes">
         <button type="button" onClick={() => onFeita(tarefa)}>
@@ -143,6 +160,12 @@ interface KanbanProps {
   agrupamento: AgrupamentoKanban;
   /** Tarefa -> última execução, só das que foram feitas com atraso. */
   atrasoPorTarefa: Map<string, HistoricoTarefa>;
+  /** Pessoas individuais (colunas do kanban por pessoa). */
+  pessoas: PessoaDocumentos[];
+  membrosDosCasais: Map<string, string[]>;
+  nomePorPessoa: Map<string, string>;
+  /** Há casal cadastrado: Qualquer um e Juntos só funcionam com ele. */
+  temCasal: boolean;
   onFeita: (tarefa: TarefaManutencao) => void;
   onEditar: (tarefa: TarefaManutencao) => void;
   onHistorico: (tarefa: TarefaManutencao) => void;
@@ -151,10 +174,16 @@ interface KanbanProps {
 }
 
 /** Quadro de tarefas por cômodo ou por período (diária, semanal, mensal...). Arrastar o cartão para outra coluna muda o cômodo ou o período. */
-export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamento, atrasoPorTarefa, onFeita, onEditar, onHistorico, onMover }: KanbanProps) {
+export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamento, atrasoPorTarefa, pessoas, membrosDosCasais, nomePorPessoa, temCasal, onFeita, onEditar, onHistorico, onMover }: KanbanProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const colunas =
-    agrupamento === 'comodo' ? colunasPorComodo(tarefas, comodos, comodosPorTarefa) : agrupamento === 'dia' ? colunasPorDia(tarefas) : colunasPorPeriodo(tarefas);
+    agrupamento === 'comodo'
+      ? colunasPorComodo(tarefas, comodos, comodosPorTarefa)
+      : agrupamento === 'dia'
+        ? colunasPorDia(tarefas)
+        : agrupamento === 'pessoa'
+          ? colunasPorPessoa(tarefas, pessoas, membrosDosCasais).filter((c) => temCasal || (c.chave !== 'qualquer' && c.chave !== 'juntos'))
+          : colunasPorPeriodo(tarefas);
   const tarefaPorId = new Map(tarefas.map((t) => [t.id, t]));
 
   function aoSoltar({ active, over }: DragEndEvent) {
@@ -169,7 +198,7 @@ export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamen
 
   return (
     <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={aoSoltar}>
-      <div className="kanban" role="list" aria-label={agrupamento === 'comodo' ? 'Tarefas por cômodo' : agrupamento === 'dia' ? 'Tarefas por dia da semana' : 'Tarefas por período'}>
+      <div className="kanban" role="list" aria-label={agrupamento === 'comodo' ? 'Tarefas por cômodo' : agrupamento === 'dia' ? 'Tarefas por dia da semana' : agrupamento === 'pessoa' ? 'Tarefas por pessoa' : 'Tarefas por período'}>
         {colunas.map((coluna) => (
           <ColunaKanban key={coluna.chave} coluna={coluna}>
             {coluna.tarefas.map((tarefa) => (
@@ -180,6 +209,7 @@ export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamen
                 agrupamento={agrupamento}
                 comodos={comodosPorTarefa.get(tarefa.id)}
                 atraso={atrasoPorTarefa.get(tarefa.id) ?? null}
+                responsavel={textoDoResponsavel(tarefa, membrosDosCasais, nomePorPessoa)}
                 onFeita={onFeita}
                 onEditar={onEditar}
                 onHistorico={onHistorico}

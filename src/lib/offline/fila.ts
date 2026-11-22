@@ -12,6 +12,7 @@ export type TipoOperacao =
   | 'storage.aplicarEdicao'
   | 'manutencao.inserirExecucao'
   | 'manutencao.atualizarExecucao'
+  | 'manutencao.definirPessoasExecucao'
   | 'manutencao.excluirExecucao';
 
 export interface OperacaoPendente {

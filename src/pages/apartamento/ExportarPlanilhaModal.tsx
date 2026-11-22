@@ -56,7 +56,7 @@ export function ExportarPlanilhaModal({ dados, origem, onFechar }: ExportarPlani
       const blob = await escreverXlsx([
         { nome: 'Esqueleto', grade: periodica, colunas: 13, larguras: { primeira: 43, demais: 10.7 } },
         { nome: 'Diárias e semanais', grade: diaria, colunas: 32, larguras: { primeira: 43, demais: 4.5 } },
-        { nome: 'Dados', grade: planilhaDados(dados), colunas: 9, larguras: { primeira: 40, demais: 18 } },
+        { nome: 'Dados', grade: planilhaDados(dados), colunas: 11, larguras: { primeira: 40, demais: 18 } },
       ]);
       const nomeArquivo = nomeDoArquivoDeTarefas(ano);
       if (destino === 'xlsx') {

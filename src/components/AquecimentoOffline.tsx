@@ -20,7 +20,8 @@ import { useStorageCaixas } from '../hooks/useStorageCaixas';
 import { useStorageItens } from '../hooks/useStorageItens';
 import { useStorageObs } from '../hooks/useStorageObs';
 import { useTagsItens } from '../hooks/useTagsItens';
-import { useHistoricoTarefas } from '../hooks/useTarefasHistorico';
+import { useHistoricoPessoas, useHistoricoTarefas } from '../hooks/useTarefasHistorico';
+import { useCasalMembros } from '../hooks/useDocumentos';
 import { useTarefasManutencao } from '../hooks/useTarefasManutencao';
 import { useTodasTarefaClassificacoes } from '../hooks/useTarefaClassificacoes';
 import { chaveFicaOffline } from '../lib/offline/persistencia';
@@ -79,6 +80,8 @@ export function AquecimentoOffline({ onTerminou }: { onTerminou: () => void }) {
   useTagsItens();
   useTodosItemTags();
   useHistoricoTarefas();
+  useHistoricoPessoas();
+  useCasalMembros();
   useTodasTarefaClassificacoes();
   useProximosVencimentosPessoais();
   useAbasConfig();

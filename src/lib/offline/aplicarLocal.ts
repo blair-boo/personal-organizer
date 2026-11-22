@@ -1,7 +1,8 @@
 import { resumoDoHistorico } from '../historicoTarefa';
-import type { AnexoStorage, CaixaStorage, HistoricoTarefa, ItemStorage, ObsStorage, TarefaManutencao } from '../../types';
+import type { AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TarefaManutencao } from '../../types';
 import type {
   AtualizarExecucaoDados,
+  DefinirPessoasExecucaoDados,
   EdicaoStorageDados,
   ExcluirExecucaoDados,
   InserirExecucaoDados,
@@ -90,6 +91,7 @@ export function aplicarEdicaoStorage(estado: EstadoStorage, dados: EdicaoStorage
 export interface EstadoManutencao {
   tarefas: TarefaManutencao[];
   historico: HistoricoTarefa[];
+  historicoPessoas: HistoricoPessoa[];
 }
 
 /** Recalcula a última execução e a data-base da tarefa a partir do histórico, como o servidor faz ao enviar. */
@@ -109,7 +111,8 @@ export function aplicarInserirExecucao(estado: EstadoManutencao, dados: InserirE
     criado_em: agora,
   };
   const historico = [entrada, ...estado.historico].sort((a, b) => b.data_execucao.localeCompare(a.data_execucao) || b.criado_em.localeCompare(a.criado_em));
-  return recalcular({ ...estado, historico }, dados.tarefaId);
+  const historicoPessoas = [...estado.historicoPessoas.filter((h) => h.historico_id !== dados.id), ...dados.pessoaIds.map((pessoa_id): HistoricoPessoa => ({ historico_id: dados.id, pessoa_id }))];
+  return recalcular({ ...estado, historico, historicoPessoas }, dados.tarefaId);
 }
 
 export function aplicarAtualizarExecucao(estado: EstadoManutencao, dados: AtualizarExecucaoDados): EstadoManutencao {
@@ -120,5 +123,19 @@ export function aplicarAtualizarExecucao(estado: EstadoManutencao, dados: Atuali
 }
 
 export function aplicarExcluirExecucao(estado: EstadoManutencao, dados: ExcluirExecucaoDados): EstadoManutencao {
-  return recalcular({ ...estado, historico: estado.historico.filter((h) => h.id !== dados.id) }, dados.tarefaId);
+  return recalcular(
+    { ...estado, historico: estado.historico.filter((h) => h.id !== dados.id), historicoPessoas: estado.historicoPessoas.filter((h) => h.historico_id !== dados.id) },
+    dados.tarefaId
+  );
+}
+
+/** Troca quem fez uma execução. */
+export function aplicarDefinirPessoasExecucao(estado: EstadoManutencao, dados: DefinirPessoasExecucaoDados): EstadoManutencao {
+  return {
+    ...estado,
+    historicoPessoas: [
+      ...estado.historicoPessoas.filter((h) => h.historico_id !== dados.historicoId),
+      ...dados.pessoaIds.map((pessoa_id): HistoricoPessoa => ({ historico_id: dados.historicoId, pessoa_id })),
+    ],
+  };
 }

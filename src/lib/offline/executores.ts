@@ -5,6 +5,7 @@ import type { HistoricoTarefa } from '../../types';
 import type { OperacaoPendente } from './fila';
 import type {
   AtualizarExecucaoDados,
+  DefinirPessoasExecucaoDados,
   EdicaoStorageDados,
   ExcluirExecucaoDados,
   InserirExecucaoDados,
@@ -139,11 +140,21 @@ async function recalcularTarefa(tarefaId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function executarInserirExecucao({ id, tarefaId, dataExecucao, dataPrevista, base }: InserirExecucaoDados): Promise<void> {
+/** Troca quem fez uma execução (o conjunto inteiro, como nas observações). */
+export async function executarDefinirPessoasExecucao({ historicoId, pessoaIds }: DefinirPessoasExecucaoDados): Promise<void> {
+  const { error: erroLimpar } = await supabase.from('tarefas_historico_pessoas').delete().eq('historico_id', historicoId);
+  if (erroLimpar) throw erroLimpar;
+  if (pessoaIds.length === 0) return;
+  const { error } = await supabase.from('tarefas_historico_pessoas').insert(pessoaIds.map((pessoa_id) => ({ historico_id: historicoId, pessoa_id })));
+  if (error) throw error;
+}
+
+export async function executarInserirExecucao({ id, tarefaId, dataExecucao, dataPrevista, base, pessoaIds }: InserirExecucaoDados): Promise<void> {
   const { error } = await supabase
     .from('tarefas_manutencao_historico')
     .upsert({ id, tarefa_id: tarefaId, data_execucao: dataExecucao, data_prevista: dataPrevista, base_proxima: base });
   if (error) throw error;
+  await executarDefinirPessoasExecucao({ historicoId: id, pessoaIds });
   await recalcularTarefa(tarefaId);
 }
 
@@ -173,6 +184,8 @@ export async function executarOperacao({ tipo, dados }: Pick<OperacaoPendente, '
       return executarInserirExecucao(dados as InserirExecucaoDados);
     case 'manutencao.atualizarExecucao':
       return executarAtualizarExecucao(dados as AtualizarExecucaoDados);
+    case 'manutencao.definirPessoasExecucao':
+      return executarDefinirPessoasExecucao(dados as DefinirPessoasExecucaoDados);
     case 'manutencao.excluirExecucao':
       return executarExcluirExecucao(dados as ExcluirExecucaoDados);
   }

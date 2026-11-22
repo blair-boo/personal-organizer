@@ -111,6 +111,10 @@ export interface TarefaManutencao {
   /** Dias da semana (0 = segunda ... 6 = domingo), só para tarefas semanais. */
   dias_semana: number[];
   instrucoes: string | null;
+  /** Quem faz a tarefa: ninguém ainda, uma pessoa, ou o casal (qualquer um dos dois / os dois juntos). */
+  responsavel_tipo: ResponsavelTipo;
+  responsavel_pessoa_id: string | null;
+  responsavel_casal_id: string | null;
   ativo: boolean;
 }
 
@@ -128,10 +132,29 @@ export interface HistoricoTarefa {
   criado_em: string;
 }
 
+export type TipoPessoaDocumentos = 'pessoa' | 'casal';
+
+/** Cadastro de Documentos > Pessoais: uma pessoa ou um casal (junção de duas pessoas). */
 export interface PessoaDocumentos {
   id: string;
   nome: string;
   ordem: number;
+  tipo: TipoPessoaDocumentos;
+  /** Login ligado a esta pessoa (para marcar quem está usando o app). */
+  usuario_id: string | null;
+}
+
+export interface CasalMembro {
+  casal_id: string;
+  pessoa_id: string;
+}
+
+export type ResponsavelTipo = 'nenhum' | 'pessoa' | 'qualquer' | 'juntos';
+
+/** Quem fez uma execução de tarefa. */
+export interface HistoricoPessoa {
+  historico_id: string;
+  pessoa_id: string;
 }
 
 export interface Documento {

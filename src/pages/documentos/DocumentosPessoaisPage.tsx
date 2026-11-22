@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { CriarCasalModal } from './CriarCasalModal';
 import { ModalBase } from '../../components/ModalBase';
 import { ArquivoLink, BotaoBaixarArquivo } from '../../components/ArquivoLink';
 import { IconeFuncao } from '../../components/IconeUso';
@@ -1001,11 +1002,13 @@ function AbasPessoas({
   pessoaAtualId,
   onSelecionar,
   onCriar,
+  onCriarCasal,
 }: {
   pessoas: PessoaDocumentos[];
   pessoaAtualId: string | null;
   onSelecionar: (id: string) => void;
   onCriar: () => void;
+  onCriarCasal: () => void;
 }) {
   const [modoEdicao, setModoEdicao] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -1089,6 +1092,9 @@ function AbasPessoas({
       <button type="button" onClick={onCriar} disabled={modoEdicao}>
         + Pessoa
       </button>
+      <button type="button" onClick={onCriarCasal} disabled={modoEdicao}>
+        + Casal
+      </button>
       <button
         type="button"
         className={`btn-icone${modoEdicao ? ' documentos-modo-ativo' : ''}`}
@@ -1120,6 +1126,7 @@ export function DocumentosPessoaisPage() {
   const { pedirTexto } = useDialogos();
   const { mostrarToast } = useToast();
   const [pessoaAtualId, setPessoaAtualId] = useState<string | null>(null);
+  const [criandoCasal, setCriandoCasal] = useState(false);
 
   useEffect(() => {
     if (!pessoas || pessoas.length === 0) return;
@@ -1148,9 +1155,19 @@ export function DocumentosPessoaisPage() {
       {isLoading ? (
         <p>Carregando…</p>
       ) : (
-        <AbasPessoas pessoas={pessoas ?? []} pessoaAtualId={pessoaAtualId} onSelecionar={setPessoaAtualId} onCriar={adicionarPessoa} />
+        <AbasPessoas pessoas={pessoas ?? []} pessoaAtualId={pessoaAtualId} onSelecionar={setPessoaAtualId} onCriar={adicionarPessoa} onCriarCasal={() => setCriandoCasal(true)} />
       )}
       {pessoaAtual && <ListaDocumentosPessoa key={pessoaAtual.id} pessoaId={pessoaAtual.id} pessoaNome={pessoaAtual.nome} />}
+      {criandoCasal && (
+        <CriarCasalModal
+          pessoas={pessoas ?? []}
+          onFechar={() => setCriandoCasal(false)}
+          onCriado={(casal) => {
+            setCriandoCasal(false);
+            setPessoaAtualId(casal.id);
+          }}
+        />
+      )}
     </div>
   );
 }
