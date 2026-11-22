@@ -59,12 +59,17 @@ export type BlocoPeriodico = 'Monthly' | 'Bi-Monthly' | 'Quarterly or Every 4-Mo
 export const BLOCOS_PERIODICOS: BlocoPeriodico[] = ['Monthly', 'Bi-Monthly', 'Quarterly or Every 4-Months', 'Bi Annual', 'Annual', '2 Years'];
 
 /** Em que bloco a frequência cai; null = não cabe em nenhum (fica fora da exportação). */
-export function blocoDaFrequencia(dias: number): BlocoPeriodico | 'Daily' | 'Weekly' | null {
+export type BlocoDiario = 'Daily' | 'Weekly' | 'Every 15 Days';
+export const BLOCOS_DIARIOS: BlocoDiario[] = ['Daily', 'Weekly', 'Every 15 Days'];
+
+export function blocoDaFrequencia(dias: number): BlocoPeriodico | BlocoDiario | null {
   switch (dias) {
     case 1:
       return 'Daily';
     case 7:
       return 'Weekly';
+    case 15:
+      return 'Every 15 Days';
     case 30:
       return 'Monthly';
     case 60:
@@ -132,7 +137,7 @@ export function marcasPorMes(tarefa: TarefaManutencao, entradas: HistoricoTarefa
 }
 
 /**
- * Marcas de uma tarefa diária ou semanal por dia do mês. Semanal com dias da
+ * Marcas de uma tarefa diária, semanal ou de a cada 15 dias por dia do mês. Semanal com dias da
  * semana marcados usa esses dias para o que ainda vem por aí.
  */
 export function marcasPorDia(tarefa: TarefaManutencao, entradas: HistoricoTarefa[], ano: number, mes: number, hoje: string): Map<number, Marca> {
@@ -218,7 +223,7 @@ export function planilhaPeriodica(dados: DadosExportacao, opcoes: OpcoesExportac
   return { grade, foraDoFormato };
 }
 
-/** Aba das diárias e semanais: o mês e o ano no topo e uma coluna por dia do mês. */
+/** Aba das diárias, semanais e de a cada 15 dias: o mês e o ano no topo e uma coluna por dia do mês. */
 export function planilhaDiaria(dados: DadosExportacao, opcoes: OpcoesExportacao): Grade {
   const entradas = entradasPorTarefa(dados.historico);
   const total = diasDoMes(opcoes.ano, opcoes.mes);
@@ -228,7 +233,7 @@ export function planilhaDiaria(dados: DadosExportacao, opcoes: OpcoesExportacao)
     [{ valor: `${MESES[opcoes.mes - 1]} de ${opcoes.ano}`, estilo: 'rotuloMes' }],
     [{ valor: null, estilo: 'vazia' }, ...dias.map((d): Celula => ({ valor: INICIAIS_DIA[new Date(opcoes.ano, opcoes.mes - 1, d).getDay()], estilo: 'diaDaSemana' }))],
   ];
-  for (const bloco of ['Daily', 'Weekly'] as const) {
+  for (const bloco of BLOCOS_DIARIOS) {
     const doBloco = ordenar(dados.tarefas.filter((t) => blocoDaFrequencia(t.frequencia_dias) === bloco), dados);
     if (doBloco.length === 0) continue;
     grade.push([{ valor: bloco, estilo: 'bloco' }, ...dias.map((d): Celula => ({ valor: d, estilo: 'blocoColuna' }))]);

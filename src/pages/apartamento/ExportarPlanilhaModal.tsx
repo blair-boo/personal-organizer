@@ -93,7 +93,7 @@ export function ExportarPlanilhaModal({ dados, origem, onFechar }: ExportarPlani
         <input type="number" min={2000} max={2100} value={ano} onChange={(e) => setAno(Number(e.target.value))} />
       </label>
       <label>
-        Mês das tarefas diárias e semanais
+        Mês das tarefas diárias, semanais e de a cada 15 dias
         <select value={mes} onChange={(e) => setMes(Number(e.target.value))}>
           {MESES.map((nome, i) => (
             <option key={nome} value={i + 1}>
@@ -120,7 +120,7 @@ export function ExportarPlanilhaModal({ dados, origem, onFechar }: ExportarPlani
       </fieldset>
       {foraDoFormato > 0 && (
         <p className="hierarquia-vazio">
-          {foraDoFormato === 1 ? '1 tarefa tem' : `${foraDoFormato} tarefas têm`} uma frequência que não cabe em nenhum bloco do Esqueleto e {foraDoFormato === 1 ? 'aparece' : 'aparecem'} só na aba Dados.
+          {foraDoFormato === 1 ? '1 tarefa tem' : `${foraDoFormato} tarefas têm`} uma frequência que não cabe em nenhum bloco da planilha e {foraDoFormato === 1 ? 'aparece' : 'aparecem'} só na aba Dados.
         </p>
       )}
       {salvo && (

@@ -25,6 +25,7 @@ describe('blocoDaFrequencia', () => {
   it('liga cada frequência ao bloco do Esqueleto', () => {
     expect(blocoDaFrequencia(1)).toBe('Daily');
     expect(blocoDaFrequencia(7)).toBe('Weekly');
+    expect(blocoDaFrequencia(15)).toBe('Every 15 Days');
     expect(blocoDaFrequencia(30)).toBe('Monthly');
     expect(blocoDaFrequencia(60)).toBe('Bi-Monthly');
     expect(blocoDaFrequencia(90)).toBe('Quarterly or Every 4-Months');
@@ -35,8 +36,8 @@ describe('blocoDaFrequencia', () => {
   });
 
   it('frequência fora da lista não cai em bloco nenhum', () => {
-    expect(blocoDaFrequencia(15)).toBeNull();
     expect(blocoDaFrequencia(45)).toBeNull();
+    expect(blocoDaFrequencia(10)).toBeNull();
   });
 });
 
@@ -143,6 +144,7 @@ const dados = (): DadosExportacao => ({
     tarefa('t3', 'Aspirar a casa', 1, HOJE),
     tarefa('t4', 'Repintar as paredes', 730, null),
     tarefa('t5', 'Quinzenal', 15, null),
+    tarefa('t7', 'A cada 45 dias', 45, null),
     tarefa('t6', 'Outra mensal', 30, '2026-11-01'),
   ],
   historico: [exec('h1', 't1', '2026-11-05', '2026-11-05')],
@@ -197,12 +199,12 @@ describe('planilhaPeriodica', () => {
 });
 
 describe('planilhaDiaria', () => {
-  it('traz o mês e o ano no topo, as iniciais dos dias e um bloco Daily e um Weekly', () => {
+  it('traz o mês e o ano no topo, as iniciais dos dias e os blocos Daily, Weekly e Every 15 Days', () => {
     const grade = planilhaDiaria(dados(), { ano: 2026, mes: 11, comComodo: false });
     expect(grade[1][0].valor).toBe('novembro de 2026');
     // 01/11/2026 é domingo
     expect(grade[2].slice(1, 4).map((c) => c.valor)).toEqual(['D', 'S', 'T']);
-    expect(grade.filter((l) => l[0]?.estilo === 'bloco').map((l) => l[0].valor)).toEqual(['Daily', 'Weekly']);
+    expect(grade.filter((l) => l[0]?.estilo === 'bloco').map((l) => l[0].valor)).toEqual(['Daily', 'Weekly', 'Every 15 Days']);
   });
 
   it('tem uma coluna por dia do mês (30 em novembro, 29 em fevereiro de ano bissexto)', () => {
@@ -231,7 +233,7 @@ describe('planilhaDados e nome do arquivo', () => {
   it('uma linha por tarefa, com as colunas de sempre', () => {
     const grade = planilhaDados(dados());
     expect(grade[0].map((c) => c.valor)).toEqual(['Nome', 'Cômodos', 'Período', 'Frequência (dias)', 'Dias da semana', 'Instruções', 'Última execução', 'Próxima execução', 'Ativa']);
-    expect(grade).toHaveLength(7);
+    expect(grade).toHaveLength(8);
     const box = grade.find((l) => l[0].valor === 'Box do banheiro')!;
     expect(box.map((c) => c.valor)).toEqual(['Box do banheiro', 'Banheiro', 'Semanal', 7, 'Seg', '', '20/11/2026', '27/11/2026', 'Sim']);
   });
