@@ -76,15 +76,18 @@ Apartamento, Documentos e Storage abrem sem internet, anexos incluídos. Finanç
 Aba **Storage**, ao lado de Apartamento: cadastro de caixas e do que há dentro de cada uma (itens com quantidade opcional, tag, observações e fotos/anexos). Cada caixa tem um código (`C-014`) que vira a etiqueta.
 
 - **Ler código:** abre a câmera e lê o rMQR (ou QR comum) da etiqueta; mostra o conteúdo da caixa. Também lê de uma imagem.
-- **Tags:** o item da caixa usa as mesmas tags (cômodos) dos itens de Apartamento (`tags_itens`, geridas em Settings). Excluir uma tag deixa os itens sem tag.
-- **Nova caixa / Etiqueta:** cadastra a caixa e gera a etiqueta em rMQR (retangular, cabe em fita estreita). O PNG baixado tem módulos grandes para imprimir sem borrar.
+- **Tags:** o item da caixa usa as mesmas tags (cômodos) dos itens de Apartamento e das tarefas de manutenção (`tags_itens`, geridas em Settings). Excluir uma tag deixa os itens e as tarefas sem ela.
+- **Filtro por tag:** botões de tag acima da lista mostram as caixas que têm algum item com a tag (vale qualquer uma das ligadas).
+- **Nova caixa / Etiqueta:** cadastra a caixa e gera a etiqueta em rMQR (retangular, cabe em fita estreita), com o nome da caixa ao lado do código se quiser. O PNG baixado tem módulos grandes para imprimir sem borrar. **Etiquetas** (ao lado de Nova caixa) baixa várias etiquetas numa imagem só, em grade de duas colunas.
 - **Biblioteca:** `zxing-wasm` (`src/lib/rmqr.ts`). Os `.wasm` vão no próprio app e entram no precache do service worker (`vite.config.ts`), então ler e gerar funcionam sem internet. O código é carregado só quando a tela do leitor ou da etiqueta abre.
-- **Dados:** tabelas `storage`, `storage_itens`, `storage_obs` e `storage_anexos` (migrations `0017_storage.sql` e `0018_storage_usa_tags_itens.sql`). Os arquivos ficam no bucket privado `confidencial`, subpasta `storage/`.
+- **Dados:** tabelas `storage`, `storage_itens`, `storage_obs` e `storage_anexos` (migrations `0017_storage.sql` e `0018_storage_usa_tags_itens.sql`; a `0019_tags_unificadas.sql` fez as tarefas usarem as mesmas tags). Os arquivos ficam no bucket privado `confidencial`, subpasta `storage/`.
 - **Offline:** as consultas de Storage estão em `CONSULTAS_OFFLINE` e no aquecimento, e `storage_anexos` em `BUCKET_POR_CONSULTA`.
 
 ## Manutenção: filtros e kanban
 
-Em Apartamento > Manutenção, abaixo do título: busca (só no nome da tarefa) e botões de filtro por cômodo, período e situação (Feitas / Não feitas). Dentro de um grupo vale "ou"; entre grupos vale "e". O calendário e o CSV respeitam os filtros. Feita = já foi feita neste ciclo (próxima execução no futuro); nunca feita, vencida ou para hoje = não feita. Dois botões no título alternam entre lista e kanban; o kanban agrupa por cômodo (tarefa com vários cômodos aparece em cada um) ou por período (Diária, Semanal, Mensal, Bimestral, A cada 4 meses, Semestral, Anual, A cada 2 anos; lógica em `src/lib/filtrosManutencao.ts`).
+Em Apartamento > Manutenção, abaixo do título: busca (só no nome da tarefa) e botões de filtro por cômodo, período e situação (Feitas / Não feitas). Dentro de um grupo vale "ou"; entre grupos vale "e". O calendário e o CSV respeitam os filtros. Feita = já foi feita neste ciclo (próxima execução no futuro); nunca feita, vencida ou para hoje = não feita. Dois botões no título alternam entre lista e kanban; o kanban agrupa por cômodo (tarefa com vários cômodos aparece em cada um) ou por período (Diária, Semanal, Mensal, Bimestral, A cada 4 meses, Semestral, Anual, A cada 2 anos; lógica em `src/lib/filtrosManutencao.ts`). Arrastar um cartão para outra coluna troca o cômodo (por cômodo, mantendo os outros cômodos da tarefa) ou a frequência (por período). "Atrasadas" é um filtro à parte, e o cabeçalho mostra quantas tarefas estão atrasadas.
+
+**Feita hoje, histórico e atraso:** "Feita hoje" grava a data de hoje. Se a tarefa estava atrasada, pergunta de onde conta a próxima: voltar à data original (marcado de início) ou a partir de hoje. A tarefa feita com atraso ganha uma bandeira. O botão **Histórico** de cada tarefa deixa trocar a data de uma execução, incluir outra data à mão, excluir uma execução e mudar a escolha da base nas feitas com atraso (tabela `tarefas_manutencao_historico`, colunas `data_prevista` e `base_proxima`; migration `0020`; lógica em `src/lib/historicoTarefa.ts`).
 
 ## Exportar CSV
 

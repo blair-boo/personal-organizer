@@ -1,6 +1,10 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useTema, type TemaPref } from '../hooks/useTema';
+import { useTarefasManutencao } from '../hooks/useTarefasManutencao';
+import { hojeIso } from '../lib/datas';
+import { tarefaAtrasada } from '../lib/historicoTarefa';
 import { APP_NAME } from '../config';
 import { DialogosProvider } from './Dialogo';
 import { AbasEdicaoProvider, useAbasEdicaoOpcional } from './AbasEdicao';
@@ -64,6 +68,30 @@ function IndicadorConexao() {
   );
 }
 
+/** Quantas tarefas de manutenção estão atrasadas; tocar leva à Manutenção já filtrada. Some quando não há nenhuma. */
+function IndicadorAtrasadas() {
+  const { data: tarefas } = useTarefasManutencao();
+  const navigate = useNavigate();
+  const quantidade = useMemo(() => {
+    const hoje = hojeIso();
+    return (tarefas ?? []).filter((t) => t.ativo && tarefaAtrasada(t, hoje)).length;
+  }, [tarefas]);
+  if (quantidade === 0) return null;
+  const texto = quantidade === 1 ? '1 atrasada' : `${quantidade} atrasadas`;
+  return (
+    <button
+      type="button"
+      className="indicador-conexao"
+      onClick={() => navigate('/apartamento/manutencao?filtro=atrasadas')}
+      title={`${texto}: ver as tarefas de manutenção atrasadas`}
+      aria-label={`${texto}: ver as tarefas de manutenção atrasadas`}
+    >
+      <span className="conexao-ponto conexao-offline" aria-hidden="true" />
+      <span>{texto}</span>
+    </button>
+  );
+}
+
 function LayoutInterno({ children }: { children: ReactNode }) {
   const { signOut } = useAuth();
   const { tema, ciclarTema } = useTema();
@@ -75,6 +103,7 @@ function LayoutInterno({ children }: { children: ReactNode }) {
       <header className="app-header">
         <div className="app-header-top">
           <h1 className="app-title">{APP_NAME}</h1>
+          <IndicadorAtrasadas />
           <IndicadorConexao />
           <button type="button" onClick={ciclarTema} className="tema-toggle" title={TEMA_INFO[tema].titulo} aria-label={TEMA_INFO[tema].titulo}>
             {tema === 'light' ? <IconeSol /> : tema === 'dark' ? <IconeLua /> : <IconeMonitor />}

@@ -30,7 +30,6 @@ import { SettingsLayout } from './pages/settings/SettingsLayout';
 import { CategoriasPage } from './pages/settings/CategoriasPage';
 import { ContasPage } from './pages/settings/ContasPage';
 import { BancoDeLancamentosPage } from './pages/settings/BancoDeLancamentosPage';
-import { ClassificacoesTarefasPage } from './pages/settings/ClassificacoesTarefasPage';
 import { CalendarioPage } from './pages/settings/CalendarioPage';
 import { IconesPage } from './pages/settings/IconesPage';
 import { BackupPage } from './pages/settings/BackupPage';
@@ -99,7 +98,6 @@ export const router = createBrowserRouter(
             { path: 'icones', element: <IconesPage /> },
             { path: 'contas', element: <ContasPage /> },
             { path: 'banco-lancamentos', element: <BancoDeLancamentosPage /> },
-            { path: 'classificacoes-tarefas', element: <ClassificacoesTarefasPage /> },
             { path: 'calendario', element: <CalendarioPage /> },
             { path: 'backup', element: <BackupPage /> },
             { path: 'app', element: <AppPage /> },

@@ -1,15 +1,23 @@
 import { hojeIso, somarDias } from './datas';
 import type { TarefaManutencao } from '../types';
 
-/** Próxima execução: última execução + frequência, ou hoje se nunca foi feita. */
-export function proximaExecucao(tarefa: Pick<TarefaManutencao, 'ultima_execucao' | 'frequencia_dias'>): string {
-  if (!tarefa.ultima_execucao) return hojeIso();
-  return somarDias(tarefa.ultima_execucao, tarefa.frequencia_dias);
+/** Dados da tarefa que entram no cálculo da próxima execução. */
+type DadosDeCiclo = Pick<TarefaManutencao, 'ultima_execucao' | 'frequencia_dias'> & { proxima_a_partir_de?: string | null };
+
+/**
+ * Próxima execução: a data-base + frequência, ou hoje se nunca foi feita. A
+ * data-base é a última execução, ou a data original do ciclo quando, depois de
+ * um atraso, se escolheu voltar a ele (proxima_a_partir_de).
+ */
+export function proximaExecucao(tarefa: DadosDeCiclo): string {
+  const base = tarefa.proxima_a_partir_de ?? tarefa.ultima_execucao;
+  if (!base) return hojeIso();
+  return somarDias(base, tarefa.frequencia_dias);
 }
 
 /** Todas as ocorrências futuras de uma tarefa recorrente dentro de [inicioIso, fimIso] (inclusive). */
 export function ocorrenciasNoIntervalo(
-  tarefa: Pick<TarefaManutencao, 'ultima_execucao' | 'frequencia_dias'>,
+  tarefa: DadosDeCiclo,
   inicioIso: string,
   fimIso: string
 ): string[] {
