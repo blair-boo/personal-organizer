@@ -19,7 +19,6 @@ const CONSULTAS_OFFLINE = new Set([
   'classificacoes_tarefas',
   'tarefa_classificacoes',
   'storage',
-  'storage_categorias',
   'storage_itens',
   'storage_obs',
   'storage_anexos',

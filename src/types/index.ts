@@ -177,18 +177,13 @@ export interface CaixaStorage {
   ordem: number;
 }
 
-export interface CategoriaStorage {
-  id: string;
-  nome: string;
-  ordem: number;
-}
-
 export interface ItemStorage {
   id: string;
   storage_id: string;
   nome: string;
   quantidade: number | null;
-  categoria_id: string | null;
+  /** Tag (cômodo) do item, a mesma lista dos itens de Apartamento. */
+  tag_id: string | null;
   ordem: number;
 }
 

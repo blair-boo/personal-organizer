@@ -61,12 +61,12 @@
 }
 
 .storage-item-quantidade,
-.storage-item-categoria {
+.storage-item-tag {
   font-size: 12px;
   opacity: 0.75;
 }
 
-.storage-item-categoria {
+.storage-item-tag {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0 8px;

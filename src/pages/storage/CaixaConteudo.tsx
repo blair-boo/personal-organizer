@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArquivoLink, BotaoBaixarArquivo } from '../../components/ArquivoLink';
 import { BUCKET_STORAGE } from '../../hooks/useStorageCaixas';
-import type { AnexoStorage, CategoriaStorage, ItemStorage, ObsStorage } from '../../types';
+import type { AnexoStorage, ItemStorage, ObsStorage, TagItem } from '../../types';
 
 const EXPIRACAO_URL_SEGUNDOS = 60;
 
@@ -10,17 +10,17 @@ export interface DadosStorage {
   itensPorCaixa: Map<string, ItemStorage[]>;
   obsPorItem: Map<string, ObsStorage[]>;
   anexosPorItem: Map<string, AnexoStorage[]>;
-  categoriaPorId: Map<string, CategoriaStorage>;
+  tagPorId: Map<string, TagItem>;
 }
 
-function ItemConteudo({ item, obs, anexos, categoria }: { item: ItemStorage; obs: ObsStorage[]; anexos: AnexoStorage[]; categoria?: CategoriaStorage }) {
+function ItemConteudo({ item, obs, anexos, tag }: { item: ItemStorage; obs: ObsStorage[]; anexos: AnexoStorage[]; tag?: TagItem }) {
   const [anexosAbertos, setAnexosAbertos] = useState(false);
   return (
     <li className="storage-item">
       <div className="storage-item-linha">
         <span className="storage-item-nome">{item.nome}</span>
         {item.quantidade !== null && <span className="storage-item-quantidade">x{item.quantidade}</span>}
-        {categoria && <span className="storage-item-categoria">{categoria.nome}</span>}
+        {tag && <span className="storage-item-tag">{tag.nome}</span>}
         {anexos.length > 0 && (
           <button
             type="button"
@@ -77,7 +77,7 @@ export function CaixaConteudo({ caixaId, dados }: { caixaId: string; dados: Dado
           item={item}
           obs={dados.obsPorItem.get(item.id) ?? []}
           anexos={dados.anexosPorItem.get(item.id) ?? []}
-          categoria={item.categoria_id ? dados.categoriaPorId.get(item.categoria_id) : undefined}
+          tag={item.tag_id ? dados.tagPorId.get(item.tag_id) : undefined}
         />
       ))}
     </ul>
