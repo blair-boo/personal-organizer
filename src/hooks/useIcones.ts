@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { urlIconeSupabase } from '../components/IconeSupabase';
 import { caminhoIcone, slugify } from '../lib/storage';
 import { mensagemDeErro } from '../lib/erros';
+import { CHAVE_USOS } from './useIconesUsos';
 import type { IconeArquivo, PastaIcones } from '../types';
 
 const BUCKET = 'icones';
@@ -116,6 +117,48 @@ export function useExcluirPastaIcone() {
       if (erroMeta) throw erroMeta;
     },
     onSettled: () => invalidarGaleria(qc),
+  });
+}
+
+/**
+ * Renomeia a pasta: o Storage não tem "renomear pasta", então cada arquivo é movido para o caminho novo
+ * e os metadados e os usos (`icones_usos`) passam a apontar para a pasta nova. Devolve o nome final (slug).
+ * Se algum arquivo falhar, o que já foi movido é atualizado e o erro lista o que ficou na pasta antiga.
+ */
+export function useRenomearPastaIcone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pastaAntiga, nomeNovo }: { pastaAntiga: string; nomeNovo: string }) => {
+      const pastaNova = slugify(nomeNovo);
+      if (!pastaAntiga) throw new Error('A raiz do bucket não pode ser renomeada.');
+      if (!pastaNova) throw new Error('Dê um nome válido à pasta.');
+      if (pastaNova === pastaAntiga) return pastaNova;
+
+      const { data: raiz, error: erroRaiz } = await supabase.storage.from(BUCKET).list('', { limit: 1000 });
+      if (erroRaiz) throw erroRaiz;
+      if ((raiz ?? []).some((item) => item.id === null && item.name === pastaNova)) throw new Error('Já existe uma pasta com esse nome.');
+
+      const { data: arquivos, error: erroLista } = await supabase.storage.from(BUCKET).list(pastaAntiga, { limit: 1000 });
+      if (erroLista) throw erroLista;
+
+      const movidos: string[] = [];
+      const falhas: string[] = [];
+      for (const item of (arquivos ?? []).filter((a) => a.id !== null)) {
+        const { error } = await supabase.storage.from(BUCKET).move(caminhoIcone(pastaAntiga, item.name), caminhoIcone(pastaNova, item.name));
+        if (error) falhas.push(`${item.name}: ${mensagemDeErro(error)}`);
+        else movidos.push(item.name);
+      }
+
+      if (movidos.length > 0) {
+        const { error: erroMeta } = await supabase.from('icones_metadados').update({ pasta: pastaNova }).eq('pasta', pastaAntiga).in('arquivo', movidos);
+        if (erroMeta) throw erroMeta;
+        const { error: erroUsos } = await supabase.from('icones_usos').update({ icone_pasta: pastaNova }).eq('icone_pasta', pastaAntiga).in('icone_arquivo', movidos);
+        if (erroUsos) throw erroUsos;
+      }
+      if (falhas.length > 0) throw new Error(`Alguns arquivos ficaram na pasta ${pastaAntiga}: ${falhas.join('; ')}`);
+      return pastaNova;
+    },
+    onSettled: () => Promise.all([invalidarGaleria(qc), qc.invalidateQueries({ queryKey: CHAVE_USOS })]),
   });
 }
 
