@@ -236,6 +236,8 @@ interface AnexoPendente {
   nome: string;
   caminho: string;
   nomeArquivo: string;
+  /** Arquivo escolhido sem internet: sobe junto com a fila ao salvar o documento. */
+  arquivoLocal?: File;
 }
 
 /** Bloco de anexos (Padrão B) durante a criação: envia pro Storage na hora, mas só grava no banco quando o documento inteiro for salvo. */
@@ -259,8 +261,13 @@ function SecaoAnexosPendentes({
     setEnviando(true);
     try {
       const caminho = caminhoAnexoDocumento(SUBPASTA_DOCUMENTOS, documentoId, nome.trim(), arquivo);
-      await enviarArquivo(BUCKET_CONFIDENCIAL, caminho, arquivo);
-      onChange([...anexos, { chave: crypto.randomUUID(), nome: nome.trim(), caminho, nomeArquivo: arquivo.name }]);
+      const chave = crypto.randomUUID();
+      if (navigator.onLine) {
+        await enviarArquivo(BUCKET_CONFIDENCIAL, caminho, arquivo);
+        onChange([...anexos, { chave, nome: nome.trim(), caminho, nomeArquivo: arquivo.name }]);
+      } else {
+        onChange([...anexos, { chave, nome: nome.trim(), caminho, nomeArquivo: arquivo.name, arquivoLocal: arquivo }]);
+      }
       setArquivo(null);
       setNome('');
     } catch (err) {
@@ -274,7 +281,7 @@ function SecaoAnexosPendentes({
     const ok = await confirmar({ titulo: 'Remover anexo?', mensagem: anexo.nome, confirmarRotulo: 'Remover', perigoso: true });
     if (!ok) return;
     try {
-      await removerArquivo(BUCKET_CONFIDENCIAL, anexo.caminho);
+      if (!anexo.arquivoLocal) await removerArquivo(BUCKET_CONFIDENCIAL, anexo.caminho);
       onChange(anexos.filter((a) => a.chave !== anexo.chave));
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
@@ -592,6 +599,7 @@ export function DocumentosAreaPage({ area, gatoId }: { area: AreaDocumento; gato
       const ok = await confirmar({ titulo: 'Descartar este documento?', mensagem: 'O que você preencheu não será salvo.', confirmarRotulo: 'Descartar', perigoso: true });
       if (!ok) return;
       for (const anexo of novosAnexos) {
+        if (anexo.arquivoLocal) continue;
         try {
           await removerArquivo(BUCKET_CONFIDENCIAL, anexo.caminho);
         } catch {
@@ -617,7 +625,7 @@ export function DocumentosAreaPage({ area, gatoId }: { area: AreaDocumento; gato
     try {
       const camposValidos = novosCampos.filter((c) => c.nome.trim());
       const campos: DadosCampoDocumento[] = camposValidos.map((c) => ({ nome: c.nome.trim(), conteudo: c.conteudo.trim() || null, copiavel: c.copiavel }));
-      const anexos: AnexoParaSalvar[] = novosAnexos.map((a) => ({ nome: a.nome, arquivo_url: a.caminho, nome_arquivo: a.nomeArquivo }));
+      const anexos: AnexoParaSalvar[] = novosAnexos.map((a) => ({ nome: a.nome, arquivo_url: a.caminho, nome_arquivo: a.nomeArquivo, arquivoLocal: a.arquivoLocal }));
       await criarCompleto.mutateAsync({ id: novoId, titulo: novoTitulo.trim(), camposLivres: campos, anexos });
       mostrarToast('Documento salvo.');
       setModalAberto(false);

@@ -115,39 +115,38 @@ export function useDocumentosPessoas() {
   });
 }
 
-/** Cria uma pessoa nova e já semeia os documentos padrão (vazios) pra ela. */
+/** Cria uma pessoa nova e já semeia os documentos padrão (vazios) pra ela. Funciona sem internet. */
 export function useCriarPessoaDocumentos() {
   const qc = useQueryClient();
   return useMutation({
+    onMutate: SEM_BLOQUEIO_OFFLINE,
     mutationFn: async (nome: string) => {
-      const { data: pessoa, error: erroPessoa } = await supabase
-        .from('documentos_pessoas')
-        .insert({ nome })
-        .select()
-        .single();
-      if (erroPessoa) throw erroPessoa;
-      const linhas = MODELO_PADRAO_DOCUMENTOS_PESSOAIS.map((titulo, i) => ({
-        area: 'pessoais' as const,
-        pessoa_id: pessoa.id,
-        titulo,
-        ordem: i + 1,
-      }));
-      const { error: erroDocumentos } = await supabase.from('documentos').insert(linhas);
-      if (erroDocumentos) throw erroDocumentos;
-      return pessoa as PessoaDocumentos;
+      const pessoa: PessoaDocumentos = { id: crypto.randomUUID(), nome, ordem: 0, tipo: 'pessoa', usuario_id: null };
+      await executarOuEnfileirar(qc, 'tabela.inserir', { tabela: 'documentos_pessoas', consulta: ['documentos_pessoas'], linha: pessoa });
+      const chaveDocumentos = queryKeyDocumentos('pessoais', pessoa.id);
+      qc.setQueryData(chaveDocumentos, []);
+      let resultado: 'enviada' | 'enfileirada' = 'enviada';
+      for (const [i, titulo] of MODELO_PADRAO_DOCUMENTOS_PESSOAIS.entries()) {
+        resultado = await executarOuEnfileirar(qc, 'tabela.inserir', {
+          tabela: 'documentos',
+          consulta: chaveDocumentos,
+          linha: { id: crypto.randomUUID(), area: 'pessoais', pessoa_id: pessoa.id, titulo, ordem: i + 1 },
+          ordenarPor: ORDEM_DOCUMENTOS,
+        });
+      }
+      return { pessoa, resultado };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['documentos_pessoas'] }),
+    onSuccess: ({ resultado }) => aposGravar(qc, [['documentos_pessoas'], ['documentos']])(resultado),
   });
 }
 
 export function useRenomearPessoaDocumentos() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, nome }: { id: string; nome: string }) => {
-      const { error } = await supabase.from('documentos_pessoas').update({ nome }).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['documentos_pessoas'] }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ id, nome }: { id: string; nome: string }) =>
+      executarOuEnfileirar(qc, 'tabela.atualizar', { tabela: 'documentos_pessoas', consultas: [['documentos_pessoas']], id, mudancas: { nome } }),
+    onSuccess: aposGravar(qc, [['documentos_pessoas']]),
   });
 }
 
@@ -155,11 +154,9 @@ export function useRenomearPessoaDocumentos() {
 export function useExcluirPessoaDocumentos() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('documentos_pessoas').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['documentos_pessoas'] }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: (id: string) => executarOuEnfileirar(qc, 'tabela.excluir', { tabela: 'documentos_pessoas', consultas: [['documentos_pessoas']], ids: [id] }),
+    onSuccess: aposGravar(qc, [['documentos_pessoas'], ['documentos_casal_membros'], ['documentos']]),
   });
 }
 
@@ -190,31 +187,27 @@ export interface NovoCasalDocumentos {
   novasPessoas: string[];
 }
 
-/** Cria o casal juntando duas pessoas (existentes e/ou criadas agora) e já semeia os documentos padrão do casal. */
+/** Cria o casal juntando duas pessoas (existentes e/ou criadas agora) e já semeia os documentos padrão do casal. Funciona sem internet. */
 export function useCriarCasalDocumentos() {
   const qc = useQueryClient();
   return useMutation({
+    onMutate: SEM_BLOQUEIO_OFFLINE,
     mutationFn: async ({ nome, pessoaIds, novasPessoas }: NovoCasalDocumentos) => {
-      const ids = [...pessoaIds];
-      for (const nomeNovo of novasPessoas) {
-        const { data: pessoa, error } = await supabase.from('documentos_pessoas').insert({ nome: nomeNovo }).select().single();
-        if (error) throw error;
-        const linhas = MODELO_PADRAO_DOCUMENTOS_PESSOAIS.map((titulo, i) => ({ area: 'pessoais' as const, pessoa_id: pessoa.id, titulo, ordem: i + 1 }));
-        const { error: erroDocumentos } = await supabase.from('documentos').insert(linhas);
-        if (erroDocumentos) throw erroDocumentos;
-        ids.push(pessoa.id);
-      }
+      const novas = novasPessoas.map((nomeNovo) => ({ id: crypto.randomUUID(), nome: nomeNovo }));
+      const ids = [...pessoaIds, ...novas.map((p) => p.id)];
       if (ids.length !== 2 || ids[0] === ids[1]) throw new Error('Um casal junta exatamente duas pessoas diferentes.');
-      const { data: casal, error: erroCasal } = await supabase.from('documentos_pessoas').insert({ nome, tipo: 'casal' }).select().single();
-      if (erroCasal) throw erroCasal;
-      const { error: erroMembros } = await supabase.from('documentos_casal_membros').insert(ids.map((pessoa_id) => ({ casal_id: casal.id, pessoa_id })));
-      if (erroMembros) throw erroMembros;
-      const documentos = MODELO_PADRAO_DOCUMENTOS_CASAL.map((titulo, i) => ({ area: 'pessoais' as const, pessoa_id: casal.id, titulo, ordem: i + 1 }));
-      const { error: erroDocumentosCasal } = await supabase.from('documentos').insert(documentos);
-      if (erroDocumentosCasal) throw erroDocumentosCasal;
-      return casal as PessoaDocumentos;
+      const casal: PessoaDocumentos = { id: crypto.randomUUID(), nome, tipo: 'casal', ordem: 0, usuario_id: null };
+      const documentos = (donoId: string, modelo: string[]) => modelo.map((titulo, i) => ({ id: crypto.randomUUID(), area: 'pessoais', pessoa_id: donoId, titulo, ordem: i + 1 }));
+      const resultado = await executarOuEnfileirar(qc, 'casal.criar', {
+        pessoas: novas.map((p) => ({ ...p, tipo: 'pessoa', ordem: 0, usuario_id: null })),
+        documentosPessoas: novas.flatMap((p) => documentos(p.id, MODELO_PADRAO_DOCUMENTOS_PESSOAIS)),
+        casal: { ...casal },
+        membros: ids.map((pessoa_id) => ({ casal_id: casal.id, pessoa_id })),
+        documentosCasal: documentos(casal.id, MODELO_PADRAO_DOCUMENTOS_CASAL),
+      });
+      return { casal, resultado };
     },
-    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: ['documentos_pessoas'] }), qc.invalidateQueries({ queryKey: ['documentos_casal_membros'] }), qc.invalidateQueries({ queryKey: ['documentos'] })]),
+    onSuccess: ({ resultado }) => aposGravar(qc, [['documentos_pessoas'], ['documentos_casal_membros'], ['documentos']])(resultado),
   });
 }
 
@@ -323,19 +316,21 @@ export interface DadosCampoDocumento {
   copiavel: boolean;
 }
 
-/** Substitui todos os campos livres de um documento pelo conjunto informado. */
+/** Substitui todos os campos livres de um documento pelo conjunto informado. Funciona sem internet. */
 export function useSalvarCamposDocumento(documentoId: string) {
   const qc = useQueryClient();
+  const chave = ['documento_campos', documentoId];
   return useMutation({
-    mutationFn: async (campos: DadosCampoDocumento[]) => {
-      const { error: erroExcluir } = await supabase.from('documentos_campos').delete().eq('documento_id', documentoId);
-      if (erroExcluir) throw erroExcluir;
-      if (campos.length === 0) return;
-      const linhas = campos.map((campo, ordem) => ({ documento_id: documentoId, ordem, ...campo }));
-      const { error } = await supabase.from('documentos_campos').insert(linhas);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['documento_campos', documentoId] }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: (campos: DadosCampoDocumento[]) =>
+      executarOuEnfileirar(qc, 'tabela.substituirConjunto', {
+        tabela: 'documentos_campos',
+        coluna: 'documento_id',
+        vinculoId: documentoId,
+        consulta: chave,
+        linhas: campos.map((campo, ordem) => ({ id: crypto.randomUUID(), documento_id: documentoId, ordem, ...campo })),
+      }),
+    onSuccess: aposGravar(qc, [chave]),
   });
 }
 
@@ -362,22 +357,21 @@ export interface DadosLocalRenovacao {
   telefone: string | null;
 }
 
-/** Substitui todos os locais de renovação de um documento pelo conjunto informado. */
+/** Substitui todos os locais de renovação de um documento pelo conjunto informado. Funciona sem internet. */
 export function useSalvarLocaisRenovacao(documentoId: string) {
   const qc = useQueryClient();
+  const chave = ['documento_locais_renovacao', documentoId];
   return useMutation({
-    mutationFn: async (locais: DadosLocalRenovacao[]) => {
-      const { error: erroExcluir } = await supabase
-        .from('documentos_locais_renovacao')
-        .delete()
-        .eq('documento_id', documentoId);
-      if (erroExcluir) throw erroExcluir;
-      if (locais.length === 0) return;
-      const linhas = locais.map((local, ordem) => ({ documento_id: documentoId, ordem, ...local }));
-      const { error } = await supabase.from('documentos_locais_renovacao').insert(linhas);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['documento_locais_renovacao', documentoId] }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: (locais: DadosLocalRenovacao[]) =>
+      executarOuEnfileirar(qc, 'tabela.substituirConjunto', {
+        tabela: 'documentos_locais_renovacao',
+        coluna: 'documento_id',
+        vinculoId: documentoId,
+        consulta: chave,
+        linhas: locais.map((local, ordem) => ({ id: crypto.randomUUID(), documento_id: documentoId, ordem, ...local })),
+      }),
+    onSuccess: aposGravar(qc, [chave]),
   });
 }
 
@@ -423,6 +417,8 @@ export interface AnexoParaSalvar {
   nome: string;
   arquivo_url: string;
   nome_arquivo: string;
+  /** Arquivo tirado sem internet: ainda não está no bucket e sobe junto com a fila. */
+  arquivoLocal?: Blob;
 }
 
 export interface CriarDocumentoCompletoInput {
@@ -441,36 +437,21 @@ export interface CriarDocumentoCompletoInput {
  */
 export function useCriarDocumentoCompleto(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
+  const chave = queryKeyDocumentos(area, pessoaId, gatoId);
   return useMutation({
-    mutationFn: async ({
-      id,
-      titulo,
-      camposFixos,
-      camposLivres = [],
-      locaisRenovacao = [],
-      anexos = [],
-    }: CriarDocumentoCompletoInput) => {
-      const { error: erroDocumento } = await supabase
-        .from('documentos')
-        .insert({ id, area, pessoa_id: pessoaId ?? null, gato_id: gatoId ?? null, titulo, ...camposFixos });
-      if (erroDocumento) throw erroDocumento;
-      if (camposLivres.length > 0) {
-        const linhas = camposLivres.map((campo, ordem) => ({ documento_id: id, ordem, ...campo }));
-        const { error } = await supabase.from('documentos_campos').insert(linhas);
-        if (error) throw error;
-      }
-      if (locaisRenovacao.length > 0) {
-        const linhas = locaisRenovacao.map((local, ordem) => ({ documento_id: id, ordem, ...local }));
-        const { error } = await supabase.from('documentos_locais_renovacao').insert(linhas);
-        if (error) throw error;
-      }
-      if (anexos.length > 0) {
-        const linhas = anexos.map((anexo) => ({ documento_id: id, ...anexo }));
-        const { error } = await supabase.from('documentos_anexos').insert(linhas);
-        if (error) throw error;
-      }
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ id, titulo, camposFixos, camposLivres = [], locaisRenovacao = [], anexos = [] }: CriarDocumentoCompletoInput) => {
+      const ordemNova = (qc.getQueryData<Documento[]>(chave) ?? []).reduce((maior, d) => Math.max(maior, d.ordem ?? 0), -1) + 1;
+      return executarOuEnfileirar(qc, 'documento.criarCompleto', {
+        consulta: chave,
+        documento: { id, area, pessoa_id: pessoaId ?? null, gato_id: gatoId ?? null, titulo, ordem: ordemNova, ...camposFixos },
+        campos: camposLivres.map((campo, ordem) => ({ id: crypto.randomUUID(), documento_id: id, ordem, ...campo })),
+        locais: locaisRenovacao.map((local, ordem) => ({ id: crypto.randomUUID(), documento_id: id, ordem, ...local })),
+        anexos: anexos.map(({ arquivoLocal, ...anexo }) => ({ linha: { id: crypto.randomUUID(), documento_id: id, ...anexo }, arquivoLocal, nomeArquivo: anexo.nome_arquivo })),
+        bucket: BUCKET_CONFIDENCIAL,
+      });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
+    onSuccess: aposGravar(qc, [chave, ['documento_campos'], ['documento_locais_renovacao'], ['documento_anexos']]),
   });
 }
 

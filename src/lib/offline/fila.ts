@@ -21,7 +21,11 @@ export type TipoOperacao =
   | 'anexo.incluir'
   | 'anexo.excluir'
   | 'tarefa.definirClassificacoes'
-  | 'gato.definirFoto';
+  | 'gato.definirFoto'
+  | 'tabela.substituirConjunto'
+  | 'documento.criarCompleto'
+  | 'casal.criar'
+  | 'gato.excluir';
 
 export interface OperacaoPendente {
   id: string;

@@ -571,7 +571,7 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
   const [novoTitulo, setNovoTitulo] = useState('');
   const [estadoForm, setEstadoForm] = useState<FormPessoalState>(estadoVazio());
   const [locaisForm, setLocaisForm] = useState<LinhaLocal[]>([]);
-  const [novosAnexos, setNovosAnexos] = useState<{ chave: string; nome: string; caminho: string; nomeArquivo: string }[]>([]);
+  const [novosAnexos, setNovosAnexos] = useState<{ chave: string; nome: string; caminho: string; nomeArquivo: string; arquivoLocal?: File }[]>([]);
   const [salvandoModal, setSalvandoModal] = useState(false);
 
   const salvarLocaisEdicao = useSalvarLocaisRenovacao(documentoEditando?.id ?? '');
@@ -724,6 +724,7 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
       const ok = await confirmar({ titulo: 'Descartar este documento?', mensagem: 'O que você preencheu não será salvo.', confirmarRotulo: 'Descartar', perigoso: true });
       if (!ok) return;
       for (const anexo of novosAnexos) {
+        if (anexo.arquivoLocal) continue;
         try {
           await removerArquivo(BUCKET_CONFIDENCIAL, anexo.caminho);
         } catch {
@@ -746,7 +747,7 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
       const locaisValidos: DadosLocalRenovacao[] = locaisForm
         .filter((l) => l.local.trim() || l.endereco.trim() || l.telefone.trim())
         .map((l) => ({ local: l.local.trim() || null, endereco: l.endereco.trim() || null, telefone: l.telefone.trim() || null }));
-      const anexos = novosAnexos.map((a) => ({ nome: a.nome, arquivo_url: a.caminho, nome_arquivo: a.nomeArquivo }));
+      const anexos = novosAnexos.map((a) => ({ nome: a.nome, arquivo_url: a.caminho, nome_arquivo: a.nomeArquivo, arquivoLocal: a.arquivoLocal }));
       await criarCompleto.mutateAsync({
         id: novoId,
         titulo: novoTitulo.trim(),
@@ -911,8 +912,8 @@ function SecaoAnexosPendentesPessoal({
   onChange,
 }: {
   documentoId: string;
-  anexos: { chave: string; nome: string; caminho: string; nomeArquivo: string }[];
-  onChange: (anexos: { chave: string; nome: string; caminho: string; nomeArquivo: string }[]) => void;
+  anexos: { chave: string; nome: string; caminho: string; nomeArquivo: string; arquivoLocal?: File }[];
+  onChange: (anexos: { chave: string; nome: string; caminho: string; nomeArquivo: string; arquivoLocal?: File }[]) => void;
 }) {
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
@@ -925,8 +926,13 @@ function SecaoAnexosPendentesPessoal({
     setEnviando(true);
     try {
       const caminho = caminhoAnexoDocumento('documentos-pessoais', documentoId, nome.trim(), arquivo);
-      await enviarArquivo(BUCKET_CONFIDENCIAL, caminho, arquivo);
-      onChange([...anexos, { chave: crypto.randomUUID(), nome: nome.trim(), caminho, nomeArquivo: arquivo.name }]);
+      const chave = crypto.randomUUID();
+      if (navigator.onLine) {
+        await enviarArquivo(BUCKET_CONFIDENCIAL, caminho, arquivo);
+        onChange([...anexos, { chave, nome: nome.trim(), caminho, nomeArquivo: arquivo.name }]);
+      } else {
+        onChange([...anexos, { chave, nome: nome.trim(), caminho, nomeArquivo: arquivo.name, arquivoLocal: arquivo }]);
+      }
       setArquivo(null);
       setNome('');
     } catch (err) {
@@ -936,11 +942,11 @@ function SecaoAnexosPendentesPessoal({
     }
   }
 
-  async function handleRemover(anexo: { chave: string; nome: string; caminho: string; nomeArquivo: string }) {
+  async function handleRemover(anexo: { chave: string; nome: string; caminho: string; nomeArquivo: string; arquivoLocal?: File }) {
     const ok = await confirmar({ titulo: 'Remover anexo?', mensagem: anexo.nome, confirmarRotulo: 'Remover', perigoso: true });
     if (!ok) return;
     try {
-      await removerArquivo(BUCKET_CONFIDENCIAL, anexo.caminho);
+      if (!anexo.arquivoLocal) await removerArquivo(BUCKET_CONFIDENCIAL, anexo.caminho);
       onChange(anexos.filter((a) => a.chave !== anexo.chave));
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
@@ -1138,7 +1144,7 @@ export function DocumentosPessoaisPage() {
     const nome = await pedirTexto({ titulo: 'Nova pessoa', mensagem: 'Nome' });
     if (!nome?.trim()) return;
     try {
-      const pessoa = await criarPessoa.mutateAsync(nome.trim());
+      const { pessoa } = await criarPessoa.mutateAsync(nome.trim());
       setPessoaAtualId(pessoa.id);
       mostrarToast('Pessoa criada com os documentos padrão.');
     } catch (err) {

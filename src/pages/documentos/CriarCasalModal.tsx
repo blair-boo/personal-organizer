@@ -30,12 +30,12 @@ export function CriarCasalModal({ pessoas, onFechar, onCriado }: { pessoas: Pess
 
   async function salvar() {
     try {
-      const casal = await criar.mutateAsync({
+      const { casal, resultado } = await criar.mutateAsync({
         nome: nomeFinal.trim(),
         pessoaIds: escolhas.filter((e) => e !== NOVA),
         novasPessoas: [0, 1].filter((i) => escolhas[i] === NOVA).map((i) => nomesNovos[i].trim()),
       });
-      mostrarToast('Casal criado com os documentos padrão.');
+      mostrarToast(resultado === 'enfileirada' ? 'Casal criado com os documentos padrão. Será enviado quando houver internet.' : 'Casal criado com os documentos padrão.');
       onCriado(casal);
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import { caminhoFotoGato, removerArquivos } from '../lib/storage';
+import { caminhoFotoGato } from '../lib/storage';
 import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
 import { aposGravar, SEM_BLOQUEIO_OFFLINE } from './mutacoesOffline';
 import type { Gato } from '../types';
@@ -75,24 +75,12 @@ export function useReordenarGatos() {
   });
 }
 
-/** Exclui o gato com tudo dele (as linhas saem por cascade; os arquivos dos exames e dos documentos são apagados do bucket antes). */
+/** Exclui o gato com tudo dele (as linhas saem por cascade; os arquivos dos exames, da foto e dos documentos são apagados do bucket). Funciona sem internet. */
 export function useExcluirGato() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { data: exames, error: erroExames } = await supabase.from('gato_exames').select('arquivo_url').eq('gato_id', id);
-      if (erroExames) throw erroExames;
-      const { data: documentos, error: erroDocumentos } = await supabase.from('documentos').select('id').eq('gato_id', id);
-      if (erroDocumentos) throw erroDocumentos;
-      const ids = (documentos as { id: string }[]).map((d) => d.id);
-      const { data: anexos, error: erroAnexos } = ids.length > 0 ? await supabase.from('documentos_anexos').select('arquivo_url').in('documento_id', ids) : { data: [], error: null };
-      if (erroAnexos) throw erroAnexos;
-      const { data: gato } = await supabase.from('gatos').select('foto_url').eq('id', id).maybeSingle();
-      const foto = (gato as { foto_url: string | null } | null)?.foto_url;
-      await removerArquivos('confidencial', [...(exames as { arquivo_url: string }[]), ...(anexos as { arquivo_url: string }[])].map((a) => a.arquivo_url).concat(foto ? [foto] : []));
-      const { error } = await supabase.from('gatos').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: ['gatos'] }), qc.invalidateQueries({ queryKey: ['documentos'] })]),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: (id: string) => executarOuEnfileirar(qc, 'gato.excluir', { gatoId: id }),
+    onSuccess: aposGravar(qc, [['gatos'], ['documentos'], ['gato_vacinas'], ['gato_vermifugos'], ['gato_consultas'], ['gato_exames'], ['gato_pesos']]),
   });
 }

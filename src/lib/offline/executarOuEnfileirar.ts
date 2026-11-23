@@ -1,9 +1,9 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { aplicarAtualizarExecucao, aplicarAtualizarLinha, aplicarDefinirAdiamento, aplicarDefinirClassificacoes, aplicarDefinirPessoasExecucao, aplicarEdicaoStorage, aplicarExcluirExecucao, aplicarExcluirLinhas, aplicarInserirExecucao, aplicarInserirLinha, aplicarSalvarCaixa, type EstadoManutencao, type EstadoStorage } from './aplicarLocal';
+import { aplicarAtualizarExecucao, aplicarAtualizarLinha, aplicarCriarCasal, aplicarDefinirAdiamento, aplicarDefinirClassificacoes, aplicarDefinirPessoasExecucao, aplicarEdicaoStorage, aplicarExcluirExecucao, aplicarExcluirLinhas, aplicarInserirExecucao, aplicarInserirLinha, aplicarSubstituirConjunto, aplicarSalvarCaixa, type EstadoManutencao, type EstadoStorage } from './aplicarLocal';
 import { executarOperacao } from './executores';
 import { contarFila, enfileirar, pedirEnvioDaFila, type TipoOperacao } from './fila';
 import { guardarArquivo } from './arquivos';
-import type { AtualizarExecucaoDados, AtualizarLinhaDados, ChaveDeConsulta, DefinirAdiamentoDados, DefinirClassificacoesDados, DefinirFotoDados, DefinirPessoasExecucaoDados, ExcluirAnexoDados, ExcluirLinhasDados, IncluirAnexoDados, InserirLinhaDados, LinhaGenerica, EdicaoStorageDados, ExcluirExecucaoDados, InserirExecucaoDados, SalvarCaixaDados } from './operacoes';
+import type { AtualizarExecucaoDados, AtualizarLinhaDados, ChaveDeConsulta, CriarCasalDados, CriarDocumentoCompletoDados, ExcluirGatoDados, SubstituirConjuntoDados, DefinirAdiamentoDados, DefinirClassificacoesDados, DefinirFotoDados, DefinirPessoasExecucaoDados, ExcluirAnexoDados, ExcluirLinhasDados, IncluirAnexoDados, InserirLinhaDados, LinhaGenerica, EdicaoStorageDados, ExcluirExecucaoDados, InserirExecucaoDados, SalvarCaixaDados } from './operacoes';
 import type { AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TagItem, TarefaManutencao } from '../../types';
 
 function porOrdem<T extends { ordem: number; nome: string }>(lista: T[]): T[] {
@@ -80,6 +80,43 @@ export function aplicarNoCache(qc: QueryClient, tipo: TipoOperacao, dados: unkno
       qc.setQueryData(['tarefa_classificacoes'], (antigo: unknown) => (antigo instanceof Map ? aplicarDefinirClassificacoes(antigo as Map<string, TagItem[]>, d) : antigo));
       return;
     }
+    case 'tabela.substituirConjunto': {
+      const d = dados as SubstituirConjuntoDados;
+      return atualizarLista(qc, d.consulta, (lista) => aplicarSubstituirConjunto(lista, d));
+    }
+    case 'documento.criarCompleto': {
+      const d = dados as CriarDocumentoCompletoDados;
+      const id = d.documento.id;
+      atualizarLista(qc, d.consulta, (lista) => aplicarInserirLinha(lista, { linha: d.documento, ordenarPor: { campo: 'ordem' } }));
+      qc.setQueryData(['documento_campos', id], d.campos);
+      qc.setQueryData(['documento_locais_renovacao', id], d.locais);
+      qc.setQueryData(['documento_anexos', id], d.anexos.map((a) => ({ criado_em: new Date().toISOString(), ...a.linha })));
+      return;
+    }
+    case 'casal.criar': {
+      const d = dados as CriarCasalDados;
+      const novo = aplicarCriarCasal(
+        { pessoas: qc.getQueryData<LinhaGenerica[]>(['documentos_pessoas']) ?? [], membros: qc.getQueryData<LinhaGenerica[]>(['documentos_casal_membros']) ?? [] },
+        d
+      );
+      qc.setQueryData(['documentos_pessoas'], novo.pessoas);
+      qc.setQueryData(['documentos_casal_membros'], novo.membros);
+      // A lista de documentos de cada pessoa nova (e do casal) já abre com os documentos padrão.
+      const dono = (pessoaId: string, linhas: LinhaGenerica[]) =>
+        qc.setQueryData(['documentos', 'pessoais', pessoaId, null], linhas.filter((l) => l.pessoa_id === pessoaId));
+      for (const p of d.pessoas) dono(p.id, d.documentosPessoas);
+      dono(d.casal.id, d.documentosCasal);
+      return;
+    }
+    case 'gato.excluir': {
+      const d = dados as ExcluirGatoDados;
+      atualizarLista(qc, ['gatos'], (lista) => aplicarExcluirLinhas(lista, { ids: [d.gatoId] }));
+      for (const tabela of ['gato_vacinas', 'gato_vermifugos', 'gato_consultas', 'gato_exames', 'gato_pesos']) {
+        atualizarLista(qc, [tabela], (lista) => lista.filter((l) => l.gato_id !== d.gatoId));
+      }
+      qc.removeQueries({ queryKey: ['documentos', 'gatos', null, d.gatoId] });
+      return;
+    }
     case 'gato.definirFoto': {
       const d = dados as DefinirFotoDados;
       return atualizarLista(qc, ['gatos'], (lista) => aplicarAtualizarLinha(lista, { id: d.gatoId, mudancas: { foto_url: d.caminho } }));
@@ -110,6 +147,11 @@ async function guardarArquivoLocal(tipo: TipoOperacao, dados: unknown): Promise<
     if (tipo === 'anexo.incluir') {
       const d = dados as IncluirAnexoDados;
       if (d.arquivoLocal) await guardarArquivo({ bucket: d.bucket, caminho: String(d.linha.arquivo_url), versao: d.linha.id }, d.arquivoLocal);
+    } else if (tipo === 'documento.criarCompleto') {
+      const d = dados as CriarDocumentoCompletoDados;
+      for (const a of d.anexos) {
+        if (a.arquivoLocal) await guardarArquivo({ bucket: d.bucket, caminho: String(a.linha.arquivo_url), versao: a.linha.id }, a.arquivoLocal);
+      }
     } else if (tipo === 'gato.definirFoto') {
       const d = dados as DefinirFotoDados;
       if (d.arquivoLocal && d.caminho) await guardarArquivo({ bucket: 'confidencial', caminho: d.caminho, versao: d.caminho }, d.arquivoLocal);

@@ -12,6 +12,8 @@ import type {
   InserirExecucaoDados,
   InserirLinhaDados,
   LinhaGenerica,
+  SubstituirConjuntoDados,
+  CriarCasalDados,
   SalvarCaixaDados,
 } from './operacoes';
 
@@ -191,4 +193,19 @@ export function aplicarDefinirClassificacoes(mapa: Map<string, TagItem[]>, dados
   if (dados.tags.length === 0) novo.delete(dados.tarefaId);
   else novo.set(dados.tarefaId, dados.tags);
   return novo;
+}
+
+/** Troca todas as linhas de um dono (campos e locais de um documento) pelo conjunto novo. */
+export function aplicarSubstituirConjunto<T extends LinhaGenerica>(lista: T[], dados: Pick<SubstituirConjuntoDados, 'coluna' | 'vinculoId' | 'linhas'>): T[] {
+  return [...lista.filter((l) => l[dados.coluna] !== dados.vinculoId), ...(dados.linhas as unknown as T[])];
+}
+
+/** Casal novo: pessoas, vínculos e documentos padrão, nas listas de pessoas e de membros. */
+export function aplicarCriarCasal(
+  estado: { pessoas: LinhaGenerica[]; membros: LinhaGenerica[] },
+  dados: CriarCasalDados
+): { pessoas: LinhaGenerica[]; membros: LinhaGenerica[] } {
+  const novas = [...dados.pessoas, dados.casal].filter((p) => !estado.pessoas.some((e) => e.id === p.id));
+  const membros = dados.membros.filter((m) => !estado.membros.some((e) => e.casal_id === m.casal_id && e.pessoa_id === m.pessoa_id));
+  return { pessoas: [...estado.pessoas, ...novas], membros: [...estado.membros, ...(membros as unknown as LinhaGenerica[])] };
 }
