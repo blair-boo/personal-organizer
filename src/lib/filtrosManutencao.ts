@@ -1,6 +1,6 @@
 import { tarefaAtrasada } from './historicoTarefa';
 import { semResponsavel, tarefaDaPessoa } from './responsaveis';
-import { proximaExecucao } from './manutencao';
+import { proximaExecucao, type DadosDeCiclo } from './manutencao';
 import type { TagItem, TarefaManutencao } from '../types';
 
 export type StatusTarefa = 'feita' | 'nao_feita' | 'atrasada';
@@ -27,7 +27,7 @@ export function haFiltroAtivo(f: FiltrosManutencao): boolean {
 }
 
 /** Feita = já foi feita neste ciclo (a próxima execução está no futuro). Nunca feita, vencida ou para hoje = não feita. */
-export function tarefaFeita(tarefa: Pick<TarefaManutencao, 'ultima_execucao' | 'frequencia_dias' | 'proxima_a_partir_de'>, hoje: string): boolean {
+export function tarefaFeita(tarefa: DadosDeCiclo, hoje: string): boolean {
   return tarefa.ultima_execucao !== null && proximaExecucao(tarefa) > hoje;
 }
 

@@ -86,11 +86,12 @@ interface CartaoProps {
   /** Texto do responsável (vazio se não há). */
   responsavel: string;
   onFeita: (tarefa: TarefaManutencao) => void;
+  onAdiar: (tarefa: TarefaManutencao) => void;
   onEditar: (tarefa: TarefaManutencao) => void;
   onHistorico: (tarefa: TarefaManutencao) => void;
 }
 
-function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, responsavel, onFeita, onEditar, onHistorico }: CartaoProps) {
+function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, responsavel, onFeita, onAdiar, onEditar, onHistorico }: CartaoProps) {
   const [aberto, setAberto] = useState(false);
   const arrastavel = useDraggable({ id: `${tarefa.id}${SEPARADOR}${colunaChave}` });
   const style = { transform: CSS.Translate.toString(arrastavel.transform) };
@@ -120,6 +121,7 @@ function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, responsavel
       <span className="conta-detalhe">
         {agrupamento !== 'periodo' ? `${rotuloPeriodo(tarefa.frequencia_dias)} · ` : ''}próxima em {formatarData(proximaExecucao(tarefa))}
       </span>
+      {tarefa.adiada_ate && <span className="tag-chip">Adiada até {formatarData(tarefa.adiada_ate)}</span>}
       {atraso?.data_prevista && (
         <span className="manutencao-flag-atraso" title={`Feita com atraso em ${formatarData(atraso.data_execucao)}`}>
           <IconeBandeira /> Feita com atraso (devia ser {formatarData(atraso.data_prevista)})
@@ -130,6 +132,9 @@ function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, responsavel
       <div className="hierarquia-item-acoes">
         <button type="button" onClick={() => onFeita(tarefa)}>
           Feita hoje
+        </button>
+        <button type="button" onClick={() => onAdiar(tarefa)} title={`Adiar ${tarefa.nome}`} aria-label={`Adiar ${tarefa.nome}`}>
+          Adiar
         </button>
         <button type="button" onClick={() => onHistorico(tarefa)} title={`Histórico de ${tarefa.nome}`} aria-label={`Histórico de ${tarefa.nome}`}>
           Histórico
@@ -167,6 +172,7 @@ interface KanbanProps {
   /** Há casal cadastrado: Qualquer um e Juntos só funcionam com ele. */
   temCasal: boolean;
   onFeita: (tarefa: TarefaManutencao) => void;
+  onAdiar: (tarefa: TarefaManutencao) => void;
   onEditar: (tarefa: TarefaManutencao) => void;
   onHistorico: (tarefa: TarefaManutencao) => void;
   /** Soltou um cartão em outra coluna. */
@@ -174,7 +180,7 @@ interface KanbanProps {
 }
 
 /** Quadro de tarefas por cômodo ou por período (diária, semanal, mensal...). Arrastar o cartão para outra coluna muda o cômodo ou o período. */
-export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamento, atrasoPorTarefa, pessoas, membrosDosCasais, nomePorPessoa, temCasal, onFeita, onEditar, onHistorico, onMover }: KanbanProps) {
+export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamento, atrasoPorTarefa, pessoas, membrosDosCasais, nomePorPessoa, temCasal, onFeita, onAdiar, onEditar, onHistorico, onMover }: KanbanProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const colunas =
     agrupamento === 'comodo'
@@ -211,6 +217,7 @@ export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamen
                 atraso={atrasoPorTarefa.get(tarefa.id) ?? null}
                 responsavel={textoDoResponsavel(tarefa, membrosDosCasais, nomePorPessoa)}
                 onFeita={onFeita}
+                onAdiar={onAdiar}
                 onEditar={onEditar}
                 onHistorico={onHistorico}
               />

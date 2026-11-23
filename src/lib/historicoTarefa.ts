@@ -1,6 +1,6 @@
 import { somarDias } from './datas';
-import { proximaExecucao } from './manutencao';
-import type { BaseProximaExecucao, HistoricoTarefa, TarefaManutencao } from '../types';
+import { proximaExecucao, type DadosDeCiclo } from './manutencao';
+import type { BaseProximaExecucao, HistoricoTarefa } from '../types';
 
 type Entrada = Pick<HistoricoTarefa, 'data_execucao' | 'data_prevista' | 'base_proxima'> & Partial<Pick<HistoricoTarefa, 'criado_em'>>;
 
@@ -34,12 +34,12 @@ export function resumoDoHistorico(entradas: Entrada[]): { ultima_execucao: strin
 }
 
 /** Quando a tarefa deveria ser feita agora; null se nunca foi feita (nada a atrasar). */
-export function dataPrevistaDaTarefa(tarefa: Pick<TarefaManutencao, 'ultima_execucao' | 'frequencia_dias' | 'proxima_a_partir_de'>): string | null {
+export function dataPrevistaDaTarefa(tarefa: DadosDeCiclo): string | null {
   return tarefa.ultima_execucao ? proximaExecucao(tarefa) : null;
 }
 
 /** Está atrasada hoje: tinha data prevista e ela já passou. */
-export function tarefaAtrasada(tarefa: Pick<TarefaManutencao, 'ultima_execucao' | 'frequencia_dias' | 'proxima_a_partir_de'>, hoje: string): boolean {
+export function tarefaAtrasada(tarefa: DadosDeCiclo, hoje: string): boolean {
   const prevista = dataPrevistaDaTarefa(tarefa);
   return prevista !== null && prevista < hoje;
 }

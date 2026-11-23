@@ -108,6 +108,8 @@ export interface TarefaManutencao {
   ultima_execucao: string | null;
   /** Data de onde conta a próxima execução, quando difere de ultima_execucao (volta ao ciclo original após atraso). */
   proxima_a_partir_de: string | null;
+  /** Tarefa adiada (ou pulada desta vez): a próxima execução é esta data, até ser feita de novo. */
+  adiada_ate: string | null;
   /** Dias da semana (0 = segunda ... 6 = domingo), só para tarefas semanais. */
   dias_semana: number[];
   instrucoes: string | null;

@@ -5,6 +5,7 @@ import type { HistoricoTarefa } from '../../types';
 import type { OperacaoPendente } from './fila';
 import type {
   AtualizarExecucaoDados,
+  DefinirAdiamentoDados,
   DefinirPessoasExecucaoDados,
   EdicaoStorageDados,
   ExcluirExecucaoDados,
@@ -134,9 +135,17 @@ export async function entradasDaTarefa(tarefaId: string): Promise<HistoricoTaref
 }
 
 /** Recalcula, a partir do histórico, a última execução e a data-base da próxima, e grava na tarefa. */
-async function recalcularTarefa(tarefaId: string): Promise<void> {
+async function recalcularTarefa(tarefaId: string, encerrarAdiamentoSeFeitaEm?: string): Promise<void> {
   const resumo = resumoDoHistorico(await entradasDaTarefa(tarefaId));
-  const { error } = await supabase.from('tarefas_manutencao').update(resumo).eq('id', tarefaId);
+  // Fazer a tarefa (como execução mais recente) encerra o adiamento.
+  const encerra = encerrarAdiamentoSeFeitaEm !== undefined && resumo.ultima_execucao === encerrarAdiamentoSeFeitaEm;
+  const { error } = await supabase.from('tarefas_manutencao').update(encerra ? { ...resumo, adiada_ate: null } : resumo).eq('id', tarefaId);
+  if (error) throw error;
+}
+
+/** Adia a tarefa para uma data (ou cancela o adiamento com null). */
+export async function executarDefinirAdiamento({ tarefaId, adiadaAte }: DefinirAdiamentoDados): Promise<void> {
+  const { error } = await supabase.from('tarefas_manutencao').update({ adiada_ate: adiadaAte }).eq('id', tarefaId);
   if (error) throw error;
 }
 
@@ -155,7 +164,7 @@ export async function executarInserirExecucao({ id, tarefaId, dataExecucao, data
     .upsert({ id, tarefa_id: tarefaId, data_execucao: dataExecucao, data_prevista: dataPrevista, base_proxima: base });
   if (error) throw error;
   await executarDefinirPessoasExecucao({ historicoId: id, pessoaIds });
-  await recalcularTarefa(tarefaId);
+  await recalcularTarefa(tarefaId, dataExecucao);
 }
 
 export async function executarAtualizarExecucao({ id, tarefaId, dataExecucao, base }: AtualizarExecucaoDados): Promise<void> {
@@ -188,5 +197,7 @@ export async function executarOperacao({ tipo, dados }: Pick<OperacaoPendente, '
       return executarDefinirPessoasExecucao(dados as DefinirPessoasExecucaoDados);
     case 'manutencao.excluirExecucao':
       return executarExcluirExecucao(dados as ExcluirExecucaoDados);
+    case 'manutencao.definirAdiamento':
+      return executarDefinirAdiamento(dados as DefinirAdiamentoDados);
   }
 }

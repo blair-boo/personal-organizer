@@ -1,8 +1,8 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { aplicarAtualizarExecucao, aplicarDefinirPessoasExecucao, aplicarEdicaoStorage, aplicarExcluirExecucao, aplicarInserirExecucao, aplicarSalvarCaixa, type EstadoManutencao, type EstadoStorage } from './aplicarLocal';
+import { aplicarAtualizarExecucao, aplicarDefinirAdiamento, aplicarDefinirPessoasExecucao, aplicarEdicaoStorage, aplicarExcluirExecucao, aplicarInserirExecucao, aplicarSalvarCaixa, type EstadoManutencao, type EstadoStorage } from './aplicarLocal';
 import { executarOperacao } from './executores';
 import { contarFila, enfileirar, pedirEnvioDaFila, type TipoOperacao } from './fila';
-import type { AtualizarExecucaoDados, DefinirPessoasExecucaoDados, EdicaoStorageDados, ExcluirExecucaoDados, InserirExecucaoDados, SalvarCaixaDados } from './operacoes';
+import type { AtualizarExecucaoDados, DefinirAdiamentoDados, DefinirPessoasExecucaoDados, EdicaoStorageDados, ExcluirExecucaoDados, InserirExecucaoDados, SalvarCaixaDados } from './operacoes';
 import type { AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TarefaManutencao } from '../../types';
 
 function porOrdem<T extends { ordem: number; nome: string }>(lista: T[]): T[] {
@@ -48,6 +48,8 @@ export function aplicarNoCache(qc: QueryClient, tipo: TipoOperacao, dados: unkno
       return atualizarManutencao(qc, (e) => aplicarDefinirPessoasExecucao(e, dados as DefinirPessoasExecucaoDados));
     case 'manutencao.excluirExecucao':
       return atualizarManutencao(qc, (e) => aplicarExcluirExecucao(e, dados as ExcluirExecucaoDados));
+    case 'manutencao.definirAdiamento':
+      return atualizarManutencao(qc, (e) => aplicarDefinirAdiamento(e, dados as DefinirAdiamentoDados));
   }
 }
 

@@ -13,7 +13,8 @@ export type TipoOperacao =
   | 'manutencao.inserirExecucao'
   | 'manutencao.atualizarExecucao'
   | 'manutencao.definirPessoasExecucao'
-  | 'manutencao.excluirExecucao';
+  | 'manutencao.excluirExecucao'
+  | 'manutencao.definirAdiamento';
 
 export interface OperacaoPendente {
   id: string;

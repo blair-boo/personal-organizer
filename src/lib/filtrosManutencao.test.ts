@@ -13,7 +13,7 @@ import type { TarefaManutencao } from '../types';
 const HOJE = '2026-11-18';
 
 function tarefa(id: string, nome: string, frequencia_dias: number, ultima_execucao: string | null): TarefaManutencao {
-  return { id, nome, frequencia_dias, ultima_execucao, proxima_a_partir_de: null, responsavel_tipo: 'nenhum', responsavel_pessoa_id: null, responsavel_casal_id: null, dias_semana: id === 't2' ? [0, 4] : [], instrucoes: null, ativo: true };
+  return { id, nome, frequencia_dias, ultima_execucao, proxima_a_partir_de: null, adiada_ate: null, responsavel_tipo: 'nenhum', responsavel_pessoa_id: null, responsavel_casal_id: null, dias_semana: id === 't2' ? [0, 4] : [], instrucoes: null, ativo: true };
 }
 
 const tarefas = [

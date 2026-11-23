@@ -123,3 +123,13 @@ export function useDefinirPessoasExecucao() {
     onSuccess: depois(qc),
   });
 }
+
+/** Adia a tarefa para uma data, ou cancela o adiamento (adiadaAte = null). "Pular desta vez" é adiar para a data do ciclo seguinte. */
+export function useDefinirAdiamentoTarefa() {
+  const qc = useQueryClient();
+  return useMutation({
+    onMutate: () => undefined,
+    mutationFn: (dados: { tarefaId: string; adiadaAte: string | null }) => executarOuEnfileirar(qc, 'manutencao.definirAdiamento', dados),
+    onSuccess: depois(qc),
+  });
+}

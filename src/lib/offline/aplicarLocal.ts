@@ -2,6 +2,7 @@ import { resumoDoHistorico } from '../historicoTarefa';
 import type { AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TarefaManutencao } from '../../types';
 import type {
   AtualizarExecucaoDados,
+  DefinirAdiamentoDados,
   DefinirPessoasExecucaoDados,
   EdicaoStorageDados,
   ExcluirExecucaoDados,
@@ -112,7 +113,16 @@ export function aplicarInserirExecucao(estado: EstadoManutencao, dados: InserirE
   };
   const historico = [entrada, ...estado.historico].sort((a, b) => b.data_execucao.localeCompare(a.data_execucao) || b.criado_em.localeCompare(a.criado_em));
   const historicoPessoas = [...estado.historicoPessoas.filter((h) => h.historico_id !== dados.id), ...dados.pessoaIds.map((pessoa_id): HistoricoPessoa => ({ historico_id: dados.id, pessoa_id }))];
-  return recalcular({ ...estado, historico, historicoPessoas }, dados.tarefaId);
+  const recalculado = recalcular({ ...estado, historico, historicoPessoas }, dados.tarefaId);
+  // Fazer a tarefa (como execução mais recente) encerra o adiamento.
+  return {
+    ...recalculado,
+    tarefas: recalculado.tarefas.map((t) => (t.id === dados.tarefaId && t.ultima_execucao === dados.dataExecucao ? { ...t, adiada_ate: null } : t)),
+  };
+}
+
+export function aplicarDefinirAdiamento(estado: EstadoManutencao, dados: DefinirAdiamentoDados): EstadoManutencao {
+  return { ...estado, tarefas: estado.tarefas.map((t) => (t.id === dados.tarefaId ? { ...t, adiada_ate: dados.adiadaAte } : t)) };
 }
 
 export function aplicarAtualizarExecucao(estado: EstadoManutencao, dados: AtualizarExecucaoDados): EstadoManutencao {

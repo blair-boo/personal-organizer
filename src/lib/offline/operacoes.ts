@@ -71,3 +71,9 @@ export interface ExcluirExecucaoDados {
   id: string;
   tarefaId: string;
 }
+
+export interface DefinirAdiamentoDados {
+  tarefaId: string;
+  /** Data para onde a tarefa foi adiada (ou pulada); null cancela o adiamento. */
+  adiadaAte: string | null;
+}
