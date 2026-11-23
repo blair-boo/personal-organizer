@@ -14,7 +14,7 @@ import { mensagemDeErro } from '../../lib/erros';
 import { FUNCOES_ICONE, usoPadraoDaFuncao, type DefinicaoFuncao } from '../../lib/iconesFuncoes';
 import { arquivosEmUso, caminhoDoUso, contarUsos, resolverUso } from '../../lib/iconesUsos';
 import { caminhoIcone } from '../../lib/storage';
-import { useAdicionarIcones, useExcluirIcone, useIconesGaleria, useRenomearIcone, useReordenarIcones } from '../../hooks/useIcones';
+import { useAdicionarIcones, useCriarPastaIcone, useExcluirIcone, useIconesGaleria, useRenomearIcone, useReordenarIcones, useSubpastasIcones } from '../../hooks/useIcones';
 import { useIconesUsos, useRemoverUsoIcone, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
 import { useTemaEfetivo } from '../../hooks/useTema';
 import type { IconeArquivo, UsoIcone } from '../../types';
@@ -35,13 +35,14 @@ function baseDe(nome: string): string {
 
 /**
  * Aba de ícones (Settings): ícones de função e de UI em uso no app, mais os
- * arquivos livres do bucket `icones` (raiz = com máscara, PNG/ = originais) com
- * adicionar, renomear, reordenar e excluir, além da prévia de fonte/ícones em qualquer tamanho.
+ * arquivos livres do bucket `icones`, divididos por pasta (cada pasta é uma subseção),
+ * com adicionar, renomear, reordenar e excluir, e a máscara de cor ligada ou desligada.
  */
 export function IconesPage() {
   const [tamanho, setTamanho] = useState(TAMANHO_PADRAO);
   const [aplicarFonte, setAplicarFonte] = useState(true);
   const [aplicarIcones, setAplicarIcones] = useState(true);
+  const [mascara, setMascara] = useState(false);
   const { data: usos = [] } = useIconesUsos();
   const emUso = arquivosEmUso(usos);
   const tamanhoFonte = aplicarFonte ? tamanho : TAMANHO_PADRAO;
@@ -122,8 +123,7 @@ export function IconesPage() {
         <SecaoRecolhivel titulo="Ícones (UI)">
           <ListaIconesUi tamanho={tamanhoIcones} usos={usos} />
         </SecaoRecolhivel>
-        <SecaoIcones pasta="" titulo="Ícones (Com máscara)" tamanho={tamanhoIcones} emUso={emUso} />
-        <SecaoIcones pasta="PNG" titulo="Ícones (Originais)" tamanho={tamanhoIcones} emUso={emUso} />
+        <SecaoGaleria tamanho={tamanhoIcones} emUso={emUso} mascara={mascara} onMascara={setMascara} />
       </div>
     </div>
   );
@@ -247,16 +247,60 @@ function ListaIconesUi({ tamanho, usos }: { tamanho: number; usos: UsoIcone[] })
   );
 }
 
-function SecaoIcones({ pasta, titulo, tamanho, emUso }: { pasta: string; titulo: string; tamanho: number; emUso: Set<string> }) {
+/** Galeria do bucket: um liga/desliga de máscara e uma subseção por pasta (a raiz entra como "Sem pasta"). */
+function SecaoGaleria({ tamanho, emUso, mascara, onMascara }: { tamanho: number; emUso: Set<string>; mascara: boolean; onMascara: (v: boolean) => void }) {
+  const { data: pastas = [], isLoading, isError, error } = useSubpastasIcones();
+  const criarPasta = useCriarPastaIcone();
+  const { pedirTexto } = useDialogos();
+  const { mostrarToast } = useToast();
+
+  async function novaPasta() {
+    const nome = await pedirTexto({ titulo: 'Nova pasta', mensagem: 'Nome' });
+    if (!nome?.trim()) return;
+    try {
+      const criada = await criarPasta.mutateAsync(nome.trim());
+      mostrarToast(`Pasta ${criada} criada.`);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  return (
+    <section className="testes-secao">
+      <div className="testes-secao-cabecalho">
+        <h2>Ícones (Galeria)</h2>
+        <div className="testes-secao-acoes">
+          <label className="icones-mascara-opcao">
+            <input type="checkbox" checked={mascara} onChange={(e) => onMascara(e.target.checked)} />
+            Máscara
+          </label>
+          <button type="button" className="btn-icone" onClick={() => void novaPasta()} disabled={criarPasta.isPending} title="Adicionar pasta" aria-label="Adicionar pasta">
+            <IconeFuncao funcao="adicionar" />
+          </button>
+        </div>
+      </div>
+      <p className="testes-legenda">Cada pasta do bucket é uma divisão. Ícones em uso aparecem em Ícones (Settings) ou Ícones (UI) e não podem ser renomeados nem excluídos daqui.</p>
+      {isLoading && <p className="hierarquia-vazio">Carregando…</p>}
+      {isError && <p className="testes-erro">Não foi possível carregar as pastas: {mensagemDeErro(error)}</p>}
+      <GrupoIcones pasta="" titulo="Sem pasta" tamanho={tamanho} emUso={emUso} mascara={mascara} />
+      {pastas.map((pasta) => (
+        <GrupoIcones key={pasta} pasta={pasta} titulo={pasta} tamanho={tamanho} emUso={emUso} mascara={mascara} />
+      ))}
+    </section>
+  );
+}
+
+function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara }: { pasta: string; titulo: string; tamanho: number; emUso: Set<string>; mascara: boolean }) {
   const { data, isLoading, isError, error } = useIconesGaleria(pasta);
   const adicionar = useAdicionarIcones(pasta);
   const renomear = useRenomearIcone(pasta);
   const excluir = useExcluirIcone(pasta);
-  const reordenar = useReordenarIcones(pasta);
+  const reordenar = useReordenarIcones();
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
   const qc = useQueryClient();
   const [atualizando, setAtualizando] = useState(false);
+  const [aberta, setAberta] = useState(true);
 
   const [modoEdicao, setModoEdicao] = useState(false);
   const [ordemLocal, setOrdemLocal] = useState<IconeArquivo[] | null>(null);
@@ -402,11 +446,12 @@ function SecaoIcones({ pasta, titulo, tamanho, emUso }: { pasta: string; titulo:
   }
 
   return (
-    <section className="testes-secao">
+    <div className="icones-grupo">
       <div className="testes-secao-cabecalho">
-        <h2>
-          {titulo}: {tamanho}px
-        </h2>
+        <button type="button" className="icones-secao-titulo" onClick={() => setAberta((v) => !v)} aria-expanded={aberta}>
+          <IconeChevron aberto={aberta} />
+          {titulo}
+        </button>
         <div className="testes-secao-acoes">
           <input
             ref={inputRef}
@@ -420,8 +465,8 @@ function SecaoIcones({ pasta, titulo, tamanho, emUso }: { pasta: string; titulo:
             type="button"
             className="btn-icone"
             onClick={() => inputRef.current?.click()}
-            title="Adicionar ícones"
-            aria-label="Adicionar ícones"
+            title={`Adicionar ícones em ${titulo}`}
+            aria-label={`Adicionar ícones em ${titulo}`}
           >
             <IconeFuncao funcao="adicionar" />
           </button>
@@ -457,9 +502,12 @@ function SecaoIcones({ pasta, titulo, tamanho, emUso }: { pasta: string; titulo:
         </div>
       </div>
 
+      {aberta && (
+        <>
+      {isLoading && <p className="hierarquia-vazio">Carregando…</p>}
       {erro && <p className="testes-erro">Não foi possível carregar os ícones: {erro}</p>}
       {!erro && !isLoading && dados.length === 0 && (
-        <p className="hierarquia-vazio">Nenhum ícone encontrado {pasta ? `na pasta ${pasta}` : 'na raiz do bucket'}.</p>
+        <p className="hierarquia-vazio">Nenhum ícone encontrado {pasta ? 'nesta pasta' : 'fora de pastas'}.</p>
       )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -471,7 +519,7 @@ function SecaoIcones({ pasta, titulo, tamanho, emUso }: { pasta: string; titulo:
                 icone={icone}
                 nomeExibido={nomeAtual(icone)}
                 tamanho={tamanho}
-                pastaSvg={pasta === ''}
+                mascara={mascara}
                 modoEdicao={modoEdicao}
                 pendenteExclusao={exclusoesPendentes.has(icone.id)}
                 editando={edicaoAtivaId === icone.id}
@@ -486,9 +534,9 @@ function SecaoIcones({ pasta, titulo, tamanho, emUso }: { pasta: string; titulo:
           </div>
         </SortableContext>
       </DndContext>
-
-      <p className="testes-legenda">Ícones em uso aparecem em Ícones (Settings) ou Ícones (UI) e não podem ser renomeados nem excluídos daqui.</p>
-    </section>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -496,7 +544,7 @@ function IconeItem({
   icone,
   nomeExibido,
   tamanho,
-  pastaSvg,
+  mascara,
   modoEdicao,
   pendenteExclusao,
   editando,
@@ -510,7 +558,7 @@ function IconeItem({
   icone: IconeArquivo;
   nomeExibido: string;
   tamanho: number;
-  pastaSvg: boolean;
+  mascara: boolean;
   modoEdicao: boolean;
   pendenteExclusao: boolean;
   editando: boolean;
@@ -538,7 +586,7 @@ function IconeItem({
     <div ref={sortable.setNodeRef} style={style} className={`testes-icone-item${pendenteExclusao ? ' testes-icone-item-pendente' : ''}`}>
       {/* Arraste só a partir da miniatura (não do nome): sem alça de 3 traços, como pedido. */}
       <div className="testes-icone-arrastar" aria-label={`Arrastar ${icone.nome}`} {...sortable.attributes} {...sortable.listeners}>
-        {pastaSvg ? (
+        {mascara ? (
           <span
             className="testes-icone-svg"
             role="img"
