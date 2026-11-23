@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import { caminhoDocumentoItem, enviarArquivo, removerArquivo } from '../lib/storage';
+import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
+import { aposGravar, SEM_BLOQUEIO_OFFLINE } from './mutacoesOffline';
+import { caminhoDocumentoItem } from '../lib/storage';
 import type { ItemDocumento, TipoDocumentoItem } from '../types';
 
 const BUCKET = 'itens-docs';
@@ -27,30 +29,25 @@ export function useItemDocumentos(itemId: string) {
 export function useAdicionarDocumentoItem(itemId: string, nomeItem: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ arquivo, tipo, descricao }: { arquivo: File; tipo: TipoDocumentoItem; descricao: string | null }) => {
-      const caminho = caminhoDocumentoItem(itemId, nomeItem, tipo, arquivo);
-      await enviarArquivo(BUCKET, caminho, arquivo);
-      const { error } = await supabase.from('item_documentos').insert({
-        item_id: itemId,
-        tipo,
-        descricao,
-        arquivo_url: caminho,
-        nome_arquivo: arquivo.name,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKey(itemId) }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ arquivo, tipo, descricao }: { arquivo: File; tipo: TipoDocumentoItem; descricao: string | null }) =>
+      executarOuEnfileirar(qc, 'anexo.incluir', {
+        tabela: 'item_documentos',
+        consulta: queryKey(itemId),
+        linha: { id: crypto.randomUUID(), item_id: itemId, tipo, descricao, arquivo_url: caminhoDocumentoItem(itemId, nomeItem, tipo, arquivo), nome_arquivo: arquivo.name },
+        bucket: BUCKET,
+        arquivoLocal: arquivo,
+        nomeArquivo: arquivo.name,
+      }),
+    onSuccess: aposGravar(qc, [queryKey(itemId)]),
   });
 }
 
 export function useRemoverDocumentoItem(itemId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (doc: ItemDocumento) => {
-      await removerArquivo(BUCKET, doc.arquivo_url);
-      const { error } = await supabase.from('item_documentos').delete().eq('id', doc.id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKey(itemId) }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: (doc: ItemDocumento) => executarOuEnfileirar(qc, 'anexo.excluir', { tabela: 'item_documentos', consulta: queryKey(itemId), id: doc.id, bucket: BUCKET, caminho: doc.arquivo_url }),
+    onSuccess: aposGravar(qc, [queryKey(itemId)]),
   });
 }

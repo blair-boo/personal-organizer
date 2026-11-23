@@ -307,7 +307,7 @@ export function ManutencaoPage() {
 
   async function salvar(dados: DadosTarefaManutencao, tagIds: string[]) {
     try {
-      const tarefaId = editando ? editando.id : (await criar.mutateAsync(dados)).id;
+      const tarefaId = editando ? editando.id : (await criar.mutateAsync(dados)).tarefa.id;
       if (editando) await atualizar.mutateAsync({ id: editando.id, dados });
       await definirClassificacoes.mutateAsync({ tarefaId, tagIds });
       setModalAberto(false);

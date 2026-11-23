@@ -14,7 +14,14 @@ export type TipoOperacao =
   | 'manutencao.atualizarExecucao'
   | 'manutencao.definirPessoasExecucao'
   | 'manutencao.excluirExecucao'
-  | 'manutencao.definirAdiamento';
+  | 'manutencao.definirAdiamento'
+  | 'tabela.inserir'
+  | 'tabela.atualizar'
+  | 'tabela.excluir'
+  | 'anexo.incluir'
+  | 'anexo.excluir'
+  | 'tarefa.definirClassificacoes'
+  | 'gato.definirFoto';
 
 export interface OperacaoPendente {
   id: string;

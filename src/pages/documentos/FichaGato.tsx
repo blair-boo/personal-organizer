@@ -136,7 +136,7 @@ export function FichaGato({ gato }: { gato: Gato }) {
           else await incluirVacina.mutateAsync(dados);
           mostrarToast('Vacina salva.');
         }}
-        onExcluir={(r) => excluirVacina.mutateAsync(r.id)}
+        onExcluir={async (r) => void (await excluirVacina.mutateAsync(r.id))}
       />
 
       <SecaoRegistros
@@ -159,7 +159,7 @@ export function FichaGato({ gato }: { gato: Gato }) {
           else await incluirVermifugo.mutateAsync(dados);
           mostrarToast('Vermífugo salvo.');
         }}
-        onExcluir={(r) => excluirVermifugo.mutateAsync(r.id)}
+        onExcluir={async (r) => void (await excluirVermifugo.mutateAsync(r.id))}
       />
 
       <SecaoRegistros
@@ -182,7 +182,7 @@ export function FichaGato({ gato }: { gato: Gato }) {
           else await incluirConsulta.mutateAsync(dados);
           mostrarToast('Consulta salva.');
         }}
-        onExcluir={(r) => excluirConsulta.mutateAsync(r.id)}
+        onExcluir={async (r) => void (await excluirConsulta.mutateAsync(r.id))}
       />
 
       <SecaoRegistros
@@ -214,7 +214,7 @@ export function FichaGato({ gato }: { gato: Gato }) {
           }
           mostrarToast('Exame salvo.');
         }}
-        onExcluir={(r) => excluirExame.mutateAsync(r)}
+        onExcluir={async (r) => void (await excluirExame.mutateAsync(r))}
       />
 
       <SecaoRegistros
@@ -240,7 +240,7 @@ export function FichaGato({ gato }: { gato: Gato }) {
           else await incluirPeso.mutateAsync(dados);
           mostrarToast('Pesagem salva.');
         }}
-        onExcluir={(r) => excluirPeso.mutateAsync(r.id)}
+        onExcluir={async (r) => void (await excluirPeso.mutateAsync(r.id))}
       />
 
       <details className="gatos-secao">

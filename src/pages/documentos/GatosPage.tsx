@@ -240,7 +240,7 @@ export function GatosPage() {
           onFechar={() => setNovoAberto(false)}
           onCriar={async (nome, nascimento) => {
             try {
-              const gato = await criar.mutateAsync({ nome, nascimento, ordem: lista.reduce((maior, g) => Math.max(maior, g.ordem), -1) + 1 });
+              const { gato } = await criar.mutateAsync({ nome, nascimento, ordem: lista.reduce((maior, g) => Math.max(maior, g.ordem), -1) + 1 });
               setGatoAtualId(gato.id);
               setNovoAberto(false);
               mostrarToast('Gato cadastrado.');

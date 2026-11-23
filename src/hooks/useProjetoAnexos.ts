@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import { caminhoAnexoProjeto, enviarArquivo, removerArquivo } from '../lib/storage';
+import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
+import { aposGravar, SEM_BLOQUEIO_OFFLINE } from './mutacoesOffline';
+import { caminhoAnexoProjeto } from '../lib/storage';
 import type { ProjetoAnexo } from '../types';
 
 const BUCKET = 'projetos-anexos';
@@ -27,29 +29,25 @@ export function useProjetoAnexos(projetoId: string) {
 export function useAdicionarAnexoProjeto(projetoId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ arquivo, descricao }: { arquivo: File; descricao: string }) => {
-      const caminho = caminhoAnexoProjeto(projetoId, descricao, arquivo);
-      await enviarArquivo(BUCKET, caminho, arquivo);
-      const { error } = await supabase.from('projeto_anexos').insert({
-        projeto_id: projetoId,
-        descricao,
-        arquivo_url: caminho,
-        nome_arquivo: arquivo.name,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKey(projetoId) }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ arquivo, descricao }: { arquivo: File; descricao: string }) =>
+      executarOuEnfileirar(qc, 'anexo.incluir', {
+        tabela: 'projeto_anexos',
+        consulta: queryKey(projetoId),
+        linha: { id: crypto.randomUUID(), projeto_id: projetoId, descricao, arquivo_url: caminhoAnexoProjeto(projetoId, descricao, arquivo), nome_arquivo: arquivo.name },
+        bucket: BUCKET,
+        arquivoLocal: arquivo,
+        nomeArquivo: arquivo.name,
+      }),
+    onSuccess: aposGravar(qc, [queryKey(projetoId)]),
   });
 }
 
 export function useRemoverAnexoProjeto(projetoId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (anexo: ProjetoAnexo) => {
-      await removerArquivo(BUCKET, anexo.arquivo_url);
-      const { error } = await supabase.from('projeto_anexos').delete().eq('id', anexo.id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKey(projetoId) }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: (anexo: ProjetoAnexo) => executarOuEnfileirar(qc, 'anexo.excluir', { tabela: 'projeto_anexos', consulta: queryKey(projetoId), id: anexo.id, bucket: BUCKET, caminho: anexo.arquivo_url }),
+    onSuccess: aposGravar(qc, [queryKey(projetoId)]),
   });
 }

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import { caminhoFotoGato, enviarArquivo, removerArquivos } from '../lib/storage';
+import { caminhoFotoGato, removerArquivos } from '../lib/storage';
+import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
+import { aposGravar, SEM_BLOQUEIO_OFFLINE } from './mutacoesOffline';
 import type { Gato } from '../types';
 
 export function useGatos() {
@@ -14,44 +16,46 @@ export function useGatos() {
   });
 }
 
+const ORDEM = { campo: 'ordem' };
+
+/** Cria o gato (funciona sem internet: o id nasce no aparelho). */
 export function useCriarGato() {
   const qc = useQueryClient();
   return useMutation({
+    onMutate: SEM_BLOQUEIO_OFFLINE,
     mutationFn: async ({ nome, nascimento, ordem }: { nome: string; nascimento: string | null; ordem: number }) => {
-      const { data, error } = await supabase.from('gatos').insert({ nome, nascimento, ordem }).select().single();
-      if (error) throw error;
-      return data as Gato;
+      const gato: Gato = { id: crypto.randomUUID(), nome, nascimento, ordem, foto_url: null };
+      const resultado = await executarOuEnfileirar(qc, 'tabela.inserir', { tabela: 'gatos', consulta: ['gatos'], linha: gato, ordenarPor: ORDEM });
+      return { gato, resultado };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['gatos'] }),
+    onSuccess: ({ resultado }) => aposGravar(qc, [['gatos']])(resultado),
   });
 }
 
 export function useAtualizarGato() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, dados }: { id: string; dados: Partial<Pick<Gato, 'nome' | 'nascimento' | 'ordem' | 'foto_url'>> }) => {
-      const { error } = await supabase.from('gatos').update(dados).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['gatos'] }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ id, dados }: { id: string; dados: Partial<Pick<Gato, 'nome' | 'nascimento' | 'ordem'>> }) =>
+      executarOuEnfileirar(qc, 'tabela.atualizar', { tabela: 'gatos', consultas: [['gatos']], id, mudancas: { ...dados }, ordenarPor: ORDEM }),
+    onSuccess: aposGravar(qc, [['gatos']]),
   });
 }
 
-/** Troca a foto do gato (arquivo = null remove): sobe a nova, grava o caminho e só então apaga a antiga. */
+/** Troca a foto do gato (arquivo = null remove). Sem internet, a foto fica no aparelho e sobe com a fila. */
 export function useDefinirFotoGato() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ gato, arquivo }: { gato: Gato; arquivo: File | null }) => {
-      const caminho = arquivo ? caminhoFotoGato(gato.id, arquivo) : null;
-      if (arquivo && caminho) await enviarArquivo('confidencial', caminho, arquivo);
-      const { error } = await supabase.from('gatos').update({ foto_url: caminho }).eq('id', gato.id);
-      if (error) {
-        if (caminho) await removerArquivos('confidencial', [caminho]).catch(() => undefined);
-        throw error;
-      }
-      if (gato.foto_url) await removerArquivos('confidencial', [gato.foto_url]).catch(() => undefined);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['gatos'] }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ gato, arquivo }: { gato: Gato; arquivo: File | null }) =>
+      executarOuEnfileirar(qc, 'gato.definirFoto', {
+        gatoId: gato.id,
+        caminho: arquivo ? caminhoFotoGato(gato.id, arquivo) : null,
+        anterior: gato.foto_url,
+        arquivoLocal: arquivo ?? undefined,
+        nomeArquivo: arquivo?.name,
+      }),
+    onSuccess: aposGravar(qc, [['gatos']]),
   });
 }
 
@@ -59,13 +63,15 @@ export function useDefinirFotoGato() {
 export function useReordenarGatos() {
   const qc = useQueryClient();
   return useMutation({
+    onMutate: SEM_BLOQUEIO_OFFLINE,
     mutationFn: async (ordens: { id: string; ordem: number }[]) => {
+      let resultado: 'enviada' | 'enfileirada' = 'enviada';
       for (const { id, ordem } of ordens) {
-        const { error } = await supabase.from('gatos').update({ ordem }).eq('id', id);
-        if (error) throw error;
+        resultado = await executarOuEnfileirar(qc, 'tabela.atualizar', { tabela: 'gatos', consultas: [['gatos']], id, mudancas: { ordem }, ordenarPor: ORDEM });
       }
+      return resultado;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['gatos'] }),
+    onSuccess: aposGravar(qc, [['gatos']]),
   });
 }
 

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import { caminhoAnexoDocumento, enviarArquivo, removerArquivo } from '../lib/storage';
+import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
+import { caminhoAnexoDocumento } from '../lib/storage';
+import { aposGravar, SEM_BLOQUEIO_OFFLINE } from './mutacoesOffline';
 import { hojeIso, somarDias } from '../lib/datas';
 import type {
   AreaDocumento,
@@ -47,62 +49,57 @@ export function useDocumentos(area: AreaDocumento, pessoaId?: string, gatoId?: s
   });
 }
 
+const ORDEM_DOCUMENTOS = { campo: 'ordem' };
+
 export function useCriarDocumento(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
+  const chave = queryKeyDocumentos(area, pessoaId, gatoId);
   return useMutation({
+    onMutate: SEM_BLOQUEIO_OFFLINE,
     mutationFn: async (titulo: string) => {
-      const { data, error } = await supabase
-        .from('documentos')
-        .insert({ area, pessoa_id: pessoaId ?? null, gato_id: gatoId ?? null, titulo })
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Documento;
+      const ordemNova = ((qc.getQueryData<Documento[]>(chave) ?? []).reduce((maior, d) => Math.max(maior, d.ordem ?? 0), -1)) + 1;
+      const documento = { id: crypto.randomUUID(), area, pessoa_id: pessoaId ?? null, gato_id: gatoId ?? null, titulo, ordem: ordemNova } as Documento;
+      const resultado = await executarOuEnfileirar(qc, 'tabela.inserir', { tabela: 'documentos', consulta: chave, linha: documento, ordenarPor: ORDEM_DOCUMENTOS });
+      return { documento, resultado };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
+    onSuccess: ({ resultado }) => aposGravar(qc, [chave])(resultado),
   });
 }
 
 export function useRenomearDocumento(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
+  const chave = queryKeyDocumentos(area, pessoaId, gatoId);
   return useMutation({
-    mutationFn: async ({ id, titulo }: { id: string; titulo: string }) => {
-      const { error } = await supabase.from('documentos').update({ titulo }).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ id, titulo }: { id: string; titulo: string }) => executarOuEnfileirar(qc, 'tabela.atualizar', { tabela: 'documentos', consultas: [chave], id, mudancas: { titulo } }),
+    onSuccess: aposGravar(qc, [chave]),
   });
 }
 
 /** Persiste uma nova ordem (id -> índice) pra um conjunto de documentos. */
 export function useReordenarDocumentos(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
+  const chave = queryKeyDocumentos(area, pessoaId, gatoId);
   return useMutation({
+    onMutate: SEM_BLOQUEIO_OFFLINE,
     mutationFn: async (ordens: { id: string; ordem: number }[]) => {
-      await Promise.all(
-        ordens.map(({ id, ordem }) =>
-          supabase
-            .from('documentos')
-            .update({ ordem })
-            .eq('id', id)
-            .then(({ error }) => {
-              if (error) throw error;
-            })
-        )
-      );
+      let resultado: 'enviada' | 'enfileirada' = 'enviada';
+      for (const { id, ordem } of ordens) {
+        resultado = await executarOuEnfileirar(qc, 'tabela.atualizar', { tabela: 'documentos', consultas: [chave], id, mudancas: { ordem }, ordenarPor: ORDEM_DOCUMENTOS });
+      }
+      return resultado;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
+    onSuccess: aposGravar(qc, [chave]),
   });
 }
 
 export function useExcluirDocumento(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
+  const chave = queryKeyDocumentos(area, pessoaId, gatoId);
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('documentos').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: (id: string) => executarOuEnfileirar(qc, 'tabela.excluir', { tabela: 'documentos', consultas: [chave], ids: [id] }),
+    onSuccess: aposGravar(qc, [chave]),
   });
 }
 
@@ -293,16 +290,17 @@ export interface DadosDocumentoPessoal {
 
 export function useAtualizarDocumentoPessoal(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
+  const chave = queryKeyDocumentos(area, pessoaId, gatoId);
   return useMutation({
-    mutationFn: async ({ id, dados }: { id: string; dados: DadosDocumentoPessoal }) => {
-      const { error } = await supabase.from('documentos').update(dados).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ id, dados }: { id: string; dados: DadosDocumentoPessoal }) =>
+      executarOuEnfileirar(qc, 'tabela.atualizar', { tabela: 'documentos', consultas: [chave], id, mudancas: { ...dados }, ordenarPor: ORDEM_DOCUMENTOS }),
+    onSuccess: aposGravar(qc, [chave, ['documentos_proximos_vencimentos']]),
   });
 }
 
 /** Campos livres (Padrão A genérico: Apartamento/Arquivo/Outros). */
+
 export function useDocumentoCampos(documentoId: string) {
   return useQuery({
     queryKey: ['documento_campos', documentoId],
@@ -407,18 +405,17 @@ export function useDocumentoAnexos(documentoId: string) {
 export function useAdicionarAnexoDocumento(documentoId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ arquivo, nome }: { arquivo: File; nome: string }) => {
-      const caminho = caminhoAnexoDocumento(SUBPASTA_DOCUMENTOS_PESSOAIS, documentoId, nome, arquivo);
-      await enviarArquivo(BUCKET_CONFIDENCIAL, caminho, arquivo);
-      const { error } = await supabase.from('documentos_anexos').insert({
-        documento_id: documentoId,
-        nome,
-        arquivo_url: caminho,
-        nome_arquivo: arquivo.name,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyAnexos(documentoId) }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ arquivo, nome }: { arquivo: File; nome: string }) =>
+      executarOuEnfileirar(qc, 'anexo.incluir', {
+        tabela: 'documentos_anexos',
+        consulta: queryKeyAnexos(documentoId),
+        linha: { id: crypto.randomUUID(), documento_id: documentoId, nome, arquivo_url: caminhoAnexoDocumento(SUBPASTA_DOCUMENTOS_PESSOAIS, documentoId, nome, arquivo), nome_arquivo: arquivo.name },
+        bucket: BUCKET_CONFIDENCIAL,
+        arquivoLocal: arquivo,
+        nomeArquivo: arquivo.name,
+      }),
+    onSuccess: aposGravar(qc, [queryKeyAnexos(documentoId)]),
   });
 }
 
@@ -480,12 +477,10 @@ export function useCriarDocumentoCompleto(area: AreaDocumento, pessoaId?: string
 export function useRemoverAnexoDocumento(documentoId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (anexo: DocumentoAnexo) => {
-      await removerArquivo(BUCKET_CONFIDENCIAL, anexo.arquivo_url);
-      const { error } = await supabase.from('documentos_anexos').delete().eq('id', anexo.id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyAnexos(documentoId) }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: (anexo: DocumentoAnexo) =>
+      executarOuEnfileirar(qc, 'anexo.excluir', { tabela: 'documentos_anexos', consulta: queryKeyAnexos(documentoId), id: anexo.id, bucket: BUCKET_CONFIDENCIAL, caminho: anexo.arquivo_url }),
+    onSuccess: aposGravar(qc, [queryKeyAnexos(documentoId)]),
   });
 }
 

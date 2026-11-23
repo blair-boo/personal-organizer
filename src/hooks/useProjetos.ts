@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
+import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
+import { aposGravar, SEM_BLOQUEIO_OFFLINE } from './mutacoesOffline';
 import type { Projeto, StatusProjeto } from '../types';
 
 const QUERY_KEY = ['projetos'];
@@ -23,36 +25,37 @@ export function useProjetos() {
   });
 }
 
+const ORDEM = { campo: 'criado_em', decrescente: true };
+
+/** Cria o projeto (funciona sem internet: o id nasce no aparelho). */
 export function useCriarProjeto() {
   const qc = useQueryClient();
   return useMutation({
+    onMutate: SEM_BLOQUEIO_OFFLINE,
     mutationFn: async (dados: DadosProjeto) => {
-      const { data, error } = await supabase.from('projetos').insert(dados).select().single();
-      if (error) throw error;
-      return data as Projeto;
+      const projeto = { id: crypto.randomUUID(), ...dados } as Projeto;
+      const resultado = await executarOuEnfileirar(qc, 'tabela.inserir', { tabela: 'projetos', consulta: QUERY_KEY, linha: projeto, ordenarPor: ORDEM });
+      return { projeto, resultado };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+    onSuccess: ({ resultado }) => aposGravar(qc, [QUERY_KEY])(resultado),
   });
 }
 
 export function useAtualizarProjeto() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, dados }: { id: string; dados: DadosProjeto }) => {
-      const { error } = await supabase.from('projetos').update(dados).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ id, dados }: { id: string; dados: DadosProjeto }) =>
+      executarOuEnfileirar(qc, 'tabela.atualizar', { tabela: 'projetos', consultas: [QUERY_KEY], id, mudancas: { ...dados }, ordenarPor: ORDEM }),
+    onSuccess: aposGravar(qc, [QUERY_KEY]),
   });
 }
 
 export function useExcluirProjeto() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('projetos').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: (id: string) => executarOuEnfileirar(qc, 'tabela.excluir', { tabela: 'projetos', consultas: [QUERY_KEY], ids: [id] }),
+    onSuccess: aposGravar(qc, [QUERY_KEY]),
   });
 }

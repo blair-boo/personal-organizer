@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../lib/supabaseClient';
-import { caminhoExameGato, enviarArquivo, removerArquivo } from '../lib/storage';
+import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
+import { caminhoExameGato } from '../lib/storage';
 import type { GatoExame } from '../types';
+import { aposGravar, SEM_BLOQUEIO_OFFLINE } from './mutacoesOffline';
 import { criarHooksDeRegistros } from './registrosDoGato';
 
 export const BUCKET_GATOS = 'confidencial';
@@ -19,20 +20,21 @@ const hooks = criarHooksDeRegistros<GatoExame, DadosExame>('gato_exames');
 /** Exames de todos os gatos: data, nome e arquivo (bucket confidencial, subpasta gatos). */
 export const useGatoExames = hooks.useLista;
 
-/** Envia o arquivo e grava o exame. */
+/** Grava o exame e envia o arquivo (sem internet, os dois esperam na fila). */
 export function useIncluirGatoExame() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ gatoId, data, nome, arquivo }: { gatoId: string; data: string; nome: string; arquivo: File }) => {
-      const caminho = caminhoExameGato(gatoId, nome, arquivo);
-      await enviarArquivo(BUCKET_GATOS, caminho, arquivo);
-      const { error } = await supabase.from('gato_exames').insert({ gato_id: gatoId, data, nome, arquivo_url: caminho, nome_arquivo: arquivo.name });
-      if (error) {
-        await removerArquivo(BUCKET_GATOS, caminho).catch(() => undefined);
-        throw error;
-      }
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['gato_exames'] }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ gatoId, data, nome, arquivo }: { gatoId: string; data: string; nome: string; arquivo: File }) =>
+      executarOuEnfileirar(qc, 'anexo.incluir', {
+        tabela: 'gato_exames',
+        consulta: ['gato_exames'],
+        linha: { id: crypto.randomUUID(), gato_id: gatoId, data, nome, arquivo_url: caminhoExameGato(gatoId, nome, arquivo), nome_arquivo: arquivo.name },
+        bucket: BUCKET_GATOS,
+        arquivoLocal: arquivo,
+        nomeArquivo: arquivo.name,
+      }),
+    onSuccess: aposGravar(qc, [['gato_exames']]),
   });
 }
 
@@ -42,11 +44,8 @@ export const useAtualizarGatoExame = hooks.useAtualizar;
 export function useExcluirGatoExame() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (exame: GatoExame) => {
-      await removerArquivo(BUCKET_GATOS, exame.arquivo_url);
-      const { error } = await supabase.from('gato_exames').delete().eq('id', exame.id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['gato_exames'] }),
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: (exame: GatoExame) => executarOuEnfileirar(qc, 'anexo.excluir', { tabela: 'gato_exames', consulta: ['gato_exames'], id: exame.id, bucket: BUCKET_GATOS, caminho: exame.arquivo_url }),
+    onSuccess: aposGravar(qc, [['gato_exames']]),
   });
 }

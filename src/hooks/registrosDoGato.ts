@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
+import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
+import { aposGravar, SEM_BLOQUEIO_OFFLINE } from './mutacoesOffline';
 
 /**
  * Peças comuns dos históricos de cada gato (vacinas, vermífugo, consultas,
@@ -19,36 +21,34 @@ export function criarHooksDeRegistros<T extends { id: string }, Dados extends ob
     });
   }
 
+  const ordem = { campo: ordenarPor, decrescente: true };
+
   function useIncluir() {
     const qc = useQueryClient();
     return useMutation({
-      mutationFn: async (dados: Dados & { id?: string }) => {
-        const { error } = await supabase.from(tabela).insert(dados);
-        if (error) throw error;
-      },
-      onSuccess: () => qc.invalidateQueries({ queryKey: [tabela] }),
+      onMutate: SEM_BLOQUEIO_OFFLINE,
+      mutationFn: (dados: Dados & { id?: string }) =>
+        executarOuEnfileirar(qc, 'tabela.inserir', { tabela, consulta: [tabela], linha: { ...dados, id: dados.id ?? crypto.randomUUID() }, ordenarPor: ordem }),
+      onSuccess: aposGravar(qc, [[tabela]]),
     });
   }
 
   function useAtualizar() {
     const qc = useQueryClient();
     return useMutation({
-      mutationFn: async ({ id, dados }: { id: string; dados: Partial<Dados> }) => {
-        const { error } = await supabase.from(tabela).update(dados as Record<string, unknown>).eq('id', id);
-        if (error) throw error;
-      },
-      onSuccess: () => qc.invalidateQueries({ queryKey: [tabela] }),
+      onMutate: SEM_BLOQUEIO_OFFLINE,
+      mutationFn: ({ id, dados }: { id: string; dados: Partial<Dados> }) =>
+        executarOuEnfileirar(qc, 'tabela.atualizar', { tabela, consultas: [[tabela]], id, mudancas: { ...dados }, ordenarPor: ordem }),
+      onSuccess: aposGravar(qc, [[tabela]]),
     });
   }
 
   function useExcluir() {
     const qc = useQueryClient();
     return useMutation({
-      mutationFn: async (id: string) => {
-        const { error } = await supabase.from(tabela).delete().eq('id', id);
-        if (error) throw error;
-      },
-      onSuccess: () => qc.invalidateQueries({ queryKey: [tabela] }),
+      onMutate: SEM_BLOQUEIO_OFFLINE,
+      mutationFn: (id: string) => executarOuEnfileirar(qc, 'tabela.excluir', { tabela, consultas: [[tabela]], ids: [id] }),
+      onSuccess: aposGravar(qc, [[tabela]]),
     });
   }
 

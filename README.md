@@ -65,7 +65,7 @@ Apartamento, Documentos e Storage abrem sem internet, anexos incluídos. Finanç
 
 - **O que fica no aparelho:** as consultas dessas áreas (IndexedDB, via `@tanstack/react-query-persist-client`, lista fechada em `src/lib/offline/persistencia.ts`) e os arquivos anexados (Cache Storage `arquivos-offline`, em `src/lib/offline/arquivos.ts`). Os arquivos não podem usar o cache do service worker porque os buckets são privados e a URL assinada muda a cada acesso.
 - **Como fica sincronizado:** com internet, `OfflineProvider` (`src/components/OfflineContext.tsx`) busca as consultas e baixa só os anexos que faltam ou mudaram, ao abrir o app, quando a conexão volta, ao voltar pro app depois de 30 min e quando um anexo novo aparece. Clicar no indicador do cabeçalho ("Atualizado às HH:MM") faz isso na hora.
-- **Sem internet:** o app usa o que está guardado. Alterações são recusadas com o aviso "Sem conexão com a internet. Esta ação precisa de internet." (editar offline fica para depois, ver o backlog compartilhado). Um arquivo só abre offline se já foi sincronizado.
+- **Sem internet:** o app usa o que está guardado. Alterações de Storage, Manutenção, Itens, Projetos, Documentos e Gatos entram na fila (ver "Editar sem internet"); as demais são recusadas com o aviso "Sem conexão com a internet. Esta ação precisa de internet.". Um arquivo só abre offline se já foi sincronizado.
 - **Sessão:** o token de acesso vence em ~1 h; sem internet ele não renova. O app mantém você logado com a sessão guardada (`src/auth/sessaoGuardada.ts`) e renova quando a internet volta.
 - **Settings → App:** verificar atualização do app, sincronizar, Recarregar tudo (apaga os arquivos guardados e baixa tudo de novo), Apagar dados offline e Esvaziar cache (nunca apaga os dados offline e é recusado sem internet, para o app continuar abrindo).
 - **Privacidade:** os dados guardados incluem os documentos, sem criptografia, no armazenamento do próprio navegador. Sair da conta apaga tudo (dados, arquivos e caches antigos). O service worker não guarda mais respostas da API nem arquivos privados.
@@ -91,14 +91,18 @@ Em Apartamento > Manutenção, abaixo do título: busca (só no nome da tarefa) 
 
 **Feita hoje, histórico e atraso:** "Feita hoje" grava a data de hoje. Se a tarefa estava atrasada, pergunta de onde conta a próxima: voltar à data original (marcado de início) ou a partir de hoje. A tarefa feita com atraso ganha uma bandeira. O botão **Histórico** de cada tarefa deixa trocar a data de uma execução, incluir outra data à mão, excluir uma execução e mudar a escolha da base nas feitas com atraso (tabela `tarefas_manutencao_historico`, colunas `data_prevista` e `base_proxima`; migration `0020`; lógica em `src/lib/historicoTarefa.ts`).
 
-## Editar sem internet (Storage e Manutenção)
+## Editar sem internet
 
-Storage (caixas, itens, observações, tags e fotos) e, na Manutenção, "Feita hoje" e o Histórico aceitam alterações sem internet. Itens, Projetos e Documentos ainda recusam (fase 2, ver o backlog compartilhado).
+Aceitam alterações sem internet: Storage (caixas, itens, observações, tags e fotos), Manutenção (criar, editar, excluir, cômodos, "Feita hoje", Histórico e Adiar/Pular), Itens e Projetos (dados e anexos), Gatos (cadastro, nascimento, ordem, vacinas, vermífugos, consultas, pesos, exames com arquivo e foto) e Documentos (criar, renomear, reordenar, excluir, dados do documento pessoal e anexos).
+
+**Continuam exigindo internet:** excluir um gato (apaga tudo dele), criar casal, criar documento com campos e anexos de uma vez (`useCriarDocumentoCompleto`), salvar os campos livres e os locais de renovação de um documento, Settings, Finanças, importação, exportação para planilha e etiquetas de Storage fora do cache.
+
+**Operações genéricas (fase 2):** além das operações de Storage e Manutenção, a fila tem `tabela.inserir`, `tabela.atualizar` e `tabela.excluir` (uma linha de tabela simples; dizem em qual consulta do react-query a alteração aparece), `anexo.incluir` e `anexo.excluir` (linha + arquivo no bucket; o arquivo fica no Cache Storage do aparelho até subir), `tarefa.definirClassificacoes` e `gato.definirFoto`. Hook novo que queira funcionar offline: use `executarOuEnfileirar` com uma delas, `onMutate: SEM_BLOQUEIO_OFFLINE` e `aposGravar(qc, [chaves])` (`src/hooks/mutacoesOffline.ts`).
 
 - **Como funciona:** sem internet a alteração aparece na tela na hora e entra numa fila guardada no IndexedDB do aparelho (`src/lib/offline/fila.ts`; aceita Blob, então as fotos tiradas sem sinal vão junto). Quando a conexão volta, o `OfflineProvider` envia a fila em ordem, antes de buscar as consultas de novo (`src/lib/offline/enviarFila.ts`). Se uma alteração falhar, o envio para nela, avisa o erro e tenta de novo na próxima vez.
 - **Onde fica cada peça:** os tipos de alteração em `operacoes.ts`, a gravação no servidor em `executores.ts` (a mesma usada com internet; aguenta rodar de novo, por isso usa upsert), o efeito na tela em `aplicarLocal.ts` (funções puras, com testes) e a decisão de rodar na hora ou enfileirar em `executarOuEnfileirar.ts`. Hook novo que queira funcionar offline: passa por `executarOuEnfileirar` e sobrescreve `onMutate: () => undefined` (o `main.tsx` recusa as demais).
 - **Códigos de caixa:** o número da caixa nova (o maior + 1) é definido no aparelho, pra valer também sem internet.
-- **Conflito:** vale a última alteração enviada. Fotos: a cópia local aparece normalmente e sobe com a fila.
+- **Conflito:** vale a última alteração enviada. Quem criou algo sem internet vê a linha na tela com a hora do aparelho; ao enviar, o servidor passa a valer. Fotos: a cópia local aparece normalmente e sobe com a fila.
 - **Indicador:** o cabeçalho mostra "N alterações pendentes" (toque para enviar). Settings > App tem "Enviar agora" e "Descartar pendências". Sair da conta com pendências pergunta antes, porque sair apaga tudo do aparelho.
 
 ## Responsáveis das tarefas e casal
@@ -108,12 +112,22 @@ Storage (caixas, itens, observações, tags e fotos) e, na Manutenção, "Feita 
 - **Responsável da tarefa:** escolha única no formulário: Nenhuma, cada pessoa, ou **Qualquer um** / **Juntos** (do casal). Filtro por pessoa (a tarefa do casal é de cada um dos dois), "Sem responsável" e kanban "Por pessoa" (arrastar muda a atribuição). Lógica em `src/lib/responsaveis.ts`.
 - **Feita hoje:** abre uma janela com **quem fez** (as pessoas, não o casal). Já vem marcado: nas tarefas Juntos, os dois; nas Qualquer um, quem está usando o app (se for do casal); numa pessoa, ela; sem responsável, quem está usando. Marcar as duas = fizeram juntas. Cada execução guarda quem fez (`tarefas_historico_pessoas`) e o Histórico deixa trocar. Migration `0022`.
 
+## Painel Hoje
+
+Primeira aba (rota `/hoje`, e para onde o app abre). Mostra: alterações pendentes de envio; tarefas **atrasadas e de hoje por pessoa** (a tarefa do casal aparece para cada um; "Sem responsável" só quando há alguma), com link para a Manutenção já filtrada (`?filtro=atrasadas&pessoa=ID`); vacinas e vermífugos dos gatos vencidos ou vencendo em 30 dias; e o **equilíbrio do mês**: quantas tarefas cada pessoa fez sozinha e junto (as feitas juntas contam para cada um) e quantas ficaram sem registro de quem fez. Lógica em `src/lib/painelHoje.ts`. Sem internet usa os dados guardados.
+
+## Adiar ou pular uma tarefa
+
+O botão **Adiar** (lista e kanban) abre uma janela: **Adiar para** uma data, ou **Pular desta vez** (passa para o ciclo seguinte, sem registrar como feita). Os dois gravam `tarefas_manutencao.adiada_ate` (migration `0024`), que passa a valer como a próxima execução até a tarefa ser feita de novo (registrar a execução limpa o adiamento; incluir à mão uma execução antiga não limpa). Uma tarefa adiada para o futuro deixa de contar como atrasada e mostra o selo "Adiada até dd/mm". **Cancelar adiamento** volta ao ciclo normal. Funciona sem internet.
+
 ## Gatos (Documentos > Gatos)
 
 Sub-abas por gato (`+ Gato`; modo de edição para renomear, reordenar e excluir, que apaga tudo do gato com os arquivos). Cada gato tem data de nascimento com a idade calculada e seções que abrem e fecham: **Vacinas** (data e próxima dose), **Vermífugo** (data, produto e próximo), **Consultas** (data, veterinário, observação), **Exames** (data, nome e arquivo no bucket `confidencial`, subpasta `gatos/`), **Peso** (data e kg, com a variação) e **Documentos** (lista livre, a mesma das outras áreas, com `documentos.area = 'gatos'`). No topo, o quadro **Próximas vacinas e vermífugos** (de cada vacina conta só a aplicação mais recente; vencidas em destaque, as de até 30 dias sinalizadas). Migration `0023`; lógica em `src/lib/gatos.ts`.
 
 - **Calendário:** as próximas datas entram nos links de assinatura (.ics) marcados com "Incluir as próximas vacinas e vermífugos dos gatos" em Settings > Calendário (os links que valiam para todas as pessoas já vêm marcados). O aviso toca 3 dias antes. A Edge Function `documentos-ics` foi atualizada; o código fica em `supabase/functions/documentos-ics`.
-- **Offline:** a aba abre sem internet, arquivos dos exames incluídos (cache `v4`). Editar gatos sem internet fica para a fase 2.
+- **Foto e peso:** cada ficha tem a foto do gato (`gatos.foto_url`, arquivo em `gatos/{id}/foto-*.ext` no bucket `confidencial`; migration `0024`) e, na seção Peso, um gráfico de tendência em SVG (`src/pages/documentos/GraficoPeso.tsx`, com 2 ou mais pesagens).
+- **Cabeçalho:** o contador "N vencidas (gatos)" leva à aba Gatos, como o de tarefas atrasadas leva à Manutenção.
+- **Offline:** a aba abre sem internet, arquivos dos exames e fotos incluídos (cache `v5`), e aceita alterações (ver "Editar sem internet").
 
 ## Exportar tarefas para planilha
 

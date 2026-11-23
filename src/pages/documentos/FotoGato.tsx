@@ -34,8 +34,8 @@ export function FotoGato({ gato }: { gato: Gato }) {
       return;
     }
     try {
-      await definirFoto.mutateAsync({ gato, arquivo });
-      mostrarToast('Foto salva.');
+      const resultado = await definirFoto.mutateAsync({ gato, arquivo });
+      mostrarToast(resultado === 'enfileirada' ? 'Foto salva. Será enviada quando houver internet.' : 'Foto salva.');
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
     }

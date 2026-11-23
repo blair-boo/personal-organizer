@@ -231,7 +231,7 @@ export function ItensPage() {
 
   async function salvar(dados: DadosItem, tagIds: string[]) {
     try {
-      const itemId = editando ? editando.id : (await criar.mutateAsync(dados)).id;
+      const itemId = editando ? editando.id : (await criar.mutateAsync(dados)).item.id;
       if (editando) await atualizar.mutateAsync({ id: editando.id, dados });
       await definirTags.mutateAsync({ itemId, tagIds });
       mostrarToast('Item salvo.');
