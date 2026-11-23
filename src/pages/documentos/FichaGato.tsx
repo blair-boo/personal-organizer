@@ -10,6 +10,8 @@ import { useAtualizarGatoPeso, useExcluirGatoPeso, useGatoPesos, useIncluirGatoP
 import { useAtualizarGatoVacina, useExcluirGatoVacina, useGatoVacinas, useIncluirGatoVacina } from '../../hooks/useGatoVacinas';
 import { useAtualizarGatoVermifugo, useExcluirGatoVermifugo, useGatoVermifugos, useIncluirGatoVermifugo } from '../../hooks/useGatoVermifugos';
 import type { Gato } from '../../types';
+import { FotoGato } from './FotoGato';
+import { GraficoPeso } from './GraficoPeso';
 import { DocumentosAreaPage } from './DocumentosAreaPage';
 import { SecaoRegistros, type CampoRegistro } from './SecaoRegistros';
 
@@ -102,6 +104,8 @@ export function FichaGato({ gato }: { gato: Gato }) {
 
   return (
     <div className="gatos-ficha">
+      <FotoGato gato={gato} />
+
       <div className="documentos-prazo-linha gatos-nascimento">
         <label>
           Data de nascimento
@@ -217,6 +221,7 @@ export function FichaGato({ gato }: { gato: Gato }) {
         titulo="Peso"
         item="pesagem"
         textoVazio="Nenhuma pesagem registrada."
+        topo={<GraficoPeso pesos={pesos} />}
         registros={pesos}
         campos={CAMPOS_PESO}
         valoresDe={(r) => ({ data: r.data, peso_kg: String(r.peso_kg).replace('.', ',') })}

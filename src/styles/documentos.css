@@ -335,3 +335,57 @@
 .gatos-proxima-breve {
   font-weight: 700;
 }
+
+.gatos-grafico {
+  margin: 8px 0;
+}
+
+.gatos-grafico svg {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.gatos-grafico-linha {
+  stroke: var(--accent-border);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.gatos-grafico-ponto {
+  fill: var(--text-h);
+}
+
+.gatos-grafico figcaption {
+  margin-top: 4px;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.gatos-foto {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.gatos-foto-imagem {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+
+.gatos-foto-vazia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 12px;
+  padding: 8px;
+}

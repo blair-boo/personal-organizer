@@ -2,6 +2,8 @@ import { useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useTema, type TemaPref } from '../hooks/useTema';
+import { useProximasDatasGatos } from '../hooks/useProximasDatasGatos';
+import { contarVencidas } from '../lib/gatos';
 import { useTarefasManutencao } from '../hooks/useTarefasManutencao';
 import { hojeIso } from '../lib/datas';
 import { contarFila, pedirEnvioDaFila, usePendentes } from '../lib/offline/fila';
@@ -93,6 +95,27 @@ function IndicadorAtrasadas() {
   );
 }
 
+/** Quantas vacinas e vermífugos dos gatos estão vencidos; tocar leva à aba Gatos. Some quando não há nenhum. */
+function IndicadorGatosVencidos() {
+  const proximas = useProximasDatasGatos();
+  const navigate = useNavigate();
+  const quantidade = contarVencidas(proximas);
+  if (quantidade === 0) return null;
+  const texto = quantidade === 1 ? '1 vencida (gatos)' : `${quantidade} vencidas (gatos)`;
+  return (
+    <button
+      type="button"
+      className="indicador-conexao"
+      onClick={() => navigate('/documentos/gatos')}
+      title={`${texto}: ver as vacinas e vermífugos dos gatos`}
+      aria-label={`${texto}: ver as vacinas e vermífugos dos gatos`}
+    >
+      <span className="conexao-ponto conexao-offline" aria-hidden="true" />
+      <span>{texto}</span>
+    </button>
+  );
+}
+
 /** Quantas alterações feitas sem internet esperam para ser enviadas; tocar tenta enviar. */
 function IndicadorPendentes() {
   const pendentes = usePendentes();
@@ -143,6 +166,7 @@ function LayoutInterno({ children }: { children: ReactNode }) {
           <h1 className="app-title">{APP_NAME}</h1>
           <IndicadorPendentes />
           <IndicadorAtrasadas />
+          <IndicadorGatosVencidos />
           <IndicadorConexao />
           <button type="button" onClick={ciclarTema} className="tema-toggle" title={TEMA_INFO[tema].titulo} aria-label={TEMA_INFO[tema].titulo}>
             {tema === 'light' ? <IconeSol /> : tema === 'dark' ? <IconeLua /> : <IconeMonitor />}

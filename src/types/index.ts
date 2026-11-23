@@ -245,6 +245,8 @@ export interface Gato {
   nome: string;
   nascimento: string | null;
   ordem: number;
+  /** Caminho da foto no bucket confidencial (gatos/{id}/foto-{timestamp}.{ext}). */
+  foto_url: string | null;
 }
 
 export interface GatoVacina {

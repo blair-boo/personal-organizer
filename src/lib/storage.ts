@@ -79,6 +79,11 @@ export function caminhoExameGato(gatoId: string, nomeExame: string, arquivo: Fil
   return `gatos/${gatoId}/exames/${slug}-${Date.now()}.${ext}`;
 }
 
+/** Caminho da foto de um gato (bucket confidencial): gatos/{gatoId}/foto-{timestamp}.{ext}. */
+export function caminhoFotoGato(gatoId: string, arquivo: File): string {
+  return `gatos/${gatoId}/foto-${Date.now()}.${extensaoDe(arquivo.name)}`;
+}
+
 /** Caminho de um anexo de item de caixa (bucket confidencial), seguindo a convenção storage/{itemId}/{slug}-{timestamp}.{ext}. */
 export function caminhoAnexoStorage(itemId: string, nomeAnexo: string, arquivo: File): string {
   const slug = slugify(nomeAnexo) || 'anexo';

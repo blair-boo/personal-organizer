@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import { removerArquivos } from '../lib/storage';
+import { caminhoFotoGato, enviarArquivo, removerArquivos } from '../lib/storage';
 import type { Gato } from '../types';
 
 export function useGatos() {
@@ -29,9 +29,27 @@ export function useCriarGato() {
 export function useAtualizarGato() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, dados }: { id: string; dados: Partial<Pick<Gato, 'nome' | 'nascimento' | 'ordem'>> }) => {
+    mutationFn: async ({ id, dados }: { id: string; dados: Partial<Pick<Gato, 'nome' | 'nascimento' | 'ordem' | 'foto_url'>> }) => {
       const { error } = await supabase.from('gatos').update(dados).eq('id', id);
       if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['gatos'] }),
+  });
+}
+
+/** Troca a foto do gato (arquivo = null remove): sobe a nova, grava o caminho e só então apaga a antiga. */
+export function useDefinirFotoGato() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ gato, arquivo }: { gato: Gato; arquivo: File | null }) => {
+      const caminho = arquivo ? caminhoFotoGato(gato.id, arquivo) : null;
+      if (arquivo && caminho) await enviarArquivo('confidencial', caminho, arquivo);
+      const { error } = await supabase.from('gatos').update({ foto_url: caminho }).eq('id', gato.id);
+      if (error) {
+        if (caminho) await removerArquivos('confidencial', [caminho]).catch(() => undefined);
+        throw error;
+      }
+      if (gato.foto_url) await removerArquivos('confidencial', [gato.foto_url]).catch(() => undefined);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['gatos'] }),
   });
@@ -63,7 +81,9 @@ export function useExcluirGato() {
       const ids = (documentos as { id: string }[]).map((d) => d.id);
       const { data: anexos, error: erroAnexos } = ids.length > 0 ? await supabase.from('documentos_anexos').select('arquivo_url').in('documento_id', ids) : { data: [], error: null };
       if (erroAnexos) throw erroAnexos;
-      await removerArquivos('confidencial', [...(exames as { arquivo_url: string }[]), ...(anexos as { arquivo_url: string }[])].map((a) => a.arquivo_url));
+      const { data: gato } = await supabase.from('gatos').select('foto_url').eq('id', id).maybeSingle();
+      const foto = (gato as { foto_url: string | null } | null)?.foto_url;
+      await removerArquivos('confidencial', [...(exames as { arquivo_url: string }[]), ...(anexos as { arquivo_url: string }[])].map((a) => a.arquivo_url).concat(foto ? [foto] : []));
       const { error } = await supabase.from('gatos').delete().eq('id', id);
       if (error) throw error;
     },

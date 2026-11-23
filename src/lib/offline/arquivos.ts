@@ -54,6 +54,12 @@ const BUCKET_POR_CONSULTA: Record<string, string> = {
   documento_anexos: 'confidencial',
   storage_anexos: 'confidencial',
   gato_exames: 'confidencial',
+  gatos: 'confidencial',
+};
+
+/** Campo com o caminho do arquivo, quando não é arquivo_url. */
+const CAMPO_POR_CONSULTA: Record<string, string> = {
+  gatos: 'foto_url',
 };
 
 /** Lê as listas de anexos que já estão no cache do react-query e devolve os arquivos que deveriam estar no aparelho. */
@@ -63,9 +69,12 @@ export function extrairArquivosDasConsultas(consultas: ConsultaEmCache[]): Arqui
     const nome = consulta.queryKey[0];
     const bucket = typeof nome === 'string' ? BUCKET_POR_CONSULTA[nome] : undefined;
     if (!bucket || !Array.isArray(consulta.data)) continue;
-    for (const linha of consulta.data as { id?: string; arquivo_url?: string }[]) {
-      if (!linha?.arquivo_url || !linha.id) continue;
-      const arquivo = { bucket, caminho: linha.arquivo_url, versao: linha.id };
+    const campo = CAMPO_POR_CONSULTA[nome as string] ?? 'arquivo_url';
+    for (const linha of consulta.data as { id?: string; [campo: string]: unknown }[]) {
+      const caminho = linha?.[campo];
+      if (typeof caminho !== 'string' || !caminho || !linha.id) continue;
+      // Na foto do gato a linha é a mesma quando a foto troca; o caminho tem horário, então ele serve de versão.
+      const arquivo = { bucket, caminho, versao: campo === 'arquivo_url' ? linha.id : caminho };
       encontrados.set(idDoArquivo(arquivo), arquivo);
     }
   }

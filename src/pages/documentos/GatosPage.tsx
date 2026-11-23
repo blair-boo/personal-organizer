@@ -8,10 +8,9 @@ import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { hojeIso } from '../../lib/datas';
 import { mensagemDeErro } from '../../lib/erros';
-import { proximasDatas, textoDeDias } from '../../lib/gatos';
+import { textoDeDias } from '../../lib/gatos';
 import { useAtualizarGato, useCriarGato, useExcluirGato, useGatos, useReordenarGatos } from '../../hooks/useGatos';
-import { useGatoVacinas } from '../../hooks/useGatoVacinas';
-import { useGatoVermifugos } from '../../hooks/useGatoVermifugos';
+import { useProximasDatasGatos } from '../../hooks/useProximasDatasGatos';
 import { formatarData } from '../../lib/datas';
 import type { Gato } from '../../types';
 import { FichaGato } from './FichaGato';
@@ -59,10 +58,7 @@ function NovoGatoModal({ onCriar, onFechar }: { onCriar: (nome: string, nascimen
 
 /** Próximas vacinas e vermífugos de todos os gatos, em ordem; as vencidas e as que vencem em até 30 dias ficam em destaque. */
 function ProximasDatas({ onSelecionar }: { onSelecionar: (gatoId: string) => void }) {
-  const { data: gatos } = useGatos();
-  const { data: vacinas } = useGatoVacinas();
-  const { data: vermifugos } = useGatoVermifugos();
-  const proximas = proximasDatas(gatos ?? [], vacinas ?? [], vermifugos ?? [], hojeIso());
+  const proximas = useProximasDatasGatos();
   if (proximas.length === 0) return null;
   return (
     <div className="documentos-resumo-vencimentos">
