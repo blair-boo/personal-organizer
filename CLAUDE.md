@@ -78,8 +78,9 @@ com `currentColor`) ou `<IconePng arquivo="PNG/nome.png" />` (ilustração color
 - Todo ícone novo incluído (função, título, aba, substituto provisório ou arquivo
   do bucket) deve aparecer na aba Settings > Ícones, na seção correspondente:
   "Ícones (Settings)" para ícone de função (entra em `FUNCOES_ICONE`), "Ícones (UI)"
-  para ícone de título/aba (entra via `icones_usos`), "Ícones (Com máscara)" para SVG
-  da raiz do bucket e "Ícones (Originais)" para PNG da pasta `PNG/`. Conferir a aba
+  para ícone de título/aba (entra via `icones_usos`) e "Ícones (Galeria)" para arquivo
+  do bucket: cada pasta do bucket `icones` é uma subseção (arquivos soltos ficam em
+  "Sem pasta") e a máscara é um liga/desliga da galeria. Conferir a aba
   antes de dar o trabalho como pronto e citar em qual seção o ícone ficou.
 - Quando o arquivo for enviado ao bucket, trocar o uso pelo ícone real, remover
   o substituto de `IconesProvisorios.tsx` e apagar a linha da tabela no backlog.

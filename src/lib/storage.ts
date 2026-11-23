@@ -91,7 +91,7 @@ export function caminhoAnexoStorage(itemId: string, nomeAnexo: string, arquivo: 
   return `storage/${itemId}/${slug}-${Date.now()}.${ext}`;
 }
 
-/** Caminho de um ícone no bucket `icones` (pasta '' = raiz/SVG, 'PNG' = ilustrações). */
+/** Caminho de um ícone no bucket `icones` (pasta '' = raiz; cada pasta do bucket é uma divisão da galeria). */
 export function caminhoIcone(pasta: string, nomeArquivo: string): string {
   return pasta ? `${pasta}/${nomeArquivo}` : nomeArquivo;
 }

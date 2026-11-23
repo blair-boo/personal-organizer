@@ -297,6 +297,12 @@ export interface IconeArquivo {
   ordem: number;
 }
 
+/** Uma divisão da galeria de ícones: pasta do bucket ('' = arquivos soltos na raiz) e seus ícones. */
+export interface PastaIcones {
+  pasta: string;
+  icones: IconeArquivo[];
+}
+
 export type AlvoIcone = 'funcao' | 'categoria' | 'aba';
 export type TemaIcone = 'claro' | 'escuro' | 'ambos';
 export type CorOrigemIcone = 'padrao' | 'app' | 'minha';

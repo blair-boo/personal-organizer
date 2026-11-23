@@ -29,12 +29,24 @@
   padding: 2px;
 }
 
-/* Seções recolhíveis (Ícones (Settings) e Ícones (UI)). */
+/* Divisão da galeria (uma por pasta do bucket) e chave de máscara. */
+.icones-grupo {
+  margin-top: 14px;
+}
+
+.icones-mascara-opcao {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+/* Seções recolhíveis (Ícones (Settings), Ícones (UI) e pastas da galeria). */
 .icones-secao-titulo {
   display: flex;
   align-items: center;
   gap: 6px;
-  width: 100%;
+  flex: 1;
   background: none;
   border: none;
   padding: 0;

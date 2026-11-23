@@ -3,7 +3,7 @@ import { ModalBase } from './ModalBase';
 import { useToast } from './Toast';
 import { IconeDoUso, IconeFuncao } from './IconeUso';
 import { IconeSupabase } from './IconeSupabase';
-import { useAdicionarIcones, useIconesGaleria } from '../hooks/useIcones';
+import { useAdicionarIcones, useIconesTodasPastas } from '../hooks/useIcones';
 import { useCoresUsuario } from '../hooks/useCoresUsuario';
 import { APP_CORES } from '../lib/coresApp';
 import { mensagemDeErro } from '../lib/erros';
@@ -42,10 +42,9 @@ export function ModalIcone(props: ModalIconeProps) {
 
 function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase, permiteRemover, onConfirmar, onRemover, onFechar }: ModalIconeProps) {
   const { mostrarToast } = useToast();
-  const raiz = useIconesGaleria('');
-  const originais = useIconesGaleria('PNG');
+  const { pastas, carregando, erro: erroBruto } = useIconesTodasPastas();
   const { cores: minhasCores } = useCoresUsuario();
-  const [pastaDestino, setPastaDestino] = useState<'' | 'PNG'>('');
+  const [pastaDestino, setPastaDestino] = useState('');
   const adicionar = useAdicionarIcones(pastaDestino);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -97,8 +96,7 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
     onConfirmar(usoRascunho);
   }
 
-  const carregando = raiz.isLoading || originais.isLoading;
-  const erro = raiz.isError || originais.isError ? mensagemDeErro(raiz.error ?? originais.error) : null;
+  const erro = erroBruto ? mensagemDeErro(erroBruto) : null;
   const rotuloTamanho = delta === 0 ? 'padrão' : delta > 0 ? `+${delta}px` : `${delta}px`;
 
   return (
@@ -121,11 +119,8 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
             {erro && <p className="testes-erro">Não foi possível carregar os ícones: {erro}</p>}
             {!carregando && !erro && (
               <div className="modal-icone-grade" role="listbox" aria-label="Ícones existentes">
-                {[
-                  { pasta: '', lista: raiz.data ?? [] },
-                  { pasta: 'PNG', lista: originais.data ?? [] },
-                ].flatMap(({ pasta, lista }) =>
-                  lista.map((icone) => {
+                {pastas.flatMap(({ pasta, icones }) =>
+                  icones.map((icone) => {
                     const selecionado = escolhido?.pasta === pasta && escolhido.arquivo === icone.nome;
                     return (
                       <button
@@ -138,7 +133,7 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
                         title={icone.nome}
                         aria-label={icone.nome}
                       >
-                        {pasta === '' ? (
+                        {icone.nome.toLowerCase().endsWith('.svg') ? (
                           <IconeSupabase arquivo={caminhoIcone(pasta, icone.nome)} tamanho={24} />
                         ) : (
                           <img className="icone-png" src={icone.url} alt="" width={24} height={24} loading="lazy" />
@@ -154,14 +149,12 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
           <div className="modal-icone-novo">
             <fieldset className="modal-icone-fieldset">
               <legend>Salvar em</legend>
-              <label className="modal-icone-radio">
-                <input type="radio" name="pasta-destino" checked={pastaDestino === ''} onChange={() => setPastaDestino('')} />
-                Ícones (Com máscara)
-              </label>
-              <label className="modal-icone-radio">
-                <input type="radio" name="pasta-destino" checked={pastaDestino === 'PNG'} onChange={() => setPastaDestino('PNG')} />
-                Ícones (Originais)
-              </label>
+              {pastas.map(({ pasta }) => (
+                <label key={pasta} className="modal-icone-radio">
+                  <input type="radio" name="pasta-destino" checked={pastaDestino === pasta} onChange={() => setPastaDestino(pasta)} />
+                  {pasta || 'Sem pasta'}
+                </label>
+              ))}
             </fieldset>
             <input ref={inputRef} type="file" accept="image/*" onChange={aoEscolherArquivo} hidden />
             <button type="button" className="btn-icone icone-uso-botao" onClick={() => inputRef.current?.click()} disabled={adicionar.isPending} title="Selecionar arquivo de imagem" aria-label="Selecionar arquivo de imagem">
