@@ -337,6 +337,8 @@ export interface CalendarioFeed {
   criado_em: string;
   /** Inclui as próximas vacinas e vermífugos dos gatos. */
   incluir_gatos: boolean;
+  /** Inclui a próxima execução das tarefas de manutenção (menos diárias e semanais). */
+  incluir_tarefas: boolean;
   /** Pessoas incluídas nesse link. Vazio = todas as pessoas. */
   pessoas: PessoaDocumentos[];
 }

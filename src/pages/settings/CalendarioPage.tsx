@@ -19,7 +19,8 @@ import type { CalendarioFeed, PessoaDocumentos } from '../../types';
 
 function nomesPessoas(feed: CalendarioFeed): string {
   const quem = feed.pessoas.length === 0 ? 'Todas as pessoas' : feed.pessoas.map((p) => p.nome).join(', ');
-  return feed.incluir_gatos ? `${quem} + gatos` : quem;
+  const extras = [feed.incluir_gatos ? 'gatos' : '', feed.incluir_tarefas ? 'tarefas' : ''].filter(Boolean);
+  return extras.length > 0 ? `${quem} + ${extras.join(' e ')}` : quem;
 }
 
 function FormularioFeed({
@@ -29,15 +30,16 @@ function FormularioFeed({
   onCancelar,
   salvando,
 }: {
-  inicial: { nome: string; pessoaIds: string[]; incluirGatos: boolean };
+  inicial: { nome: string; pessoaIds: string[]; incluirGatos: boolean; incluirTarefas: boolean };
   pessoas: PessoaDocumentos[];
-  onSalvar: (dados: { nome: string; pessoaIds: string[]; incluirGatos: boolean }) => void;
+  onSalvar: (dados: { nome: string; pessoaIds: string[]; incluirGatos: boolean; incluirTarefas: boolean }) => void;
   onCancelar: () => void;
   salvando: boolean;
 }) {
   const [nome, setNome] = useState(inicial.nome);
   const [todas, setTodas] = useState(inicial.pessoaIds.length === 0);
   const [incluirGatos, setIncluirGatos] = useState(inicial.incluirGatos);
+  const [incluirTarefas, setIncluirTarefas] = useState(inicial.incluirTarefas);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set(inicial.pessoaIds));
 
   function alternarPessoa(id: string) {
@@ -51,8 +53,8 @@ function FormularioFeed({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!nome.trim() || (!todas && selecionadas.size === 0 && !incluirGatos)) return;
-    onSalvar({ nome: nome.trim(), pessoaIds: todas ? [] : [...selecionadas], incluirGatos });
+    if (!nome.trim() || (!todas && selecionadas.size === 0 && !incluirGatos && !incluirTarefas)) return;
+    onSalvar({ nome: nome.trim(), pessoaIds: todas ? [] : [...selecionadas], incluirGatos, incluirTarefas });
   }
 
   return (
@@ -80,8 +82,12 @@ function FormularioFeed({
         <input type="checkbox" checked={incluirGatos} onChange={(e) => setIncluirGatos(e.target.checked)} />
         Incluir as próximas vacinas e vermífugos dos gatos
       </label>
+      <label className="calendario-checkbox-linha">
+        <input type="checkbox" checked={incluirTarefas} onChange={(e) => setIncluirTarefas(e.target.checked)} />
+        Incluir as próximas tarefas de manutenção (menos as diárias e semanais)
+      </label>
       <div className="modal-acoes">
-        <button type="submit" disabled={salvando || !nome.trim() || (!todas && selecionadas.size === 0 && !incluirGatos)}>
+        <button type="submit" disabled={salvando || !nome.trim() || (!todas && selecionadas.size === 0 && !incluirGatos && !incluirTarefas)}>
           {salvando ? 'Salvando…' : 'Salvar'}
         </button>
         <button type="button" onClick={onCancelar}>
@@ -117,14 +123,14 @@ export function CalendarioPage() {
     setModalAberto(true);
   }
 
-  async function salvar(dados: { nome: string; pessoaIds: string[]; incluirGatos: boolean }) {
+  async function salvar(dados: { nome: string; pessoaIds: string[]; incluirGatos: boolean; incluirTarefas: boolean }) {
     setSalvando(true);
     try {
       if (feedEditando) {
         if (dados.nome !== feedEditando.nome) {
           await renomear.mutateAsync({ id: feedEditando.id, nome: dados.nome });
         }
-        await atualizarPessoas.mutateAsync({ feedId: feedEditando.id, pessoaIds: dados.pessoaIds, incluirGatos: dados.incluirGatos });
+        await atualizarPessoas.mutateAsync({ feedId: feedEditando.id, pessoaIds: dados.pessoaIds, incluirGatos: dados.incluirGatos, incluirTarefas: dados.incluirTarefas });
       } else {
         await criar.mutateAsync(dados);
       }
@@ -177,7 +183,7 @@ export function CalendarioPage() {
     <div className="settings-secao">
       <h2>Calendário</h2>
       <p className="settings-secao-ajuda">
-        Links de assinatura (.ics) com os vencimentos de Documentos Pessoais e as próximas vacinas e vermífugos dos gatos, pro Calendário do iPhone ou Google
+        Links de assinatura (.ics) com os vencimentos de Documentos Pessoais, as próximas vacinas e vermífugos dos gatos e as próximas tarefas de manutenção, pro Calendário do iPhone ou Google
         Calendar. Cada link pode trazer todo mundo ou só pessoas específicas, e dá pra mudar quem está incluído
         depois sem trocar a URL — ou gerar uma URL nova se precisar invalidar a antiga.
       </p>
@@ -232,8 +238,8 @@ export function CalendarioPage() {
           key={feedEditando?.id ?? 'novo'}
           inicial={
             feedEditando
-              ? { nome: feedEditando.nome, pessoaIds: feedEditando.pessoas.map((p) => p.id), incluirGatos: feedEditando.incluir_gatos }
-              : { nome: '', pessoaIds: [], incluirGatos: true }
+              ? { nome: feedEditando.nome, pessoaIds: feedEditando.pessoas.map((p) => p.id), incluirGatos: feedEditando.incluir_gatos, incluirTarefas: feedEditando.incluir_tarefas }
+              : { nome: '', pessoaIds: [], incluirGatos: true, incluirTarefas: false }
           }
           pessoas={pessoas ?? []}
           onSalvar={salvar}

@@ -1,6 +1,7 @@
 // Feed de assinatura de calendário (.ics) dos vencimentos de Documentos >
 // Pessoais e, nos links que pedem (`incluir_gatos`), das próximas vacinas e
-// vermífugos dos gatos. Endpoint público (sem JWT do Supabase — quem busca essa URL é o
+// vermífugos dos gatos e, nos que pedem (`incluir_tarefas`), das próximas tarefas de
+// manutenção. Endpoint público (sem JWT do Supabase — quem busca essa URL é o
 // servidor da Apple/Google, não um navegador logado), protegido por um token
 // secreto na query string, conferido contra `documentos_calendario_feeds`.
 // Cada feed pode filtrar por um subconjunto de pessoas (nenhuma linha em
@@ -9,6 +10,7 @@
 // fácil de vazar que uma sessão logada.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { eventosDasTarefas, type EventoTarefa, type LinhaTarefa } from "./tarefas.ts";
 
 interface LinhaVencimento {
   id: string;
@@ -92,7 +94,7 @@ function formatarCarimboIcs(data: Date): string {
   return data.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 }
 
-function gerarIcs(nomeFeed: string, linhas: LinhaVencimento[], eventosGatos: EventoGato[]): string {
+function gerarIcs(nomeFeed: string, linhas: LinhaVencimento[], eventosGatos: EventoGato[], eventosTarefas: EventoTarefa[]): string {
   const agora = formatarCarimboIcs(new Date());
   const eventos = linhas
     .filter((linha) => linha.pessoa)
@@ -130,6 +132,17 @@ function gerarIcs(nomeFeed: string, linhas: LinhaVencimento[], eventosGatos: Eve
       "END:VEVENT",
     ].join("\r\n");
   });
+  const eventosDeTarefas = eventosTarefas.map((evento) => {
+    const resumo = escaparTexto(evento.resumo);
+    return [
+      "BEGIN:VEVENT",
+      `UID:${evento.id}@personal-organizer`,
+      `DTSTAMP:${agora}`,
+      `DTSTART;VALUE=DATE:${formatarDataIcs(evento.data)}`,
+      `SUMMARY:${resumo}`,
+      "END:VEVENT",
+    ].join("\r\n");
+  });
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -138,6 +151,7 @@ function gerarIcs(nomeFeed: string, linhas: LinhaVencimento[], eventosGatos: Eve
     `X-WR-CALNAME:Documentos vencendo — ${escaparTexto(nomeFeed)}`,
     ...eventos,
     ...eventosDeGatos,
+    ...eventosDeTarefas,
     "END:VCALENDAR",
   ].join("\r\n");
 }
@@ -156,7 +170,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: feed, error: erroFeed } = await supabase
     .from("documentos_calendario_feeds")
-    .select("id, nome, incluir_gatos")
+    .select("id, nome, incluir_gatos, incluir_tarefas")
     .eq("token", token)
     .single();
 
@@ -205,7 +219,34 @@ Deno.serve(async (req: Request) => {
     eventosGatos = eventosDosGatos(gatos.data as LinhaGato[], vacinas.data as LinhaVacina[], vermifugos.data as LinhaVermifugo[]);
   }
 
-  const ics = gerarIcs(feed.nome, (data ?? []) as unknown as LinhaVencimento[], eventosGatos);
+  let eventosTarefas: EventoTarefa[] = [];
+  if (feed.incluir_tarefas) {
+    const [tarefas, classificacoes, membrosCasal] = await Promise.all([
+      supabase
+        .from("tarefas_manutencao")
+        .select("id, nome, frequencia_dias, ultima_execucao, proxima_a_partir_de, adiada_ate, responsavel_tipo, responsavel_pessoa_id, responsavel_casal_id, ativo")
+        .eq("ativo", true),
+      supabase.from("tarefa_classificacoes").select("tarefa_id, tags_itens(nome)"),
+      supabase.from("documentos_casal_membros").select("casal_id, pessoa_id"),
+    ]);
+    if (tarefas.error || classificacoes.error || membrosCasal.error) {
+      return new Response("Erro ao buscar as tarefas.", { status: 500 });
+    }
+    const comodos = new Map<string, string[]>();
+    for (const linha of classificacoes.data as unknown as { tarefa_id: string; tags_itens: { nome: string } | null }[]) {
+      if (!linha.tags_itens) continue;
+      comodos.set(linha.tarefa_id, [...(comodos.get(linha.tarefa_id) ?? []), linha.tags_itens.nome]);
+    }
+    const membros = new Map<string, string[]>();
+    for (const m of membrosCasal.data as { casal_id: string; pessoa_id: string }[]) {
+      membros.set(m.casal_id, [...(membros.get(m.casal_id) ?? []), m.pessoa_id]);
+    }
+    // "Hoje" no fuso de Brasília, que é o de quem usa o app.
+    const hoje = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    eventosTarefas = eventosDasTarefas(tarefas.data as LinhaTarefa[], comodos, membros, pessoaIds, hoje);
+  }
+
+  const ics = gerarIcs(feed.nome, (data ?? []) as unknown as LinhaVencimento[], eventosGatos, eventosTarefas);
 
   return new Response(ics, {
     headers: {
