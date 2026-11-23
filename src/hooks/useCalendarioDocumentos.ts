@@ -10,6 +10,7 @@ interface LinhaFeed {
   token: string;
   criado_em: string;
   incluir_gatos: boolean;
+  incluir_tarefas: boolean;
   documentos_calendario_feed_pessoas: { pessoa: PessoaDocumentos | null }[];
 }
 
@@ -19,7 +20,7 @@ export function useCalendarioFeeds() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('documentos_calendario_feeds')
-        .select('id, nome, token, criado_em, incluir_gatos, documentos_calendario_feed_pessoas(pessoa:documentos_pessoas(id,nome,ordem,tipo,usuario_id))')
+        .select('id, nome, token, criado_em, incluir_gatos, incluir_tarefas, documentos_calendario_feed_pessoas(pessoa:documentos_pessoas(id,nome,ordem,tipo,usuario_id))')
         .order('criado_em');
       if (error) throw error;
       return (data as unknown as LinhaFeed[]).map(
@@ -29,6 +30,7 @@ export function useCalendarioFeeds() {
           token: linha.token,
           criado_em: linha.criado_em,
           incluir_gatos: linha.incluir_gatos,
+          incluir_tarefas: linha.incluir_tarefas,
           pessoas: linha.documentos_calendario_feed_pessoas.map((p) => p.pessoa).filter((p): p is PessoaDocumentos => p !== null),
         })
       );
@@ -39,10 +41,10 @@ export function useCalendarioFeeds() {
 export function useCriarCalendarioFeed() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ nome, pessoaIds, incluirGatos }: { nome: string; pessoaIds: string[]; incluirGatos: boolean }) => {
+    mutationFn: async ({ nome, pessoaIds, incluirGatos, incluirTarefas }: { nome: string; pessoaIds: string[]; incluirGatos: boolean; incluirTarefas: boolean }) => {
       const { data: feed, error: erroFeed } = await supabase
         .from('documentos_calendario_feeds')
-        .insert({ nome, incluir_gatos: incluirGatos })
+        .insert({ nome, incluir_gatos: incluirGatos, incluir_tarefas: incluirTarefas })
         .select()
         .single();
       if (erroFeed) throw erroFeed;
@@ -60,8 +62,8 @@ export function useCriarCalendarioFeed() {
 export function useAtualizarPessoasFeed() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ feedId, pessoaIds, incluirGatos }: { feedId: string; pessoaIds: string[]; incluirGatos: boolean }) => {
-      const { error: erroGatos } = await supabase.from('documentos_calendario_feeds').update({ incluir_gatos: incluirGatos }).eq('id', feedId);
+    mutationFn: async ({ feedId, pessoaIds, incluirGatos, incluirTarefas }: { feedId: string; pessoaIds: string[]; incluirGatos: boolean; incluirTarefas: boolean }) => {
+      const { error: erroGatos } = await supabase.from('documentos_calendario_feeds').update({ incluir_gatos: incluirGatos, incluir_tarefas: incluirTarefas }).eq('id', feedId);
       if (erroGatos) throw erroGatos;
       const { error: erroExcluir } = await supabase.from('documentos_calendario_feed_pessoas').delete().eq('feed_id', feedId);
       if (erroExcluir) throw erroExcluir;
