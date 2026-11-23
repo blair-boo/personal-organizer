@@ -25,6 +25,7 @@ import { StoragePage } from './pages/storage/StoragePage';
 import { DocumentosLayout } from './pages/documentos/DocumentosLayout';
 import { DocumentosPessoaisPage } from './pages/documentos/DocumentosPessoaisPage';
 import { DocumentosAreaPage } from './pages/documentos/DocumentosAreaPage';
+import { GatosPage } from './pages/documentos/GatosPage';
 
 import { SettingsLayout } from './pages/settings/SettingsLayout';
 import { CategoriasPage } from './pages/settings/CategoriasPage';
@@ -84,6 +85,7 @@ export const router = createBrowserRouter(
           children: [
             { index: true, element: <Navigate to="/documentos/pessoais" replace /> },
             { path: 'pessoais', element: <DocumentosPessoaisPage /> },
+            { path: 'gatos', element: <GatosPage /> },
             { path: 'apartamento', element: <DocumentosAreaPage area="apartamento" /> },
             { path: 'arquivo', element: <DocumentosAreaPage area="arquivo" /> },
             { path: 'outros', element: <DocumentosAreaPage area="outros" /> },

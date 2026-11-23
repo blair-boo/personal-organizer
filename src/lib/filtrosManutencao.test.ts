@@ -13,7 +13,7 @@ import type { TarefaManutencao } from '../types';
 const HOJE = '2026-11-18';
 
 function tarefa(id: string, nome: string, frequencia_dias: number, ultima_execucao: string | null): TarefaManutencao {
-  return { id, nome, frequencia_dias, ultima_execucao, proxima_a_partir_de: null, dias_semana: id === 't2' ? [0, 4] : [], instrucoes: null, ativo: true };
+  return { id, nome, frequencia_dias, ultima_execucao, proxima_a_partir_de: null, responsavel_tipo: 'nenhum', responsavel_pessoa_id: null, responsavel_casal_id: null, dias_semana: id === 't2' ? [0, 4] : [], instrucoes: null, ativo: true };
 }
 
 const tarefas = [
@@ -79,6 +79,21 @@ describe('filtrarTarefas', () => {
     expect(filtrar({ dias: [4, 6] })).toEqual(['t2']);
     expect(filtrar({ dias: [2] })).toEqual([]);
     expect(haFiltroAtivo({ ...FILTROS_VAZIOS, dias: [1] })).toBe(true);
+  });
+
+  it('responsáveis: a tarefa do casal é de cada um dos dois, e dá para filtrar as sem responsável', () => {
+    const membros = new Map([['c', ['e', 'm']]]);
+    const lista = [
+      { ...tarefa('r1', 'Da Mariana', 7, null), responsavel_tipo: 'pessoa' as const, responsavel_pessoa_id: 'm' },
+      { ...tarefa('r2', 'Do casal', 7, null), responsavel_tipo: 'juntos' as const, responsavel_casal_id: 'c' },
+      tarefa('r3', 'Sem dono', 7, null),
+    ];
+    const f = (responsaveis: string[]) => filtrarTarefas(lista, comodos, { ...FILTROS_VAZIOS, responsaveis }, HOJE, membros).map((t) => t.id);
+    expect(f(['m'])).toEqual(['r1', 'r2']);
+    expect(f(['e'])).toEqual(['r2']);
+    expect(f(['nenhum'])).toEqual(['r3']);
+    expect(f(['e', 'nenhum'])).toEqual(['r2', 'r3']);
+    expect(haFiltroAtivo({ ...FILTROS_VAZIOS, responsaveis: ['m'] })).toBe(true);
   });
 
   it('entre grupos vale "e"', () => {

@@ -264,3 +264,74 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Aba Gatos */
+
+.gatos-ficha {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.gatos-nascimento {
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.gatos-idade {
+  margin: 0;
+  font-weight: 600;
+}
+
+.gatos-secao {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--bg-raised);
+}
+
+.gatos-secao summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.gatos-registros {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gatos-registro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.gatos-registro-texto {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.gatos-observacao {
+  margin: 4px 0 0;
+  font-size: 13px;
+  opacity: 0.85;
+  white-space: pre-wrap;
+}
+
+.gatos-proxima-vencida {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.gatos-proxima-breve {
+  font-weight: 700;
+}

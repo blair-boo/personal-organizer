@@ -7,22 +7,27 @@ import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
 import { formatarData } from '../../lib/datas';
 import { entradaAtrasada, ROTULOS_BASE } from '../../lib/historicoTarefa';
-import { useAtualizarExecucaoTarefa, useExcluirExecucaoTarefa, useIncluirExecucaoTarefa } from '../../hooks/useTarefasHistorico';
-import type { BaseProximaExecucao, HistoricoTarefa, TarefaManutencao } from '../../types';
+import { useAtualizarExecucaoTarefa, useDefinirPessoasExecucao, useExcluirExecucaoTarefa, useIncluirExecucaoTarefa } from '../../hooks/useTarefasHistorico';
+import type { BaseProximaExecucao, HistoricoTarefa, PessoaDocumentos, TarefaManutencao } from '../../types';
 
 interface HistoricoTarefaModalProps {
   tarefa: TarefaManutencao;
   /** Execuções desta tarefa, da mais recente para a mais antiga. */
   entradas: HistoricoTarefa[];
+  /** Pessoas individuais, para marcar quem fez. */
+  pessoas: PessoaDocumentos[];
+  /** Execução -> ids de quem fez. */
+  pessoasPorEntrada: Map<string, string[]>;
   hoje: string;
   onFechar: () => void;
 }
 
 /** Datas em que a tarefa foi feita: trocar a data, incluir outra à mão, excluir, e escolher de onde conta a próxima nas feitas com atraso. */
-export function HistoricoTarefaModal({ tarefa, entradas, hoje, onFechar }: HistoricoTarefaModalProps) {
+export function HistoricoTarefaModal({ tarefa, entradas, pessoas, pessoasPorEntrada, hoje, onFechar }: HistoricoTarefaModalProps) {
   const atualizar = useAtualizarExecucaoTarefa();
   const excluir = useExcluirExecucaoTarefa();
   const incluir = useIncluirExecucaoTarefa();
+  const definirPessoas = useDefinirPessoasExecucao();
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
   const [novaData, setNovaData] = useState(hoje);
@@ -78,6 +83,31 @@ export function HistoricoTarefaModal({ tarefa, entradas, hoje, onFechar }: Histo
                   <IconeFuncao funcao="excluir" />
                 </button>
               </div>
+              {pessoas.length > 0 && (
+                <div className="manutencao-historico-atraso" role="group" aria-label={`Quem fez em ${formatarData(entrada.data_execucao)}`}>
+                  <span className="conta-detalhe">Quem fez:</span>
+                  {pessoas.map((p) => {
+                    const fizeram = pessoasPorEntrada.get(entrada.id) ?? [];
+                    const marcada = fizeram.includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={marcada ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+                        aria-pressed={marcada}
+                        onClick={() =>
+                          void executar(
+                            () => definirPessoas.mutateAsync({ historicoId: entrada.id, pessoaIds: marcada ? fizeram.filter((id) => id !== p.id) : [...fizeram, p.id] }),
+                            'Quem fez atualizado.'
+                          )
+                        }
+                      >
+                        {p.nome}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {atrasada && entrada.data_prevista && (
                 <div className="manutencao-historico-atraso">
                   <span className="manutencao-flag-atraso">

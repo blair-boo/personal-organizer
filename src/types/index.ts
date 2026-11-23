@@ -11,7 +11,7 @@ export type TipoCategoria = 'despesa' | 'receita';
 export type TipoLancamento = 'entrada' | 'saida';
 export type StatusProjeto = 'planejado' | 'andamento' | 'concluido';
 export type TipoDocumentoItem = 'nota_fiscal' | 'manual' | 'outro';
-export type AreaDocumento = 'pessoais' | 'apartamento' | 'arquivo' | 'outros';
+export type AreaDocumento = 'pessoais' | 'apartamento' | 'arquivo' | 'outros' | 'gatos';
 export type VencimentoTipo = 'data' | 'prazo' | 'indeterminado';
 export type VencimentoUnidade = 'dias' | 'meses' | 'anos';
 export type RenovarTipo = 'online' | 'presencial' | 'ambos';
@@ -111,6 +111,10 @@ export interface TarefaManutencao {
   /** Dias da semana (0 = segunda ... 6 = domingo), só para tarefas semanais. */
   dias_semana: number[];
   instrucoes: string | null;
+  /** Quem faz a tarefa: ninguém ainda, uma pessoa, ou o casal (qualquer um dos dois / os dois juntos). */
+  responsavel_tipo: ResponsavelTipo;
+  responsavel_pessoa_id: string | null;
+  responsavel_casal_id: string | null;
   ativo: boolean;
 }
 
@@ -128,16 +132,36 @@ export interface HistoricoTarefa {
   criado_em: string;
 }
 
+export type TipoPessoaDocumentos = 'pessoa' | 'casal';
+
+/** Cadastro de Documentos > Pessoais: uma pessoa ou um casal (junção de duas pessoas). */
 export interface PessoaDocumentos {
   id: string;
   nome: string;
   ordem: number;
+  tipo: TipoPessoaDocumentos;
+  /** Login ligado a esta pessoa (para marcar quem está usando o app). */
+  usuario_id: string | null;
+}
+
+export interface CasalMembro {
+  casal_id: string;
+  pessoa_id: string;
+}
+
+export type ResponsavelTipo = 'nenhum' | 'pessoa' | 'qualquer' | 'juntos';
+
+/** Quem fez uma execução de tarefa. */
+export interface HistoricoPessoa {
+  historico_id: string;
+  pessoa_id: string;
 }
 
 export interface Documento {
   id: string;
   area: AreaDocumento;
   pessoa_id: string | null;
+  gato_id: string | null;
   titulo: string;
   ordem: number;
   numero: string | null;
@@ -214,6 +238,54 @@ export interface AnexoStorage {
   nome_arquivo: string;
 }
 
+export interface Gato {
+  id: string;
+  nome: string;
+  nascimento: string | null;
+  ordem: number;
+}
+
+export interface GatoVacina {
+  id: string;
+  gato_id: string;
+  vacina: string;
+  data: string;
+  proxima_data: string | null;
+}
+
+export interface GatoVermifugo {
+  id: string;
+  gato_id: string;
+  data: string;
+  produto: string;
+  proxima_data: string | null;
+}
+
+export interface GatoConsulta {
+  id: string;
+  gato_id: string;
+  data: string;
+  veterinario: string | null;
+  observacao: string | null;
+}
+
+export interface GatoExame {
+  id: string;
+  gato_id: string;
+  data: string;
+  nome: string;
+  arquivo_url: string;
+  nome_arquivo: string;
+}
+
+export interface GatoPeso {
+  id: string;
+  gato_id: string;
+  data: string;
+  peso_kg: number;
+  criado_em: string;
+}
+
 export interface IconeArquivo {
   id: string;
   nome: string;
@@ -259,6 +331,8 @@ export interface CalendarioFeed {
   nome: string;
   token: string;
   criado_em: string;
+  /** Inclui as próximas vacinas e vermífugos dos gatos. */
+  incluir_gatos: boolean;
   /** Pessoas incluídas nesse link. Vazio = todas as pessoas. */
   pessoas: PessoaDocumentos[];
 }

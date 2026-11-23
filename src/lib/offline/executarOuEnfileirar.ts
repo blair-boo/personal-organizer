@@ -1,9 +1,9 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { aplicarAtualizarExecucao, aplicarEdicaoStorage, aplicarExcluirExecucao, aplicarInserirExecucao, aplicarSalvarCaixa, type EstadoManutencao, type EstadoStorage } from './aplicarLocal';
+import { aplicarAtualizarExecucao, aplicarDefinirPessoasExecucao, aplicarEdicaoStorage, aplicarExcluirExecucao, aplicarInserirExecucao, aplicarSalvarCaixa, type EstadoManutencao, type EstadoStorage } from './aplicarLocal';
 import { executarOperacao } from './executores';
 import { contarFila, enfileirar, pedirEnvioDaFila, type TipoOperacao } from './fila';
-import type { AtualizarExecucaoDados, EdicaoStorageDados, ExcluirExecucaoDados, InserirExecucaoDados, SalvarCaixaDados } from './operacoes';
-import type { AnexoStorage, CaixaStorage, HistoricoTarefa, ItemStorage, ObsStorage, TarefaManutencao } from '../../types';
+import type { AtualizarExecucaoDados, DefinirPessoasExecucaoDados, EdicaoStorageDados, ExcluirExecucaoDados, InserirExecucaoDados, SalvarCaixaDados } from './operacoes';
+import type { AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TarefaManutencao } from '../../types';
 
 function porOrdem<T extends { ordem: number; nome: string }>(lista: T[]): T[] {
   return [...lista].sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -26,9 +26,11 @@ function atualizarManutencao(qc: QueryClient, aplicar: (e: EstadoManutencao) => 
   const novo = aplicar({
     tarefas: qc.getQueryData<TarefaManutencao[]>(['tarefas_manutencao']) ?? [],
     historico: qc.getQueryData<HistoricoTarefa[]>(['tarefas_manutencao_historico']) ?? [],
+    historicoPessoas: qc.getQueryData<HistoricoPessoa[]>(['tarefas_historico_pessoas']) ?? [],
   });
   qc.setQueryData(['tarefas_manutencao'], novo.tarefas);
   qc.setQueryData(['tarefas_manutencao_historico'], novo.historico);
+  qc.setQueryData(['tarefas_historico_pessoas'], novo.historicoPessoas);
 }
 
 /** Mostra na tela, sem esperar o servidor, uma alteração que foi para a fila. */
@@ -42,6 +44,8 @@ export function aplicarNoCache(qc: QueryClient, tipo: TipoOperacao, dados: unkno
       return atualizarManutencao(qc, (e) => aplicarInserirExecucao(e, dados as InserirExecucaoDados));
     case 'manutencao.atualizarExecucao':
       return atualizarManutencao(qc, (e) => aplicarAtualizarExecucao(e, dados as AtualizarExecucaoDados));
+    case 'manutencao.definirPessoasExecucao':
+      return atualizarManutencao(qc, (e) => aplicarDefinirPessoasExecucao(e, dados as DefinirPessoasExecucaoDados));
     case 'manutencao.excluirExecucao':
       return atualizarManutencao(qc, (e) => aplicarExcluirExecucao(e, dados as ExcluirExecucaoDados));
   }

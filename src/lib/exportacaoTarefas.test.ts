@@ -14,7 +14,7 @@ import type { HistoricoTarefa, TarefaManutencao } from '../types';
 const HOJE = '2026-11-22'; // domingo
 
 function tarefa(id: string, nome: string, frequencia_dias: number, ultima_execucao: string | null, extra: Partial<TarefaManutencao> = {}): TarefaManutencao {
-  return { id, nome, frequencia_dias, ultima_execucao, proxima_a_partir_de: null, dias_semana: [], instrucoes: null, ativo: true, ...extra };
+  return { id, nome, frequencia_dias, ultima_execucao, proxima_a_partir_de: null, responsavel_tipo: 'nenhum', responsavel_pessoa_id: null, responsavel_casal_id: null, dias_semana: [], instrucoes: null, ativo: true, ...extra };
 }
 
 function exec(id: string, tarefa_id: string, data_execucao: string, data_prevista: string | null, base_proxima: 'execucao' | 'prevista' = 'execucao'): HistoricoTarefa {
@@ -232,10 +232,14 @@ describe('planilhaDiaria', () => {
 describe('planilhaDados e nome do arquivo', () => {
   it('uma linha por tarefa, com as colunas de sempre', () => {
     const grade = planilhaDados(dados());
-    expect(grade[0].map((c) => c.valor)).toEqual(['Nome', 'Cômodos', 'Período', 'Frequência (dias)', 'Dias da semana', 'Instruções', 'Última execução', 'Próxima execução', 'Ativa']);
+    expect(grade[0].map((c) => c.valor)).toEqual(['Nome', 'Cômodos', 'Responsável', 'Período', 'Frequência (dias)', 'Dias da semana', 'Instruções', 'Última execução', 'Feita por (última vez)', 'Próxima execução', 'Ativa']);
     expect(grade).toHaveLength(8);
     const box = grade.find((l) => l[0].valor === 'Box do banheiro')!;
-    expect(box.map((c) => c.valor)).toEqual(['Box do banheiro', 'Banheiro', 'Semanal', 7, 'Seg', '', '20/11/2026', '27/11/2026', 'Sim']);
+    expect(box.map((c) => c.valor)).toEqual(['Box do banheiro', 'Banheiro', '', 'Semanal', 7, 'Seg', '', '20/11/2026', '', '27/11/2026', 'Sim']);
+    const comResponsavel = planilhaDados({ ...dados(), responsaveis: new Map([['t2', 'Juntos (Eduardo e Mariana)']]), feitaPorUltima: new Map([['t2', 'Mariana']]) });
+    const box2 = comResponsavel.find((l) => l[0].valor === 'Box do banheiro')!;
+    expect(box2[2].valor).toBe('Juntos (Eduardo e Mariana)');
+    expect(box2[8].valor).toBe('Mariana');
   });
 
   it('nome do arquivo leva o ano', () => {

@@ -17,7 +17,10 @@ import { FILTROS_VAZIOS, filtrarTarefas, haFiltroAtivo, periodosDasTarefas, rotu
 import { ocorrenciasNoIntervalo, proximaExecucao } from '../../lib/manutencao';
 import { useTagsItens } from '../../hooks/useTagsItens';
 import { useDefinirClassificacoesTarefa, useTodasTarefaClassificacoes } from '../../hooks/useTarefaClassificacoes';
-import { useHistoricoTarefas, useRegistrarExecucaoTarefa } from '../../hooks/useTarefasHistorico';
+import { useHistoricoPessoas, useHistoricoTarefas, useRegistrarExecucaoTarefa } from '../../hooks/useTarefasHistorico';
+import { useCasalMembros, useDocumentosPessoas } from '../../hooks/useDocumentos';
+import { usePessoaLogada } from '../../hooks/usePessoaLogada';
+import { chaveDoResponsavel, membrosPorCasal, opcoesDeResponsavel, pessoasIndividuais, pessoasPadraoDaExecucao, responsavelDaColuna, SEM_RESPONSAVEL, textoDoResponsavel, casais } from '../../lib/responsaveis';
 import {
   useAtualizarTarefaManutencao,
   useCriarTarefaManutencao,
@@ -25,16 +28,25 @@ import {
   useTarefasManutencao,
   type DadosTarefaManutencao,
 } from '../../hooks/useTarefasManutencao';
-import type { BaseProximaExecucao, HistoricoTarefa, TarefaManutencao } from '../../types';
-import { EscolhaBaseModal } from './EscolhaBaseModal';
+import type { BaseProximaExecucao, HistoricoTarefa, PessoaDocumentos, TarefaManutencao } from '../../types';
+import { FeitaHojeModal } from './FeitaHojeModal';
 import { ExportarPlanilhaModal } from './ExportarPlanilhaModal';
 import { HistoricoTarefaModal } from './HistoricoTarefaModal';
 import { CHAVE_SEM_COMODO, CHAVE_SEM_DIA, ManutencaoKanban, PREFIXO_DIA, type AgrupamentoKanban } from './ManutencaoKanban';
 
-const TAREFA_VAZIA: DadosTarefaManutencao = { nome: '', frequencia_dias: 30, ativo: true, dias_semana: [], instrucoes: null };
+const TAREFA_VAZIA: DadosTarefaManutencao = { nome: '', frequencia_dias: 30, ativo: true, dias_semana: [], instrucoes: null, ...SEM_RESPONSAVEL };
 
 function dadosDaTarefa(t: TarefaManutencao): DadosTarefaManutencao {
-  return { nome: t.nome, frequencia_dias: t.frequencia_dias, ativo: t.ativo, dias_semana: t.dias_semana, instrucoes: t.instrucoes };
+  return {
+    nome: t.nome,
+    frequencia_dias: t.frequencia_dias,
+    ativo: t.ativo,
+    dias_semana: t.dias_semana,
+    instrucoes: t.instrucoes,
+    responsavel_tipo: t.responsavel_tipo,
+    responsavel_pessoa_id: t.responsavel_pessoa_id,
+    responsavel_casal_id: t.responsavel_casal_id,
+  };
 }
 
 const PRESETS_FREQUENCIA = [1, 7, 15, 30, 60, 90, 120, 180, 365, 730].map((dias) => ({ label: rotuloPeriodo(dias), dias }));
@@ -43,10 +55,12 @@ function FormularioTarefa({
   inicial,
   classificacoesIniciais,
   todasClassificacoes,
+  pessoas,
   onSalvar,
   onCancelar,
 }: {
   inicial: DadosTarefaManutencao;
+  pessoas: PessoaDocumentos[];
   classificacoesIniciais: string[];
   todasClassificacoes: { id: string; nome: string }[];
   onSalvar: (dados: DadosTarefaManutencao, classificacaoIds: string[]) => Promise<void>;
@@ -76,6 +90,22 @@ function FormularioTarefa({
       <label>
         Cômodos
         <TagMultiSelect todasTags={todasClassificacoes} selecionadas={classificacaoIds} onChange={setClassificacaoIds} />
+      </label>
+      <label>
+        Responsável
+        <select
+          value={chaveDoResponsavel(dados)}
+          onChange={(e) => {
+            const opcao = opcoesDeResponsavel(pessoas).find((o) => o.chave === e.target.value);
+            if (opcao) setDados({ ...dados, responsavel_tipo: opcao.responsavel_tipo, responsavel_pessoa_id: opcao.responsavel_pessoa_id, responsavel_casal_id: opcao.responsavel_casal_id });
+          }}
+        >
+          {opcoesDeResponsavel(pessoas).map((o) => (
+            <option key={o.chave} value={o.chave}>
+              {o.rotulo}
+            </option>
+          ))}
+        </select>
       </label>
       <label>
         Frequência
@@ -147,6 +177,10 @@ export function ManutencaoPage() {
   const { data: tarefas, isLoading } = useTarefasManutencao();
   const { data: tags } = useTagsItens();
   const { data: historico } = useHistoricoTarefas();
+  const { data: historicoPessoas } = useHistoricoPessoas();
+  const { data: pessoas } = useDocumentosPessoas();
+  const { data: casalMembros } = useCasalMembros();
+  const pessoaLogada = usePessoaLogada();
   const { data: tarefaClassificacoes } = useTodasTarefaClassificacoes();
   const criar = useCriarTarefaManutencao();
   const atualizar = useAtualizarTarefaManutencao();
@@ -163,7 +197,7 @@ export function ManutencaoPage() {
   const [agrupamento, setAgrupamento] = useState<AgrupamentoKanban>('comodo');
   const [instrucoesAbertas, setInstrucoesAbertas] = useState<Set<string>>(new Set());
   const [exportarAberto, setExportarAberto] = useState(false);
-  const [escolhaBase, setEscolhaBase] = useState<{ tarefa: TarefaManutencao; dataPrevista: string } | null>(null);
+  const [feitaHoje, setFeitaHoje] = useState<{ tarefa: TarefaManutencao; dataPrevistaAtrasada: string | null } | null>(null);
   const [historicoDe, setHistoricoDe] = useState<TarefaManutencao | null>(null);
   const [params, setParams] = useSearchParams();
   const hojeDia = hojeIso();
@@ -171,6 +205,11 @@ export function ManutencaoPage() {
   const [mesCalendario, setMesCalendario] = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 });
 
   const comodosPorTarefa = useMemo(() => tarefaClassificacoes ?? new Map(), [tarefaClassificacoes]);
+  const listaPessoas = useMemo(() => pessoas ?? [], [pessoas]);
+  const individuais = useMemo(() => pessoasIndividuais(listaPessoas), [listaPessoas]);
+  const membrosDosCasais = useMemo(() => membrosPorCasal(casalMembros ?? []), [casalMembros]);
+  const nomePorPessoa = useMemo(() => new Map(listaPessoas.map((p) => [p.id, p.nome])), [listaPessoas]);
+  const primeiroCasalId = casais(listaPessoas)[0]?.id ?? null;
   const periodos = useMemo(() => periodosDasTarefas(tarefas ?? []), [tarefas]);
 
   // O contador de atrasadas do cabeçalho leva pra cá já com o filtro ligado.
@@ -187,6 +226,32 @@ export function ManutencaoPage() {
     return mapa;
   }, [historico]);
 
+  /** Execução -> ids de quem fez. */
+  const pessoasPorEntrada = useMemo(() => {
+    const mapa = new Map<string, string[]>();
+    for (const h of historicoPessoas ?? []) mapa.set(h.historico_id, [...(mapa.get(h.historico_id) ?? []), h.pessoa_id]);
+    return mapa;
+  }, [historicoPessoas]);
+
+  const responsaveisParaExportar = useMemo(() => {
+    const mapa = new Map<string, string>();
+    for (const t of tarefas ?? []) {
+      const texto = textoDoResponsavel(t, membrosDosCasais, nomePorPessoa);
+      if (texto) mapa.set(t.id, texto);
+    }
+    return mapa;
+  }, [tarefas, membrosDosCasais, nomePorPessoa]);
+
+  const feitaPorParaExportar = useMemo(() => {
+    const mapa = new Map<string, string>();
+    for (const [tarefaId, entradas] of entradasPorTarefa) {
+      const ultima = ultimaEntrada(entradas);
+      const nomes = (ultima ? (pessoasPorEntrada.get(ultima.id) ?? []) : []).map((id) => nomePorPessoa.get(id)).filter((n): n is string => !!n);
+      if (nomes.length > 0) mapa.set(tarefaId, nomes.join(' e '));
+    }
+    return mapa;
+  }, [entradasPorTarefa, pessoasPorEntrada, nomePorPessoa]);
+
   /** Tarefa -> última execução, só das que foram feitas com atraso. */
   const atrasoPorTarefa = useMemo(() => {
     const mapa = new Map<string, HistoricoTarefa>();
@@ -197,8 +262,8 @@ export function ManutencaoPage() {
     return mapa;
   }, [entradasPorTarefa]);
   const tarefasFiltradas = useMemo(
-    () => filtrarTarefas(tarefas ?? [], comodosPorTarefa, filtros, hojeDia),
-    [tarefas, comodosPorTarefa, filtros, hojeDia]
+    () => filtrarTarefas(tarefas ?? [], comodosPorTarefa, filtros, hojeDia, membrosDosCasais),
+    [tarefas, comodosPorTarefa, filtros, hojeDia, membrosDosCasais]
   );
 
   function alternarInstrucoes(id: string) {
@@ -259,9 +324,9 @@ export function ManutencaoPage() {
     }
   }
 
-  async function registrarFeita(tarefa: TarefaManutencao, base: BaseProximaExecucao, dataPrevista: string | null) {
+  async function registrarFeita(tarefa: TarefaManutencao, base: BaseProximaExecucao, dataPrevista: string | null, pessoaIds: string[]) {
     try {
-      const resultado = await registrarExecucao.mutateAsync({ tarefaId: tarefa.id, dataExecucao: hojeDia, dataPrevista, base });
+      const resultado = await registrarExecucao.mutateAsync({ tarefaId: tarefa.id, dataExecucao: hojeDia, dataPrevista, base, pessoaIds });
       mostrarToast(resultado === 'enfileirada' ? 'Marcada como feita hoje. Será enviada quando houver internet.' : 'Marcada como feita hoje.');
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
@@ -275,8 +340,7 @@ export function ManutencaoPage() {
       return;
     }
     const prevista = dataPrevistaDaTarefa(tarefa);
-    if (prevista && tarefaAtrasada(tarefa, hojeDia)) setEscolhaBase({ tarefa, dataPrevista: prevista });
-    else void registrarFeita(tarefa, 'execucao', prevista);
+    setFeitaHoje({ tarefa, dataPrevistaAtrasada: prevista && tarefaAtrasada(tarefa, hojeDia) ? prevista : null });
   }
 
   /** Arrastou o cartão do kanban: troca o cômodo (por cômodo) ou a frequência (por período). */
@@ -286,6 +350,16 @@ export function ManutencaoPage() {
         const dias = Number(destino.replace('periodo-', ''));
         await atualizar.mutateAsync({ id: tarefa.id, dados: { ...dadosDaTarefa(tarefa), frequencia_dias: dias, dias_semana: aceitaDiaDaSemana(dias) ? tarefa.dias_semana : [] } });
         mostrarToast(`Tarefa movida para ${rotuloPeriodo(dias)}.`);
+        return;
+      }
+      if (agrupamento === 'pessoa') {
+        const novo = responsavelDaColuna(destino, primeiroCasalId);
+        if (!novo) {
+          mostrarToast('Cadastre um casal em Documentos > Pessoais para usar "Qualquer um" e "Juntos".', 'erro');
+          return;
+        }
+        await atualizar.mutateAsync({ id: tarefa.id, dados: { ...dadosDaTarefa(tarefa), ...novo } });
+        mostrarToast(`Tarefa movida para ${destino === 'sem' ? 'Sem responsável' : destino === 'qualquer' ? 'Qualquer um' : destino === 'juntos' ? 'Juntos' : (nomePorPessoa.get(destino.slice('pessoa:'.length)) ?? 'a pessoa')}.`);
         return;
       }
       if (agrupamento === 'dia') {
@@ -402,6 +476,27 @@ export function ManutencaoPage() {
             </button>
           ))}
         </div>
+        <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por responsável">
+          {individuais.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className={filtros.responsaveis.includes(p.id) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+              aria-pressed={filtros.responsaveis.includes(p.id)}
+              onClick={() => setFiltros({ ...filtros, responsaveis: alternarNaLista(filtros.responsaveis, p.id) })}
+            >
+              {p.nome}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={filtros.responsaveis.includes('nenhum') ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+            aria-pressed={filtros.responsaveis.includes('nenhum')}
+            onClick={() => setFiltros({ ...filtros, responsaveis: alternarNaLista(filtros.responsaveis, 'nenhum') })}
+          >
+            Sem responsável
+          </button>
+        </div>
         <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por dia da semana">
           {DIAS_DA_SEMANA.map((dia) => (
             <button
@@ -438,7 +533,7 @@ export function ManutencaoPage() {
 
       {visao === 'kanban' && (
         <div className="manutencao-grupo-filtro" role="group" aria-label="Agrupar o kanban">
-          {([['comodo', 'Por cômodo'], ['periodo', 'Por período'], ['dia', 'Por dia da semana']] as [AgrupamentoKanban, string][]).map(([valor, rotulo]) => (
+          {([['comodo', 'Por cômodo'], ['periodo', 'Por período'], ['dia', 'Por dia da semana'], ['pessoa', 'Por pessoa']] as [AgrupamentoKanban, string][]).map(([valor, rotulo]) => (
             <button
               key={valor}
               type="button"
@@ -461,6 +556,10 @@ export function ManutencaoPage() {
           tarefas={tarefasFiltradas}
           comodos={tags ?? []}
           atrasoPorTarefa={atrasoPorTarefa}
+          pessoas={individuais}
+          membrosDosCasais={membrosDosCasais}
+          nomePorPessoa={nomePorPessoa}
+          temCasal={primeiroCasalId !== null}
           comodosPorTarefa={comodosPorTarefa}
           agrupamento={agrupamento}
           onFeita={tratarMarcarFeita}
@@ -484,6 +583,7 @@ export function ManutencaoPage() {
                 <span className="conta-detalhe">
                   <TagsChips tags={tarefaClassificacoes?.get(tarefa.id)} /> · {rotuloPeriodo(tarefa.frequencia_dias)}{tarefa.dias_semana.length > 0 ? ` (${resumoDosDias(tarefa.dias_semana)})` : ''} · próxima em {formatarData(proximaExecucao(tarefa))}
                 </span>
+                {textoDoResponsavel(tarefa, membrosDosCasais, nomePorPessoa) && <span className="tag-chip">{textoDoResponsavel(tarefa, membrosDosCasais, nomePorPessoa)}</span>}
                 {atrasoPorTarefa.get(tarefa.id)?.data_prevista && (
                   <span className="manutencao-flag-atraso" title={`Feita com atraso em ${formatarData(atrasoPorTarefa.get(tarefa.id)?.data_execucao ?? '')}`}>
                     <IconeBandeira /> Feita com atraso (devia ser {formatarData(atrasoPorTarefa.get(tarefa.id)?.data_prevista ?? '')})
@@ -524,22 +624,24 @@ export function ManutencaoPage() {
 
       {exportarAberto && (
         <ExportarPlanilhaModal
-          dados={{ tarefas: tarefasFiltradas, historico: historico ?? [], comodosPorTarefa, hoje: hojeDia }}
+          dados={{ tarefas: tarefasFiltradas, historico: historico ?? [], comodosPorTarefa, hoje: hojeDia, responsaveis: responsaveisParaExportar, feitaPorUltima: feitaPorParaExportar }}
           origem={haFiltroAtivo(filtros) ? 'as filtradas na tela' : 'todas'}
           onFechar={() => setExportarAberto(false)}
         />
       )}
 
-      {escolhaBase && (
-        <EscolhaBaseModal
-          tarefa={escolhaBase.tarefa}
-          dataPrevista={escolhaBase.dataPrevista}
+      {feitaHoje && (
+        <FeitaHojeModal
+          tarefa={feitaHoje.tarefa}
+          dataPrevistaAtrasada={feitaHoje.dataPrevistaAtrasada}
           hoje={hojeDia}
-          onCancelar={() => setEscolhaBase(null)}
-          onConfirmar={(base) => {
-            const { tarefa, dataPrevista } = escolhaBase;
-            setEscolhaBase(null);
-            void registrarFeita(tarefa, base, dataPrevista);
+          pessoas={individuais}
+          padrao={pessoasPadraoDaExecucao(feitaHoje.tarefa, membrosDosCasais, pessoaLogada?.id ?? null)}
+          onCancelar={() => setFeitaHoje(null)}
+          onConfirmar={({ base, pessoaIds }) => {
+            const { tarefa } = feitaHoje;
+            setFeitaHoje(null);
+            void registrarFeita(tarefa, base, dataPrevistaDaTarefa(tarefa), pessoaIds);
           }}
         />
       )}
@@ -548,6 +650,8 @@ export function ManutencaoPage() {
         <HistoricoTarefaModal
           tarefa={tarefas?.find((t) => t.id === historicoDe.id) ?? historicoDe}
           entradas={entradasPorTarefa.get(historicoDe.id) ?? []}
+          pessoas={individuais}
+          pessoasPorEntrada={pessoasPorEntrada}
           hoje={hojeDia}
           onFechar={() => setHistoricoDe(null)}
         />
@@ -559,6 +663,7 @@ export function ManutencaoPage() {
           inicial={editando ? dadosDaTarefa(editando) : TAREFA_VAZIA}
           classificacoesIniciais={editando ? (tarefaClassificacoes?.get(editando.id) ?? []).map((c) => c.id) : []}
           todasClassificacoes={tags ?? []}
+          pessoas={listaPessoas}
           onSalvar={salvar}
           onCancelar={() => setModalAberto(false)}
         />

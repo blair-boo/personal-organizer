@@ -20,7 +20,14 @@ import { useStorageCaixas } from '../hooks/useStorageCaixas';
 import { useStorageItens } from '../hooks/useStorageItens';
 import { useStorageObs } from '../hooks/useStorageObs';
 import { useTagsItens } from '../hooks/useTagsItens';
-import { useHistoricoTarefas } from '../hooks/useTarefasHistorico';
+import { useHistoricoPessoas, useHistoricoTarefas } from '../hooks/useTarefasHistorico';
+import { useCasalMembros } from '../hooks/useDocumentos';
+import { useGatoConsultas } from '../hooks/useGatoConsultas';
+import { useGatoExames } from '../hooks/useGatoExames';
+import { useGatoPesos } from '../hooks/useGatoPesos';
+import { useGatoVacinas } from '../hooks/useGatoVacinas';
+import { useGatoVermifugos } from '../hooks/useGatoVermifugos';
+import { useGatos } from '../hooks/useGatos';
 import { useTarefasManutencao } from '../hooks/useTarefasManutencao';
 import { useTodasTarefaClassificacoes } from '../hooks/useTarefaClassificacoes';
 import { chaveFicaOffline } from '../lib/offline/persistencia';
@@ -50,8 +57,8 @@ function AquecerDocumento({ documentoId }: { documentoId: string }) {
   return null;
 }
 
-function AquecerDocumentos({ area, pessoaId }: { area: AreaDocumento; pessoaId?: string }) {
-  const { data } = useDocumentos(area, pessoaId);
+function AquecerDocumentos({ area, pessoaId, gatoId }: { area: AreaDocumento; pessoaId?: string; gatoId?: string }) {
+  const { data } = useDocumentos(area, pessoaId, gatoId);
   return (
     <>
       {data?.map((d) => (
@@ -72,6 +79,12 @@ export function AquecimentoOffline({ onTerminou }: { onTerminou: () => void }) {
   const projetos = useProjetos();
   const tarefas = useTarefasManutencao();
   const pessoas = useDocumentosPessoas();
+  const gatos = useGatos();
+  useGatoVacinas();
+  useGatoVermifugos();
+  useGatoConsultas();
+  useGatoExames();
+  useGatoPesos();
   const caixas = useStorageCaixas();
   useStorageItens();
   useStorageObs();
@@ -79,13 +92,15 @@ export function AquecimentoOffline({ onTerminou }: { onTerminou: () => void }) {
   useTagsItens();
   useTodosItemTags();
   useHistoricoTarefas();
+  useHistoricoPessoas();
+  useCasalMembros();
   useTodasTarefaClassificacoes();
   useProximosVencimentosPessoais();
   useAbasConfig();
   useIconesUsos();
 
   const buscando = useIsFetching({ predicate: (consulta) => chaveFicaOffline(consulta.queryKey) });
-  const topoAssentado = [itens, projetos, tarefas, pessoas, caixas].every((q) => q.status !== 'pending');
+  const topoAssentado = [itens, projetos, tarefas, pessoas, caixas, gatos].every((q) => q.status !== 'pending');
 
   useEffect(() => {
     if (buscando > 0 || !topoAssentado) return;
@@ -108,6 +123,9 @@ export function AquecimentoOffline({ onTerminou }: { onTerminou: () => void }) {
       ))}
       {pessoas.data?.map((p) => (
         <AquecerDocumentos key={p.id} area="pessoais" pessoaId={p.id} />
+      ))}
+      {gatos.data?.map((g) => (
+        <AquecerDocumentos key={g.id} area="gatos" gatoId={g.id} />
       ))}
       {AREAS_SEM_PESSOA.map((area) => (
         <AquecerDocumentos key={area} area={area} />

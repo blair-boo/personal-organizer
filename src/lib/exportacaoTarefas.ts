@@ -40,6 +40,10 @@ export interface DadosExportacao {
   tarefas: TarefaManutencao[];
   historico: HistoricoTarefa[];
   comodosPorTarefa: Map<string, { nome: string }[]>;
+  /** Tarefa -> texto do responsável ("Mariana", "Juntos (Eduardo e Mariana)"...); ausente = sem responsável. */
+  responsaveis?: Map<string, string>;
+  /** Tarefa -> quem fez na última execução. */
+  feitaPorUltima?: Map<string, string>;
   /** Hoje, "AAAA-MM-DD". */
   hoje: string;
 }
@@ -255,17 +259,19 @@ function formatar(iso: string | null): string {
 
 /** Aba com uma linha por tarefa e todas as colunas, para filtrar e reimportar. */
 export function planilhaDados(dados: DadosExportacao): Grade {
-  const cabecalho = ['Nome', 'Cômodos', 'Período', 'Frequência (dias)', 'Dias da semana', 'Instruções', 'Última execução', 'Próxima execução', 'Ativa'];
+  const cabecalho = ['Nome', 'Cômodos', 'Responsável', 'Período', 'Frequência (dias)', 'Dias da semana', 'Instruções', 'Última execução', 'Feita por (última vez)', 'Próxima execução', 'Ativa'];
   const grade: Grade = [cabecalho.map((valor): Celula => ({ valor, estilo: 'dadosCabecalho' }))];
   for (const t of ordenar(dados.tarefas, dados)) {
     const linha: (string | number)[] = [
       t.nome,
       (dados.comodosPorTarefa.get(t.id) ?? []).map((c) => c.nome).join(' | '),
+      dados.responsaveis?.get(t.id) ?? '',
       rotuloPeriodo(t.frequencia_dias),
       t.frequencia_dias,
       resumoDosDias(t.dias_semana),
       t.instrucoes ?? '',
       formatar(t.ultima_execucao),
+      dados.feitaPorUltima?.get(t.id) ?? '',
       formatar(proximaExecucao(t)),
       t.ativo ? 'Sim' : 'Não',
     ];

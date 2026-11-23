@@ -1,4 +1,5 @@
 import { tarefaAtrasada } from './historicoTarefa';
+import { semResponsavel, tarefaDaPessoa } from './responsaveis';
 import { proximaExecucao } from './manutencao';
 import type { TagItem, TarefaManutencao } from '../types';
 
@@ -11,16 +12,18 @@ export interface FiltrosManutencao {
   comodoIds: string[];
   /** Frequências ligadas, em dias: a tarefa precisa ter uma delas. */
   periodos: number[];
+  /** Responsáveis ligados (id de pessoa, ou 'nenhum' para sem responsável): vale qualquer um. A tarefa do casal é de cada um dos dois. */
+  responsaveis: string[];
   /** Dias da semana ligados: a tarefa precisa ter algum deles. */
   dias: number[];
   /** Situações ligadas (feita, não feita, atrasada): vale qualquer uma. Vazio = todas. */
   status: StatusTarefa[];
 }
 
-export const FILTROS_VAZIOS: FiltrosManutencao = { busca: '', comodoIds: [], periodos: [], dias: [], status: [] };
+export const FILTROS_VAZIOS: FiltrosManutencao = { busca: '', comodoIds: [], periodos: [], dias: [], responsaveis: [], status: [] };
 
 export function haFiltroAtivo(f: FiltrosManutencao): boolean {
-  return f.busca.trim() !== '' || f.comodoIds.length > 0 || f.periodos.length > 0 || f.dias.length > 0 || f.status.length > 0;
+  return f.busca.trim() !== '' || f.comodoIds.length > 0 || f.periodos.length > 0 || f.dias.length > 0 || f.responsaveis.length > 0 || f.status.length > 0;
 }
 
 /** Feita = já foi feita neste ciclo (a próxima execução está no futuro). Nunca feita, vencida ou para hoje = não feita. */
@@ -59,7 +62,8 @@ export function filtrarTarefas(
   tarefas: TarefaManutencao[],
   comodosPorTarefa: Map<string, Pick<TagItem, 'id'>[]>,
   filtros: FiltrosManutencao,
-  hoje: string
+  hoje: string,
+  membrosDosCasais: Map<string, string[]> = new Map()
 ): TarefaManutencao[] {
   const q = normalizar(filtros.busca);
   return tarefas.filter((tarefa) => {
@@ -69,6 +73,10 @@ export function filtrarTarefas(
       if (!filtros.comodoIds.some((id) => ids.includes(id))) return false;
     }
     if (filtros.periodos.length > 0 && !filtros.periodos.includes(tarefa.frequencia_dias)) return false;
+    if (filtros.responsaveis.length > 0) {
+      const bate = filtros.responsaveis.some((r) => (r === 'nenhum' ? semResponsavel(tarefa, membrosDosCasais) : tarefaDaPessoa(tarefa, r, membrosDosCasais)));
+      if (!bate) return false;
+    }
     if (filtros.dias.length > 0 && !filtros.dias.some((d) => tarefa.dias_semana.includes(d))) return false;
     if (filtros.status.length > 0) {
       const feita = tarefaFeita(tarefa, hoje);

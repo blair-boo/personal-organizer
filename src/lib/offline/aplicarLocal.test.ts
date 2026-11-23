@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   aplicarAtualizarExecucao,
+  aplicarDefinirPessoasExecucao,
   aplicarEdicaoStorage,
   aplicarExcluirExecucao,
   aplicarInserirExecucao,
@@ -107,15 +108,16 @@ describe('aplicarEdicaoStorage', () => {
 });
 
 const manutencao = (): EstadoManutencao => ({
-  tarefas: [{ id: 't1', nome: 'Forno', frequencia_dias: 30, ultima_execucao: null, proxima_a_partir_de: null, dias_semana: [], instrucoes: null, ativo: true }],
+  tarefas: [{ id: 't1', nome: 'Forno', frequencia_dias: 30, ultima_execucao: null, proxima_a_partir_de: null, responsavel_tipo: 'nenhum', responsavel_pessoa_id: null, responsavel_casal_id: null, dias_semana: [], instrucoes: null, ativo: true }],
   historico: [],
+  historicoPessoas: [],
 });
 
 describe('histórico de execuções', () => {
   it('inserir atualiza a última execução e a data-base da tarefa', () => {
     const r = aplicarInserirExecucao(
       manutencao(),
-      { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: '2026-11-05', base: 'prevista' },
+      { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: '2026-11-05', base: 'prevista', pessoaIds: [] },
       '2026-11-10T10:00:00Z'
     );
     expect(r.historico).toHaveLength(1);
@@ -123,27 +125,35 @@ describe('histórico de execuções', () => {
   });
 
   it('atualizar a base volta a contar do dia em que foi feita', () => {
-    const inserido = aplicarInserirExecucao(manutencao(), { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: '2026-11-05', base: 'prevista' });
+    const inserido = aplicarInserirExecucao(manutencao(), { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: '2026-11-05', base: 'prevista', pessoaIds: [] });
     const r = aplicarAtualizarExecucao(inserido, { id: 'h1', tarefaId: 't1', base: 'execucao' });
     expect(r.tarefas[0]).toMatchObject({ ultima_execucao: '2026-11-10', proxima_a_partir_de: null });
   });
 
   it('atualizar a data muda a última execução', () => {
-    const inserido = aplicarInserirExecucao(manutencao(), { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: null, base: 'execucao' });
+    const inserido = aplicarInserirExecucao(manutencao(), { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: null, base: 'execucao', pessoaIds: [] });
     expect(aplicarAtualizarExecucao(inserido, { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-08' }).tarefas[0].ultima_execucao).toBe('2026-11-08');
   });
 
   it('excluir a única execução deixa a tarefa como nunca feita', () => {
-    const inserido = aplicarInserirExecucao(manutencao(), { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: null, base: 'execucao' });
+    const inserido = aplicarInserirExecucao(manutencao(), { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: null, base: 'execucao', pessoaIds: [] });
     const r = aplicarExcluirExecucao(inserido, { id: 'h1', tarefaId: 't1' });
     expect(r.historico).toEqual([]);
     expect(r.tarefas[0]).toMatchObject({ ultima_execucao: null, proxima_a_partir_de: null });
   });
 
+  it('guarda quem fez, troca depois e apaga junto com a execução', () => {
+    const inserido = aplicarInserirExecucao(manutencao(), { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: null, base: 'execucao', pessoaIds: ['m'] });
+    expect(inserido.historicoPessoas).toEqual([{ historico_id: 'h1', pessoa_id: 'm' }]);
+    const trocado = aplicarDefinirPessoasExecucao(inserido, { historicoId: 'h1', pessoaIds: ['e', 'm'] });
+    expect(trocado.historicoPessoas.map((h) => h.pessoa_id)).toEqual(['e', 'm']);
+    expect(aplicarExcluirExecucao(trocado, { id: 'h1', tarefaId: 't1' }).historicoPessoas).toEqual([]);
+  });
+
   it('só recalcula a tarefa da execução', () => {
     const estado = manutencao();
     estado.tarefas.push({ ...estado.tarefas[0], id: 't2', ultima_execucao: '2026-01-01' });
-    const r = aplicarInserirExecucao(estado, { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: null, base: 'execucao' });
+    const r = aplicarInserirExecucao(estado, { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: null, base: 'execucao', pessoaIds: [] });
     expect(r.tarefas.find((t) => t.id === 't2')?.ultima_execucao).toBe('2026-01-01');
   });
 });

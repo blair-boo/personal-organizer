@@ -4,12 +4,28 @@ import { dataPrevistaParaNova } from '../lib/historicoTarefa';
 import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
 import { entradasDaTarefa } from '../lib/offline/executores';
 import { contarFila } from '../lib/offline/fila';
-import type { BaseProximaExecucao, HistoricoTarefa } from '../types';
+import type { BaseProximaExecucao, HistoricoPessoa, HistoricoTarefa } from '../types';
 
 const CHAVE = ['tarefas_manutencao_historico'];
 
 function invalidar(qc: QueryClient) {
-  return Promise.all([qc.invalidateQueries({ queryKey: CHAVE }), qc.invalidateQueries({ queryKey: ['tarefas_manutencao'] })]);
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: CHAVE }),
+    qc.invalidateQueries({ queryKey: ['tarefas_manutencao'] }),
+    qc.invalidateQueries({ queryKey: ['tarefas_historico_pessoas'] }),
+  ]);
+}
+
+/** Quem fez cada execução (todas as linhas; poucas, e serve à lista, ao kanban e ao uso offline). */
+export function useHistoricoPessoas() {
+  return useQuery({
+    queryKey: ['tarefas_historico_pessoas'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('tarefas_historico_pessoas').select('*');
+      if (error) throw error;
+      return data as HistoricoPessoa[];
+    },
+  });
 }
 
 /** Todas as execuções de todas as tarefas (poucas linhas; uma consulta só serve a lista, o kanban e o uso offline). */
@@ -34,6 +50,8 @@ export interface RegistroDeExecucao {
   /** Quando deveria ter sido feita; null = sem referência (nunca foi feita antes). */
   dataPrevista: string | null;
   base: BaseProximaExecucao;
+  /** Quem fez. */
+  pessoaIds: string[];
 }
 
 /** Se já foi para o servidor ou ficou na fila (sem internet, ou com alterações esperando); só no primeiro caso as consultas são buscadas de novo. */
@@ -46,8 +64,8 @@ export function useRegistrarExecucaoTarefa() {
   const qc = useQueryClient();
   return useMutation({
     onMutate: () => undefined,
-    mutationFn: ({ tarefaId, dataExecucao, dataPrevista, base }: RegistroDeExecucao) =>
-      executarOuEnfileirar(qc, 'manutencao.inserirExecucao', { id: crypto.randomUUID(), tarefaId, dataExecucao, dataPrevista, base }),
+    mutationFn: ({ tarefaId, dataExecucao, dataPrevista, base, pessoaIds }: RegistroDeExecucao) =>
+      executarOuEnfileirar(qc, 'manutencao.inserirExecucao', { id: crypto.randomUUID(), tarefaId, dataExecucao, dataPrevista, base, pessoaIds }),
     onSuccess: depois(qc),
   });
 }
@@ -57,7 +75,7 @@ export function useIncluirExecucaoTarefa() {
   const qc = useQueryClient();
   return useMutation({
     onMutate: () => undefined,
-    mutationFn: async ({ tarefaId, dataExecucao, frequenciaDias }: { tarefaId: string; dataExecucao: string; frequenciaDias: number }) => {
+    mutationFn: async ({ tarefaId, dataExecucao, frequenciaDias, pessoaIds = [] }: { tarefaId: string; dataExecucao: string; frequenciaDias: number; pessoaIds?: string[] }) => {
       // Com a fila cheia ou sem internet, o servidor não tem tudo: usa o que está no aparelho.
       const usarAparelho = !navigator.onLine || (await contarFila()) > 0;
       const entradas = usarAparelho
@@ -69,6 +87,7 @@ export function useIncluirExecucaoTarefa() {
         dataExecucao,
         dataPrevista: dataPrevistaParaNova(entradas, dataExecucao, frequenciaDias),
         base: 'execucao',
+        pessoaIds,
       });
     },
     onSuccess: depois(qc),
@@ -91,6 +110,16 @@ export function useExcluirExecucaoTarefa() {
   return useMutation({
     onMutate: () => undefined,
     mutationFn: (dados: { id: string; tarefaId: string }) => executarOuEnfileirar(qc, 'manutencao.excluirExecucao', dados),
+    onSuccess: depois(qc),
+  });
+}
+
+/** Troca quem fez uma execução. */
+export function useDefinirPessoasExecucao() {
+  const qc = useQueryClient();
+  return useMutation({
+    onMutate: () => undefined,
+    mutationFn: (dados: { historicoId: string; pessoaIds: string[] }) => executarOuEnfileirar(qc, 'manutencao.definirPessoasExecucao', dados),
     onSuccess: depois(qc),
   });
 }
