@@ -13,8 +13,8 @@ import { SeletorCor } from '../../components/SeletorCor';
 import { mensagemDeErro } from '../../lib/erros';
 import { FUNCOES_ICONE, usoPadraoDaFuncao, type DefinicaoFuncao } from '../../lib/iconesFuncoes';
 import { arquivosEmUso, caminhoDoUso, contarUsos, resolverUso } from '../../lib/iconesUsos';
-import { caminhoIcone } from '../../lib/storage';
-import { useAdicionarIcones, useCriarPastaIcone, useExcluirIcone, useIconesGaleria, useRenomearIcone, useReordenarIcones, useSubpastasIcones } from '../../hooks/useIcones';
+import { caminhoIcone, slugify } from '../../lib/storage';
+import { useAdicionarIcones, useCriarPastaIcone, useExcluirIcone, useExcluirPastaIcone, useRenomearPastaIcone, useIconesGaleria, useRenomearIcone, useReordenarIcones, useSubpastasIcones } from '../../hooks/useIcones';
 import { useIconesUsos, useRemoverUsoIcone, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
 import { useTemaEfetivo } from '../../hooks/useTema';
 import type { IconeArquivo, UsoIcone } from '../../types';
@@ -282,25 +282,31 @@ function SecaoGaleria({ tamanho, emUso, mascara, onMascara }: { tamanho: number;
       <p className="testes-legenda">Cada pasta do bucket é uma divisão. Ícones em uso aparecem em Ícones (Settings) ou Ícones (UI) e não podem ser renomeados nem excluídos daqui.</p>
       {isLoading && <p className="hierarquia-vazio">Carregando…</p>}
       {isError && <p className="testes-erro">Não foi possível carregar as pastas: {mensagemDeErro(error)}</p>}
-      <GrupoIcones pasta="" titulo="Sem pasta" tamanho={tamanho} emUso={emUso} mascara={mascara} />
+      <GrupoIcones pasta="" titulo="Sem pasta" tamanho={tamanho} emUso={emUso} mascara={mascara} pastasExistentes={pastas} />
       {pastas.map((pasta) => (
-        <GrupoIcones key={pasta} pasta={pasta} titulo={pasta} tamanho={tamanho} emUso={emUso} mascara={mascara} />
+        <GrupoIcones key={pasta} pasta={pasta} titulo={pasta} tamanho={tamanho} emUso={emUso} mascara={mascara} pastasExistentes={pastas} />
       ))}
     </section>
   );
 }
 
-function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara }: { pasta: string; titulo: string; tamanho: number; emUso: Set<string>; mascara: boolean }) {
+function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes }: { pasta: string; titulo: string; tamanho: number; emUso: Set<string>; mascara: boolean; pastasExistentes: string[] }) {
   const { data, isLoading, isError, error } = useIconesGaleria(pasta);
   const adicionar = useAdicionarIcones(pasta);
   const renomear = useRenomearIcone(pasta);
   const excluir = useExcluirIcone(pasta);
+  const excluirPasta = useExcluirPastaIcone();
+  const renomearPasta = useRenomearPastaIcone();
   const reordenar = useReordenarIcones();
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
   const qc = useQueryClient();
   const [atualizando, setAtualizando] = useState(false);
   const [aberta, setAberta] = useState(true);
+  const [pastaPendenteExclusao, setPastaPendenteExclusao] = useState(false);
+  const [nomePastaPendente, setNomePastaPendente] = useState<string | null>(null);
+  const [editandoPasta, setEditandoPasta] = useState(false);
+  const [rascunhoPasta, setRascunhoPasta] = useState('');
 
   const [modoEdicao, setModoEdicao] = useState(false);
   const [ordemLocal, setOrdemLocal] = useState<IconeArquivo[] | null>(null);
@@ -316,7 +322,10 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara }: { pasta: string
   // Ícones em uso (funções, títulos, placeholder) saem daqui e aparecem em Settings ou UI.
   const livres = (lista: IconeArquivo[]) => lista.filter((i) => !emUso.has(caminhoIcone(pasta, i.nome)));
   const dados = livres(ordemLocal ?? data ?? []);
-  const temPendencias = ordemLocal !== null || exclusoesPendentes.size > 0 || renomeacoesPendentes.size > 0;
+  const temPendencias = ordemLocal !== null || exclusoesPendentes.size > 0 || renomeacoesPendentes.size > 0 || pastaPendenteExclusao || nomePastaPendente !== null;
+  // A pasta só pode ser excluída se nenhum ícone dela estiver em uso (a raiz nunca pode).
+  const usadosNaPasta = (data ?? []).filter((i) => emUso.has(caminhoIcone(pasta, i.nome))).length;
+  const motivoSemExcluirPasta = usadosNaPasta > 0 ? 'Não é possível excluir: há ícones em uso nesta pasta.' : null;
   const erro = isError ? mensagemDeErro(error) : null;
 
   function nomeAtual(item: IconeArquivo): string {
@@ -359,12 +368,34 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara }: { pasta: string
     });
   }
 
+  function iniciarEdicaoPasta() {
+    setEditandoPasta(true);
+    setRascunhoPasta(nomePastaPendente ?? pasta);
+  }
+
+  function confirmarEdicaoPasta() {
+    const nomeNovo = slugify(rascunhoPasta);
+    if (!nomeNovo) {
+      mostrarToast('Dê um nome válido à pasta.', 'erro');
+      return;
+    }
+    if (nomeNovo !== pasta && pastasExistentes.includes(nomeNovo)) {
+      mostrarToast('Já existe uma pasta com esse nome.', 'erro');
+      return;
+    }
+    setNomePastaPendente(nomeNovo === pasta ? null : nomeNovo);
+    setEditandoPasta(false);
+  }
+
   function alternarModoEdicao() {
     if (modoEdicao) {
       setModoEdicao(false);
       setOrdemLocal(null);
       setExclusoesPendentes(new Set());
       setRenomeacoesPendentes(new Map());
+      setPastaPendenteExclusao(false);
+      setNomePastaPendente(null);
+      setEditandoPasta(false);
       cancelarEdicao();
     } else {
       setModoEdicao(true);
@@ -407,6 +438,26 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara }: { pasta: string
 
   async function salvarAlteracoes() {
     if (!temPendencias) return;
+    if (pastaPendenteExclusao) {
+      const total = (data ?? []).length;
+      const ok = await confirmar({
+        titulo: `Excluir a pasta ${titulo}?`,
+        mensagem: `Essa ação apaga a pasta e ${total} ícone(s) dentro dela do Supabase Storage e não pode ser desfeita.`,
+        confirmarRotulo: 'Excluir pasta',
+        perigoso: true,
+      });
+      if (!ok) return;
+      setSalvando(true);
+      try {
+        await excluirPasta.mutateAsync(pasta);
+        mostrarToast(`Pasta ${titulo} excluída.`);
+      } catch (err) {
+        mostrarToast(mensagemDeErro(err), 'erro');
+      } finally {
+        setSalvando(false);
+      }
+      return;
+    }
     if (exclusoesPendentes.size > 0) {
       const ok = await confirmar({
         titulo: `Excluir ${exclusoesPendentes.size} ícone(s)?`,
@@ -433,7 +484,12 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara }: { pasta: string
         const sobreviventes = ordemLocal.filter((i) => !exclusoesPendentes.has(i.id));
         await reordenar.mutateAsync(sobreviventes.map((item, i) => ({ id: item.id, ordem: i + 1 })));
       }
-      mostrarToast('Alterações salvas.');
+      if (nomePastaPendente) {
+        await renomearPasta.mutateAsync({ pastaAntiga: pasta, nomeNovo: nomePastaPendente });
+        mostrarToast('Pasta renomeada.');
+      } else {
+        mostrarToast('Alterações salvas.');
+      }
       setModoEdicao(false);
       setOrdemLocal(null);
       setExclusoesPendentes(new Set());
@@ -448,11 +504,73 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara }: { pasta: string
   return (
     <div className="icones-grupo">
       <div className="testes-secao-cabecalho">
-        <button type="button" className="icones-secao-titulo" onClick={() => setAberta((v) => !v)} aria-expanded={aberta}>
-          <IconeChevron aberto={aberta} />
-          {titulo}
-        </button>
+        {modoEdicao && pasta !== '' ? (
+          <div className="icones-secao-titulo">
+            <button type="button" className="btn-icone" onClick={() => setAberta((v) => !v)} aria-expanded={aberta} title={aberta ? 'Recolher' : 'Expandir'} aria-label={aberta ? `Recolher ${titulo}` : `Expandir ${titulo}`}>
+              <IconeChevron aberto={aberta} />
+            </button>
+            {editandoPasta ? (
+              <>
+                <input
+                  className="testes-icone-nome-input"
+                  value={rascunhoPasta}
+                  onChange={(e) => setRascunhoPasta(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      confirmarEdicaoPasta();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setEditandoPasta(false);
+                    }
+                  }}
+                  autoFocus
+                  aria-label={`Renomear a pasta ${titulo}`}
+                />
+                <button type="button" className="btn-icone" onClick={confirmarEdicaoPasta} title="Confirmar" aria-label="Confirmar">
+                  <IconeFuncao funcao="confirmar" tamanho={14} />
+                </button>
+                <button type="button" className="btn-icone" onClick={() => setEditandoPasta(false)} title="Cancelar" aria-label="Cancelar">
+                  <IconeFuncao funcao="fechar" tamanho={14} />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className={`testes-icone-nome${pastaPendenteExclusao ? ' testes-icone-nome-riscado' : ''}`}
+                onClick={iniciarEdicaoPasta}
+                disabled={pastaPendenteExclusao}
+                title={`Renomear a pasta ${titulo}`}
+              >
+                {nomePastaPendente ? `${titulo} → ${nomePastaPendente}` : titulo}
+              </button>
+            )}
+          </div>
+        ) : (
+          <button type="button" className="icones-secao-titulo" onClick={() => setAberta((v) => !v)} aria-expanded={aberta}>
+            <IconeChevron aberto={aberta} />
+            {titulo}
+          </button>
+        )}
         <div className="testes-secao-acoes">
+          {modoEdicao && pasta !== '' && (
+            pastaPendenteExclusao ? (
+              <button type="button" onClick={() => setPastaPendenteExclusao(false)} title={`Desfazer a exclusão da pasta ${titulo}`} aria-label={`Desfazer a exclusão da pasta ${titulo}`}>
+                Desfazer
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn-icone btn-icone-perigo"
+                onClick={() => setPastaPendenteExclusao(true)}
+                disabled={motivoSemExcluirPasta !== null}
+                title={motivoSemExcluirPasta ?? `Excluir a pasta ${titulo}`}
+                aria-label={motivoSemExcluirPasta ?? `Excluir a pasta ${titulo}`}
+              >
+                <IconeFuncao funcao="excluir" />
+              </button>
+            )
+          )}
           <input
             ref={inputRef}
             type="file"
