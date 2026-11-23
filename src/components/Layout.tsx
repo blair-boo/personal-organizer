@@ -23,6 +23,7 @@ const TEMA_INFO: Record<TemaPref, { titulo: string }> = {
 };
 
 const ROTA_PRINCIPAL: Record<string, string> = {
+  'principal:hoje': '/hoje',
   'principal:financas': '/financas',
   'principal:apartamento': '/apartamento',
   'principal:storage': '/storage',

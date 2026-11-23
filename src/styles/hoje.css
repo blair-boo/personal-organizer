@@ -1,0 +1,55 @@
+/* Painel Hoje */
+
+.hoje {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hoje-titulo {
+  margin: 0;
+}
+
+.hoje-cartao {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--bg-raised);
+}
+
+.hoje-cartao h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.hoje-grupo {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.hoje-grupo h4 {
+  margin: 0 0 4px;
+}
+
+.hoje-lista {
+  margin: 0 0 4px;
+  padding-left: 20px;
+}
+
+.hoje-atrasada {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.hoje-tabela {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 420px;
+}
+
+.hoje-tabela th,
+.hoje-tabela td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+}

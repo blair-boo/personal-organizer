@@ -218,7 +218,8 @@ export function ManutencaoPage() {
   // O contador de atrasadas do cabeçalho leva pra cá já com o filtro ligado.
   useEffect(() => {
     if (params.get('filtro') === 'atrasadas') {
-      setFiltros({ ...FILTROS_VAZIOS, status: ['atrasada'] });
+      const pessoa = params.get('pessoa');
+      setFiltros({ ...FILTROS_VAZIOS, status: ['atrasada'], responsaveis: pessoa ? [pessoa] : [] });
       setParams({}, { replace: true });
     }
   }, [params, setParams]);
