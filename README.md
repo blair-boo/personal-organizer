@@ -101,6 +101,20 @@ Storage (caixas, itens, observações, tags e fotos) e, na Manutenção, "Feita 
 - **Conflito:** vale a última alteração enviada. Fotos: a cópia local aparece normalmente e sobe com a fila.
 - **Indicador:** o cabeçalho mostra "N alterações pendentes" (toque para enviar). Settings > App tem "Enviar agora" e "Descartar pendências". Sair da conta com pendências pergunta antes, porque sair apaga tudo do aparelho.
 
+## Responsáveis das tarefas e casal
+
+- **Casal:** em Documentos > Pessoais, um cadastro é uma pessoa ou um **casal**, que junta duas pessoas (`documentos_pessoas.tipo` e `documentos_casal_membros`). **+ Casal** escolhe as duas pessoas ou cria uma nova na hora. O "Casal" que já existia passou a juntar Eduardo e Mariana.
+- **Login:** `documentos_pessoas.usuario_id` liga a pessoa ao login dela, para o app saber quem está usando. Hoje só a Mariana está ligada; quando o Eduardo ganhar login, basta preencher o `usuario_id` dele.
+- **Responsável da tarefa:** escolha única no formulário: Nenhuma, cada pessoa, ou **Qualquer um** / **Juntos** (do casal). Filtro por pessoa (a tarefa do casal é de cada um dos dois), "Sem responsável" e kanban "Por pessoa" (arrastar muda a atribuição). Lógica em `src/lib/responsaveis.ts`.
+- **Feita hoje:** abre uma janela com **quem fez** (as pessoas, não o casal). Já vem marcado: nas tarefas Juntos, os dois; nas Qualquer um, quem está usando o app (se for do casal); numa pessoa, ela; sem responsável, quem está usando. Marcar as duas = fizeram juntas. Cada execução guarda quem fez (`tarefas_historico_pessoas`) e o Histórico deixa trocar. Migration `0022`.
+
+## Gatos (Documentos > Gatos)
+
+Sub-abas por gato (`+ Gato`; modo de edição para renomear, reordenar e excluir, que apaga tudo do gato com os arquivos). Cada gato tem data de nascimento com a idade calculada e seções que abrem e fecham: **Vacinas** (data e próxima dose), **Vermífugo** (data, produto e próximo), **Consultas** (data, veterinário, observação), **Exames** (data, nome e arquivo no bucket `confidencial`, subpasta `gatos/`), **Peso** (data e kg, com a variação) e **Documentos** (lista livre, a mesma das outras áreas, com `documentos.area = 'gatos'`). No topo, o quadro **Próximas vacinas e vermífugos** (de cada vacina conta só a aplicação mais recente; vencidas em destaque, as de até 30 dias sinalizadas). Migration `0023`; lógica em `src/lib/gatos.ts`.
+
+- **Calendário:** as próximas datas entram nos links de assinatura (.ics) marcados com "Incluir as próximas vacinas e vermífugos dos gatos" em Settings > Calendário (os links que valiam para todas as pessoas já vêm marcados). O aviso toca 3 dias antes. A Edge Function `documentos-ics` foi atualizada; o código fica em `supabase/functions/documentos-ics`.
+- **Offline:** a aba abre sem internet, arquivos dos exames incluídos (cache `v4`). Editar gatos sem internet fica para a fase 2.
+
 ## Exportar tarefas para planilha
 
 Em Apartamento > Manutenção, **Exportar planilha** gera um .xlsx no formato da aba Esqueleto da planilha de rotinas. Três abas: **Esqueleto** (blocos Monthly, Bi-Monthly, Quarterly or Every 4-Months, Bi Annual, Annual e 2 Years, com os 12 meses do ano), **Diárias e semanais** (mês e ano no topo e uma coluna por dia, com os blocos Daily, Weekly e Every 15 Days) e **Dados** (todas as colunas). Verde (DUE): feita no prazo ou ainda por vencer, com o dia na célula; vermelho (OVERDUE): feita fora da data prevista, só no mês ou dia em que foi feita. Tarefa de frequência fora desses blocos aparece só em Dados. Exporta as tarefas filtradas na tela (sem filtro, todas); o cômodo no nome da linha é opcional. Lógica em `src/lib/exportacaoTarefas.ts`, arquivo em `src/lib/xlsx.ts`.
