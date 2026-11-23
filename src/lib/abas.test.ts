@@ -19,9 +19,9 @@ describe('resolverAbas', () => {
 });
 
 describe('abas principais', () => {
-  it('põe Storage logo depois de Apartamento', () => {
+  it('começa por Hoje e põe Storage logo depois de Apartamento', () => {
     const nomes = resolverAbas('principal', []).map((a) => a.nome);
-    expect(nomes).toEqual(['Finanças', 'Apartamento', 'Storage', 'Documentos', 'Settings']);
+    expect(nomes).toEqual(['Hoje', 'Finanças', 'Apartamento', 'Storage', 'Documentos', 'Settings']);
   });
 });
 

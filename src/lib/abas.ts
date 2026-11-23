@@ -19,6 +19,7 @@ export const ROTULOS_GRUPOS: Record<GrupoAbas, string> = {
 /** Abas na ordem padrão, por grupo. */
 export const ABAS_PADRAO: Record<GrupoAbas, AbaPadrao[]> = {
   principal: [
+    { chave: 'principal:hoje', rotulo: 'Hoje' },
     { chave: 'principal:financas', rotulo: 'Finanças' },
     { chave: 'principal:apartamento', rotulo: 'Apartamento' },
     { chave: 'principal:storage', rotulo: 'Storage' },

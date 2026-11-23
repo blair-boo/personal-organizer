@@ -32,10 +32,12 @@ interface SecaoRegistrosProps<T extends { id: string }> {
   /** Nome curto do item para os rótulos ("vacina", "pesagem"). */
   item: string;
   textoVazio: string;
+  /** Conteúdo extra no topo da seção (ex.: gráfico de peso). */
+  topo?: ReactNode;
 }
 
 /** Seção de um gato com uma lista de registros (vacinas, vermífugo, consultas, exames, peso): incluir, trocar e excluir. Abre e fecha. */
-export function SecaoRegistros<T extends { id: string }>({ titulo, registros, campos, linha, valoresDe, onSalvar, onExcluir, pedeArquivo = false, item, textoVazio }: SecaoRegistrosProps<T>) {
+export function SecaoRegistros<T extends { id: string }>({ titulo, registros, campos, linha, valoresDe, onSalvar, onExcluir, pedeArquivo = false, item, textoVazio, topo }: SecaoRegistrosProps<T>) {
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
   const [formulario, setFormulario] = useState<{ registro: T | null } | null>(null);
@@ -56,6 +58,7 @@ export function SecaoRegistros<T extends { id: string }>({ titulo, registros, ca
       <summary>
         {titulo} <span className="storage-codigo">({registros.length})</span>
       </summary>
+      {topo}
       <ul className="gatos-registros">
         {registros.map((registro) => (
           <li key={registro.id} className="gatos-registro">

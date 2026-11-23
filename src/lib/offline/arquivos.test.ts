@@ -160,3 +160,12 @@ describe('sincronizarArquivos', () => {
     expect((await versoesGuardadas(cs)).get('confidencial/documentos-pessoais/doc 1/ç-rg.pdf')).toBe('v1');
   });
 });
+
+describe('foto do gato', () => {
+  it('a foto entra na lista de arquivos pelo campo foto_url, com o caminho como versão', () => {
+    const r = extrairArquivosDasConsultas([
+      { queryKey: ['gatos'], data: [{ id: 'g1', nome: 'Mimi', foto_url: 'gatos/g1/foto-1.jpg' }, { id: 'g2', nome: 'Bob', foto_url: null }] },
+    ]);
+    expect(r).toEqual([{ bucket: 'confidencial', caminho: 'gatos/g1/foto-1.jpg', versao: 'gatos/g1/foto-1.jpg' }]);
+  });
+});

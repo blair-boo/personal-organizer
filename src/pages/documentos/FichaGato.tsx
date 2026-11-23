@@ -10,6 +10,8 @@ import { useAtualizarGatoPeso, useExcluirGatoPeso, useGatoPesos, useIncluirGatoP
 import { useAtualizarGatoVacina, useExcluirGatoVacina, useGatoVacinas, useIncluirGatoVacina } from '../../hooks/useGatoVacinas';
 import { useAtualizarGatoVermifugo, useExcluirGatoVermifugo, useGatoVermifugos, useIncluirGatoVermifugo } from '../../hooks/useGatoVermifugos';
 import type { Gato } from '../../types';
+import { FotoGato } from './FotoGato';
+import { GraficoPeso } from './GraficoPeso';
 import { DocumentosAreaPage } from './DocumentosAreaPage';
 import { SecaoRegistros, type CampoRegistro } from './SecaoRegistros';
 
@@ -102,6 +104,8 @@ export function FichaGato({ gato }: { gato: Gato }) {
 
   return (
     <div className="gatos-ficha">
+      <FotoGato gato={gato} />
+
       <div className="documentos-prazo-linha gatos-nascimento">
         <label>
           Data de nascimento
@@ -132,7 +136,7 @@ export function FichaGato({ gato }: { gato: Gato }) {
           else await incluirVacina.mutateAsync(dados);
           mostrarToast('Vacina salva.');
         }}
-        onExcluir={(r) => excluirVacina.mutateAsync(r.id)}
+        onExcluir={async (r) => void (await excluirVacina.mutateAsync(r.id))}
       />
 
       <SecaoRegistros
@@ -155,7 +159,7 @@ export function FichaGato({ gato }: { gato: Gato }) {
           else await incluirVermifugo.mutateAsync(dados);
           mostrarToast('Vermífugo salvo.');
         }}
-        onExcluir={(r) => excluirVermifugo.mutateAsync(r.id)}
+        onExcluir={async (r) => void (await excluirVermifugo.mutateAsync(r.id))}
       />
 
       <SecaoRegistros
@@ -178,7 +182,7 @@ export function FichaGato({ gato }: { gato: Gato }) {
           else await incluirConsulta.mutateAsync(dados);
           mostrarToast('Consulta salva.');
         }}
-        onExcluir={(r) => excluirConsulta.mutateAsync(r.id)}
+        onExcluir={async (r) => void (await excluirConsulta.mutateAsync(r.id))}
       />
 
       <SecaoRegistros
@@ -210,13 +214,14 @@ export function FichaGato({ gato }: { gato: Gato }) {
           }
           mostrarToast('Exame salvo.');
         }}
-        onExcluir={(r) => excluirExame.mutateAsync(r)}
+        onExcluir={async (r) => void (await excluirExame.mutateAsync(r))}
       />
 
       <SecaoRegistros
         titulo="Peso"
         item="pesagem"
         textoVazio="Nenhuma pesagem registrada."
+        topo={<GraficoPeso pesos={pesos} />}
         registros={pesos}
         campos={CAMPOS_PESO}
         valoresDe={(r) => ({ data: r.data, peso_kg: String(r.peso_kg).replace('.', ',') })}
@@ -235,7 +240,7 @@ export function FichaGato({ gato }: { gato: Gato }) {
           else await incluirPeso.mutateAsync(dados);
           mostrarToast('Pesagem salva.');
         }}
-        onExcluir={(r) => excluirPeso.mutateAsync(r.id)}
+        onExcluir={async (r) => void (await excluirPeso.mutateAsync(r.id))}
       />
 
       <details className="gatos-secao">

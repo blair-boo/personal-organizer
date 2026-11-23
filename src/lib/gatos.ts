@@ -124,3 +124,53 @@ export const DIAS_DE_AVISO_NO_CALENDARIO = 3;
 export function dataDoAviso(data: string): string {
   return somarDias(data, -DIAS_DE_AVISO_NO_CALENDARIO);
 }
+
+/** Quantas vacinas e vermífugos já passaram da data (para o aviso no cabeçalho). */
+export function contarVencidas(proximas: ProximaData[]): number {
+  return proximas.filter((p) => p.vencida).length;
+}
+
+export interface PontoDoGrafico {
+  id: string;
+  data: string;
+  kg: number;
+  x: number;
+  y: number;
+}
+
+export interface GraficoDePeso {
+  pontos: PontoDoGrafico[];
+  /** Linha do gráfico em formato "x,y x,y ...". */
+  linha: string;
+  minimoKg: number;
+  maximoKg: number;
+}
+
+/**
+ * Posição de cada pesagem num gráfico de linha (SVG) de largura x altura, com
+ * margem. O eixo de x segue o tempo real entre as datas; o de y, o intervalo de
+ * pesos com uma folga. Menos de 2 pesagens não formam tendência: devolve null.
+ */
+export function graficoDePeso(pesos: GatoPeso[], largura: number, altura: number, margem = 12): GraficoDePeso | null {
+  if (pesos.length < 2) return null;
+  const ordenados = [...pesos].sort((a, b) => a.data.localeCompare(b.data) || a.criado_em.localeCompare(b.criado_em));
+  const primeira = ordenados[0].data;
+  const total = Math.max(1, diasEntre(primeira, ordenados[ordenados.length - 1].data));
+  const kgs = ordenados.map((p) => Number(p.peso_kg));
+  const minimo = Math.min(...kgs);
+  const maximo = Math.max(...kgs);
+  const folga = maximo === minimo ? 0.5 : (maximo - minimo) * 0.15;
+  const piso = minimo - folga;
+  const teto = maximo + folga;
+  const pontos = ordenados.map((p, i): PontoDoGrafico => {
+    const arredonda = (n: number) => Math.round(n * 10) / 10;
+    return {
+      id: p.id,
+      data: p.data,
+      kg: kgs[i],
+      x: arredonda(margem + (diasEntre(primeira, p.data) / total) * (largura - 2 * margem)),
+      y: arredonda(margem + (1 - (kgs[i] - piso) / (teto - piso)) * (altura - 2 * margem)),
+    };
+  });
+  return { pontos, linha: pontos.map((p) => `${p.x},${p.y}`).join(' '), minimoKg: minimo, maximoKg: maximo };
+}

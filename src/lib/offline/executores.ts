@@ -5,10 +5,18 @@ import type { HistoricoTarefa } from '../../types';
 import type { OperacaoPendente } from './fila';
 import type {
   AtualizarExecucaoDados,
+  AtualizarLinhaDados,
+  DefinirAdiamentoDados,
+  DefinirClassificacoesDados,
+  DefinirFotoDados,
   DefinirPessoasExecucaoDados,
   EdicaoStorageDados,
+  ExcluirAnexoDados,
   ExcluirExecucaoDados,
+  ExcluirLinhasDados,
+  IncluirAnexoDados,
   InserirExecucaoDados,
+  InserirLinhaDados,
   SalvarCaixaDados,
 } from './operacoes';
 
@@ -134,9 +142,17 @@ export async function entradasDaTarefa(tarefaId: string): Promise<HistoricoTaref
 }
 
 /** Recalcula, a partir do histórico, a última execução e a data-base da próxima, e grava na tarefa. */
-async function recalcularTarefa(tarefaId: string): Promise<void> {
+async function recalcularTarefa(tarefaId: string, encerrarAdiamentoSeFeitaEm?: string): Promise<void> {
   const resumo = resumoDoHistorico(await entradasDaTarefa(tarefaId));
-  const { error } = await supabase.from('tarefas_manutencao').update(resumo).eq('id', tarefaId);
+  // Fazer a tarefa (como execução mais recente) encerra o adiamento.
+  const encerra = encerrarAdiamentoSeFeitaEm !== undefined && resumo.ultima_execucao === encerrarAdiamentoSeFeitaEm;
+  const { error } = await supabase.from('tarefas_manutencao').update(encerra ? { ...resumo, adiada_ate: null } : resumo).eq('id', tarefaId);
+  if (error) throw error;
+}
+
+/** Adia a tarefa para uma data (ou cancela o adiamento com null). */
+export async function executarDefinirAdiamento({ tarefaId, adiadaAte }: DefinirAdiamentoDados): Promise<void> {
+  const { error } = await supabase.from('tarefas_manutencao').update({ adiada_ate: adiadaAte }).eq('id', tarefaId);
   if (error) throw error;
 }
 
@@ -155,7 +171,7 @@ export async function executarInserirExecucao({ id, tarefaId, dataExecucao, data
     .upsert({ id, tarefa_id: tarefaId, data_execucao: dataExecucao, data_prevista: dataPrevista, base_proxima: base });
   if (error) throw error;
   await executarDefinirPessoasExecucao({ historicoId: id, pessoaIds });
-  await recalcularTarefa(tarefaId);
+  await recalcularTarefa(tarefaId, dataExecucao);
 }
 
 export async function executarAtualizarExecucao({ id, tarefaId, dataExecucao, base }: AtualizarExecucaoDados): Promise<void> {
@@ -173,6 +189,58 @@ export async function executarExcluirExecucao({ id, tarefaId }: ExcluirExecucaoD
   await recalcularTarefa(tarefaId);
 }
 
+// --- Linhas genéricas ------------------------------------------------------------------
+
+export async function executarInserirLinha({ tabela, linha }: InserirLinhaDados): Promise<void> {
+  const { error } = await supabase.from(tabela).upsert(linha);
+  if (error) throw error;
+}
+
+export async function executarAtualizarLinha({ tabela, id, mudancas }: AtualizarLinhaDados): Promise<void> {
+  const { error } = await supabase.from(tabela).update(mudancas).eq('id', id);
+  if (error) throw error;
+}
+
+export async function executarExcluirLinhas({ tabela, ids }: ExcluirLinhasDados): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await supabase.from(tabela).delete().in('id', ids);
+  if (error) throw error;
+}
+
+function comoArquivo(blob: Blob, nome: string): File {
+  return blob instanceof File ? blob : new File([blob], nome, { type: blob.type });
+}
+
+/** Sobe o arquivo (se veio no pedido) e grava a linha do anexo. */
+export async function executarIncluirAnexo({ tabela, linha, bucket, arquivoLocal, nomeArquivo }: IncluirAnexoDados): Promise<void> {
+  if (arquivoLocal) await enviarArquivo(bucket, String(linha.arquivo_url), comoArquivo(arquivoLocal, nomeArquivo));
+  const { error } = await supabase.from(tabela).upsert(linha);
+  if (error) throw error;
+}
+
+export async function executarExcluirAnexo({ tabela, id, bucket, caminho }: ExcluirAnexoDados): Promise<void> {
+  await removerArquivos(bucket, [caminho]);
+  const { error } = await supabase.from(tabela).delete().eq('id', id);
+  if (error) throw error;
+}
+
+/** Substitui o conjunto de cômodos de uma tarefa. */
+export async function executarDefinirClassificacoes({ tarefaId, tagIds }: DefinirClassificacoesDados): Promise<void> {
+  const { error: erroExcluir } = await supabase.from('tarefa_classificacoes').delete().eq('tarefa_id', tarefaId);
+  if (erroExcluir) throw erroExcluir;
+  if (tagIds.length === 0) return;
+  const { error } = await supabase.from('tarefa_classificacoes').insert(tagIds.map((tag_id) => ({ tarefa_id: tarefaId, tag_id })));
+  if (error) throw error;
+}
+
+/** Troca a foto do gato: sobe a nova, grava o caminho e só então apaga a antiga. */
+export async function executarDefinirFoto({ gatoId, caminho, anterior, arquivoLocal, nomeArquivo }: DefinirFotoDados): Promise<void> {
+  if (caminho && arquivoLocal) await enviarArquivo(BUCKET_STORAGE, caminho, comoArquivo(arquivoLocal, nomeArquivo ?? 'foto'));
+  const { error } = await supabase.from('gatos').update({ foto_url: caminho }).eq('id', gatoId);
+  if (error) throw error;
+  if (anterior && anterior !== caminho) await removerArquivos(BUCKET_STORAGE, [anterior]).catch(() => undefined);
+}
+
 /** Roda uma operação da fila no servidor. */
 export async function executarOperacao({ tipo, dados }: Pick<OperacaoPendente, 'tipo' | 'dados'>): Promise<void> {
   switch (tipo) {
@@ -188,5 +256,21 @@ export async function executarOperacao({ tipo, dados }: Pick<OperacaoPendente, '
       return executarDefinirPessoasExecucao(dados as DefinirPessoasExecucaoDados);
     case 'manutencao.excluirExecucao':
       return executarExcluirExecucao(dados as ExcluirExecucaoDados);
+    case 'manutencao.definirAdiamento':
+      return executarDefinirAdiamento(dados as DefinirAdiamentoDados);
+    case 'tabela.inserir':
+      return executarInserirLinha(dados as InserirLinhaDados);
+    case 'tabela.atualizar':
+      return executarAtualizarLinha(dados as AtualizarLinhaDados);
+    case 'tabela.excluir':
+      return executarExcluirLinhas(dados as ExcluirLinhasDados);
+    case 'anexo.incluir':
+      return executarIncluirAnexo(dados as IncluirAnexoDados);
+    case 'anexo.excluir':
+      return executarExcluirAnexo(dados as ExcluirAnexoDados);
+    case 'tarefa.definirClassificacoes':
+      return executarDefinirClassificacoes(dados as DefinirClassificacoesDados);
+    case 'gato.definirFoto':
+      return executarDefinirFoto(dados as DefinirFotoDados);
   }
 }

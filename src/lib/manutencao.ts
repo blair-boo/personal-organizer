@@ -2,7 +2,11 @@ import { hojeIso, somarDias } from './datas';
 import type { TarefaManutencao } from '../types';
 
 /** Dados da tarefa que entram no cálculo da próxima execução. */
-type DadosDeCiclo = Pick<TarefaManutencao, 'ultima_execucao' | 'frequencia_dias'> & { proxima_a_partir_de?: string | null };
+export type DadosDeCiclo = Pick<TarefaManutencao, 'ultima_execucao' | 'frequencia_dias'> & {
+  proxima_a_partir_de?: string | null;
+  /** Adiamento ou "pular desta vez": vale como a próxima execução até a tarefa ser feita de novo. */
+  adiada_ate?: string | null;
+};
 
 /**
  * Próxima execução: a data-base + frequência, ou hoje se nunca foi feita. A
@@ -10,9 +14,15 @@ type DadosDeCiclo = Pick<TarefaManutencao, 'ultima_execucao' | 'frequencia_dias'
  * um atraso, se escolheu voltar a ele (proxima_a_partir_de).
  */
 export function proximaExecucao(tarefa: DadosDeCiclo): string {
+  if (tarefa.adiada_ate) return tarefa.adiada_ate;
   const base = tarefa.proxima_a_partir_de ?? tarefa.ultima_execucao;
   if (!base) return hojeIso();
   return somarDias(base, tarefa.frequencia_dias);
+}
+
+/** Data para onde vai a tarefa quando se escolhe "pular desta vez": a próxima depois da prevista. */
+export function dataAoPular(tarefa: DadosDeCiclo): string {
+  return somarDias(proximaExecucao(tarefa), tarefa.frequencia_dias);
 }
 
 /** Todas as ocorrências futuras de uma tarefa recorrente dentro de [inicioIso, fimIso] (inclusive). */

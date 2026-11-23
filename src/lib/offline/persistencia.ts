@@ -48,7 +48,7 @@ const CONSULTAS_OFFLINE = new Set([
  */
 export const VALIDADE_OFFLINE_MS = 24 * 24 * 60 * 60 * 1000;
 /** Mudou o formato de alguma consulta guardada? Aumente: o que estava guardado é descartado. */
-export const VERSAO_DO_CACHE = 'v4';
+export const VERSAO_DO_CACHE = 'v5';
 
 const CHAVE_IDB = 'po-react-query-offline';
 

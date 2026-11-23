@@ -17,7 +17,7 @@ import { FILTROS_VAZIOS, filtrarTarefas, haFiltroAtivo, periodosDasTarefas, rotu
 import { ocorrenciasNoIntervalo, proximaExecucao } from '../../lib/manutencao';
 import { useTagsItens } from '../../hooks/useTagsItens';
 import { useDefinirClassificacoesTarefa, useTodasTarefaClassificacoes } from '../../hooks/useTarefaClassificacoes';
-import { useHistoricoPessoas, useHistoricoTarefas, useRegistrarExecucaoTarefa } from '../../hooks/useTarefasHistorico';
+import { useDefinirAdiamentoTarefa, useHistoricoPessoas, useHistoricoTarefas, useRegistrarExecucaoTarefa } from '../../hooks/useTarefasHistorico';
 import { useCasalMembros, useDocumentosPessoas } from '../../hooks/useDocumentos';
 import { usePessoaLogada } from '../../hooks/usePessoaLogada';
 import { chaveDoResponsavel, membrosPorCasal, opcoesDeResponsavel, pessoasIndividuais, pessoasPadraoDaExecucao, responsavelDaColuna, SEM_RESPONSAVEL, textoDoResponsavel, casais } from '../../lib/responsaveis';
@@ -29,6 +29,7 @@ import {
   type DadosTarefaManutencao,
 } from '../../hooks/useTarefasManutencao';
 import type { BaseProximaExecucao, HistoricoTarefa, PessoaDocumentos, TarefaManutencao } from '../../types';
+import { AdiarTarefaModal } from './AdiarTarefaModal';
 import { FeitaHojeModal } from './FeitaHojeModal';
 import { ExportarPlanilhaModal } from './ExportarPlanilhaModal';
 import { HistoricoTarefaModal } from './HistoricoTarefaModal';
@@ -186,6 +187,7 @@ export function ManutencaoPage() {
   const atualizar = useAtualizarTarefaManutencao();
   const excluir = useExcluirTarefaManutencao();
   const registrarExecucao = useRegistrarExecucaoTarefa();
+  const definirAdiamento = useDefinirAdiamentoTarefa();
   const definirClassificacoes = useDefinirClassificacoesTarefa();
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
@@ -197,6 +199,7 @@ export function ManutencaoPage() {
   const [agrupamento, setAgrupamento] = useState<AgrupamentoKanban>('comodo');
   const [instrucoesAbertas, setInstrucoesAbertas] = useState<Set<string>>(new Set());
   const [exportarAberto, setExportarAberto] = useState(false);
+  const [adiando, setAdiando] = useState<TarefaManutencao | null>(null);
   const [feitaHoje, setFeitaHoje] = useState<{ tarefa: TarefaManutencao; dataPrevistaAtrasada: string | null } | null>(null);
   const [historicoDe, setHistoricoDe] = useState<TarefaManutencao | null>(null);
   const [params, setParams] = useSearchParams();
@@ -215,7 +218,8 @@ export function ManutencaoPage() {
   // O contador de atrasadas do cabeçalho leva pra cá já com o filtro ligado.
   useEffect(() => {
     if (params.get('filtro') === 'atrasadas') {
-      setFiltros({ ...FILTROS_VAZIOS, status: ['atrasada'] });
+      const pessoa = params.get('pessoa');
+      setFiltros({ ...FILTROS_VAZIOS, status: ['atrasada'], responsaveis: pessoa ? [pessoa] : [] });
       setParams({}, { replace: true });
     }
   }, [params, setParams]);
@@ -303,7 +307,7 @@ export function ManutencaoPage() {
 
   async function salvar(dados: DadosTarefaManutencao, tagIds: string[]) {
     try {
-      const tarefaId = editando ? editando.id : (await criar.mutateAsync(dados)).id;
+      const tarefaId = editando ? editando.id : (await criar.mutateAsync(dados)).tarefa.id;
       if (editando) await atualizar.mutateAsync({ id: editando.id, dados });
       await definirClassificacoes.mutateAsync({ tarefaId, tagIds });
       setModalAberto(false);
@@ -328,6 +332,16 @@ export function ManutencaoPage() {
     try {
       const resultado = await registrarExecucao.mutateAsync({ tarefaId: tarefa.id, dataExecucao: hojeDia, dataPrevista, base, pessoaIds });
       mostrarToast(resultado === 'enfileirada' ? 'Marcada como feita hoje. Será enviada quando houver internet.' : 'Marcada como feita hoje.');
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  async function adiarTarefa(tarefa: TarefaManutencao, adiadaAte: string | null, rotulo: string) {
+    setAdiando(null);
+    try {
+      const resultado = await definirAdiamento.mutateAsync({ tarefaId: tarefa.id, adiadaAte });
+      mostrarToast(resultado === 'enfileirada' ? `${rotulo} Será enviada quando houver internet.` : rotulo);
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
     }
@@ -563,6 +577,7 @@ export function ManutencaoPage() {
           comodosPorTarefa={comodosPorTarefa}
           agrupamento={agrupamento}
           onFeita={tratarMarcarFeita}
+          onAdiar={setAdiando}
           onEditar={abrirEdicao}
           onHistorico={setHistoricoDe}
           onMover={moverTarefa}
@@ -584,6 +599,7 @@ export function ManutencaoPage() {
                   <TagsChips tags={tarefaClassificacoes?.get(tarefa.id)} /> · {rotuloPeriodo(tarefa.frequencia_dias)}{tarefa.dias_semana.length > 0 ? ` (${resumoDosDias(tarefa.dias_semana)})` : ''} · próxima em {formatarData(proximaExecucao(tarefa))}
                 </span>
                 {textoDoResponsavel(tarefa, membrosDosCasais, nomePorPessoa) && <span className="tag-chip">{textoDoResponsavel(tarefa, membrosDosCasais, nomePorPessoa)}</span>}
+                {tarefa.adiada_ate && <span className="tag-chip">Adiada até {formatarData(tarefa.adiada_ate)}</span>}
                 {atrasoPorTarefa.get(tarefa.id)?.data_prevista && (
                   <span className="manutencao-flag-atraso" title={`Feita com atraso em ${formatarData(atrasoPorTarefa.get(tarefa.id)?.data_execucao ?? '')}`}>
                     <IconeBandeira /> Feita com atraso (devia ser {formatarData(atrasoPorTarefa.get(tarefa.id)?.data_prevista ?? '')})
@@ -593,6 +609,9 @@ export function ManutencaoPage() {
               <div className="hierarquia-item-acoes">
                 <button type="button" onClick={() => tratarMarcarFeita(tarefa)}>
                   Feita hoje
+                </button>
+                <button type="button" onClick={() => setAdiando(tarefa)} title={`Adiar ${tarefa.nome}`} aria-label={`Adiar ${tarefa.nome}`}>
+                  Adiar
                 </button>
                 <button type="button" onClick={() => setHistoricoDe(tarefa)} title={`Histórico de ${tarefa.nome}`} aria-label={`Histórico de ${tarefa.nome}`}>
                   Histórico
@@ -643,6 +662,15 @@ export function ManutencaoPage() {
             setFeitaHoje(null);
             void registrarFeita(tarefa, base, dataPrevistaDaTarefa(tarefa), pessoaIds);
           }}
+        />
+      )}
+
+      {adiando && (
+        <AdiarTarefaModal
+          tarefa={tarefas?.find((t) => t.id === adiando.id) ?? adiando}
+          hoje={hojeDia}
+          onConfirmar={(adiadaAte, rotulo) => void adiarTarefa(adiando, adiadaAte, rotulo)}
+          onCancelar={() => setAdiando(null)}
         />
       )}
 

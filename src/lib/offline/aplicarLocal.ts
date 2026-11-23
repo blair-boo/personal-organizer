@@ -1,11 +1,17 @@
 import { resumoDoHistorico } from '../historicoTarefa';
-import type { AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TarefaManutencao } from '../../types';
+import type { AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TagItem, TarefaManutencao } from '../../types';
 import type {
   AtualizarExecucaoDados,
+  AtualizarLinhaDados,
+  DefinirAdiamentoDados,
+  DefinirClassificacoesDados,
   DefinirPessoasExecucaoDados,
   EdicaoStorageDados,
   ExcluirExecucaoDados,
+  ExcluirLinhasDados,
   InserirExecucaoDados,
+  InserirLinhaDados,
+  LinhaGenerica,
   SalvarCaixaDados,
 } from './operacoes';
 
@@ -112,7 +118,16 @@ export function aplicarInserirExecucao(estado: EstadoManutencao, dados: InserirE
   };
   const historico = [entrada, ...estado.historico].sort((a, b) => b.data_execucao.localeCompare(a.data_execucao) || b.criado_em.localeCompare(a.criado_em));
   const historicoPessoas = [...estado.historicoPessoas.filter((h) => h.historico_id !== dados.id), ...dados.pessoaIds.map((pessoa_id): HistoricoPessoa => ({ historico_id: dados.id, pessoa_id }))];
-  return recalcular({ ...estado, historico, historicoPessoas }, dados.tarefaId);
+  const recalculado = recalcular({ ...estado, historico, historicoPessoas }, dados.tarefaId);
+  // Fazer a tarefa (como execução mais recente) encerra o adiamento.
+  return {
+    ...recalculado,
+    tarefas: recalculado.tarefas.map((t) => (t.id === dados.tarefaId && t.ultima_execucao === dados.dataExecucao ? { ...t, adiada_ate: null } : t)),
+  };
+}
+
+export function aplicarDefinirAdiamento(estado: EstadoManutencao, dados: DefinirAdiamentoDados): EstadoManutencao {
+  return { ...estado, tarefas: estado.tarefas.map((t) => (t.id === dados.tarefaId ? { ...t, adiada_ate: dados.adiadaAte } : t)) };
 }
 
 export function aplicarAtualizarExecucao(estado: EstadoManutencao, dados: AtualizarExecucaoDados): EstadoManutencao {
@@ -138,4 +153,42 @@ export function aplicarDefinirPessoasExecucao(estado: EstadoManutencao, dados: D
       ...dados.pessoaIds.map((pessoa_id): HistoricoPessoa => ({ historico_id: dados.historicoId, pessoa_id })),
     ],
   };
+}
+
+// --- Linhas genéricas ------------------------------------------------------------------
+
+function ordenar<T extends Record<string, unknown>>(lista: T[], ordenarPor?: { campo: string; decrescente?: boolean }): T[] {
+  if (!ordenarPor) return lista;
+  const { campo, decrescente } = ordenarPor;
+  const comparar = (a: T, b: T): number => {
+    const x = a[campo];
+    const y = b[campo];
+    if (typeof x === 'number' && typeof y === 'number') return x - y;
+    return String(x ?? '').localeCompare(String(y ?? ''), 'pt-BR');
+  };
+  return [...lista].sort((a, b) => (decrescente ? -1 : 1) * comparar(a, b));
+}
+
+/** Insere a linha (ou troca, se o id já existe) numa lista de consulta. Sem criado_em na linha, usa o momento atual só para a tela. */
+export function aplicarInserirLinha<T extends LinhaGenerica>(lista: T[], dados: Pick<InserirLinhaDados, 'linha' | 'ordenarPor'>, agora = new Date().toISOString()): T[] {
+  const linha = { criado_em: agora, ...dados.linha } as unknown as T;
+  const sem = lista.filter((l) => l.id !== linha.id);
+  return ordenar([...sem, linha], dados.ordenarPor);
+}
+
+export function aplicarAtualizarLinha<T extends LinhaGenerica>(lista: T[], dados: Pick<AtualizarLinhaDados, 'id' | 'mudancas' | 'ordenarPor'>): T[] {
+  return ordenar(lista.map((l) => (l.id === dados.id ? { ...l, ...dados.mudancas } : l)), dados.ordenarPor);
+}
+
+export function aplicarExcluirLinhas<T extends LinhaGenerica>(lista: T[], dados: Pick<ExcluirLinhasDados, 'ids'>): T[] {
+  const ids = new Set(dados.ids);
+  return lista.filter((l) => !ids.has(l.id));
+}
+
+/** Troca os cômodos (tags) de uma tarefa no mapa tarefa -> tags. */
+export function aplicarDefinirClassificacoes(mapa: Map<string, TagItem[]>, dados: DefinirClassificacoesDados): Map<string, TagItem[]> {
+  const novo = new Map(mapa);
+  if (dados.tags.length === 0) novo.delete(dados.tarefaId);
+  else novo.set(dados.tarefaId, dados.tags);
+  return novo;
 }

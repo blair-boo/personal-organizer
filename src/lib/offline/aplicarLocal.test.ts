@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   aplicarAtualizarExecucao,
+  aplicarAtualizarLinha,
+  aplicarDefinirClassificacoes,
+  aplicarExcluirLinhas,
+  aplicarInserirLinha,
+  aplicarDefinirAdiamento,
   aplicarDefinirPessoasExecucao,
   aplicarEdicaoStorage,
   aplicarExcluirExecucao,
@@ -108,7 +113,7 @@ describe('aplicarEdicaoStorage', () => {
 });
 
 const manutencao = (): EstadoManutencao => ({
-  tarefas: [{ id: 't1', nome: 'Forno', frequencia_dias: 30, ultima_execucao: null, proxima_a_partir_de: null, responsavel_tipo: 'nenhum', responsavel_pessoa_id: null, responsavel_casal_id: null, dias_semana: [], instrucoes: null, ativo: true }],
+  tarefas: [{ id: 't1', nome: 'Forno', frequencia_dias: 30, ultima_execucao: null, proxima_a_partir_de: null, adiada_ate: null, responsavel_tipo: 'nenhum', responsavel_pessoa_id: null, responsavel_casal_id: null, dias_semana: [], instrucoes: null, ativo: true }],
   historico: [],
   historicoPessoas: [],
 });
@@ -155,5 +160,49 @@ describe('histórico de execuções', () => {
     estado.tarefas.push({ ...estado.tarefas[0], id: 't2', ultima_execucao: '2026-01-01' });
     const r = aplicarInserirExecucao(estado, { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: null, base: 'execucao', pessoaIds: [] });
     expect(r.tarefas.find((t) => t.id === 't2')?.ultima_execucao).toBe('2026-01-01');
+  });
+
+  it('adiar guarda a data e fazer a tarefa encerra o adiamento', () => {
+    const adiada = aplicarDefinirAdiamento(manutencao(), { tarefaId: 't1', adiadaAte: '2026-12-01' });
+    expect(adiada.tarefas[0].adiada_ate).toBe('2026-12-01');
+    const feita = aplicarInserirExecucao(adiada, { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-20', dataPrevista: null, base: 'execucao', pessoaIds: [] });
+    expect(feita.tarefas[0].adiada_ate).toBeNull();
+    expect(aplicarDefinirAdiamento(adiada, { tarefaId: 't1', adiadaAte: null }).tarefas[0].adiada_ate).toBeNull();
+  });
+
+  it('uma execução antiga incluída à mão não encerra o adiamento', () => {
+    const base = aplicarInserirExecucao(manutencao(), { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: null, base: 'execucao', pessoaIds: [] });
+    const adiada = aplicarDefinirAdiamento(base, { tarefaId: 't1', adiadaAte: '2026-12-20' });
+    const r = aplicarInserirExecucao(adiada, { id: 'h2', tarefaId: 't1', dataExecucao: '2026-10-01', dataPrevista: null, base: 'execucao', pessoaIds: [] });
+    expect(r.tarefas[0].adiada_ate).toBe('2026-12-20');
+  });
+});
+
+describe('linhas genéricas', () => {
+  const lista = [{ id: 'a', nome: 'Beta', data: '2026-01-02' }, { id: 'b', nome: 'Alfa', data: '2026-01-05' }];
+
+  it('inserir coloca a linha no lugar da ordem e ganha criado_em só na tela', () => {
+    const r = aplicarInserirLinha(lista, { linha: { id: 'c', nome: 'Gama', data: '2026-01-09' }, ordenarPor: { campo: 'data', decrescente: true } }, '2026-02-01T00:00:00Z');
+    expect(r.map((l) => l.id)).toEqual(['c', 'b', 'a']);
+    expect(r[0]).toMatchObject({ criado_em: '2026-02-01T00:00:00Z' });
+  });
+
+  it('inserir uma linha com id que já existe troca a linha', () => {
+    const r = aplicarInserirLinha(lista, { linha: { id: 'a', nome: 'Novo', data: '2026-01-02' } });
+    expect(r).toHaveLength(2);
+    expect(r.find((l) => l.id === 'a')?.nome).toBe('Novo');
+  });
+
+  it('atualizar muda só a linha e reordena; excluir tira da lista', () => {
+    const r = aplicarAtualizarLinha(lista, { id: 'a', mudancas: { nome: 'Zeta' }, ordenarPor: { campo: 'nome' } });
+    expect(r.map((l) => l.nome)).toEqual(['Alfa', 'Zeta']);
+    expect(aplicarExcluirLinhas(lista, { ids: ['a'] }).map((l) => l.id)).toEqual(['b']);
+  });
+
+  it('cômodos da tarefa: troca o conjunto e apaga a entrada quando fica vazio', () => {
+    const tag = { id: 't1', nome: 'Cozinha', cor: null, icone_url: null } as never;
+    const mapa = aplicarDefinirClassificacoes(new Map(), { tarefaId: 'x', tagIds: ['t1'], tags: [tag] });
+    expect(mapa.get('x')).toEqual([tag]);
+    expect(aplicarDefinirClassificacoes(mapa, { tarefaId: 'x', tagIds: [], tags: [] }).has('x')).toBe(false);
   });
 });

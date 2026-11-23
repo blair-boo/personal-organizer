@@ -25,6 +25,7 @@ import { StoragePage } from './pages/storage/StoragePage';
 import { DocumentosLayout } from './pages/documentos/DocumentosLayout';
 import { DocumentosPessoaisPage } from './pages/documentos/DocumentosPessoaisPage';
 import { DocumentosAreaPage } from './pages/documentos/DocumentosAreaPage';
+import { HojePage } from './pages/hoje/HojePage';
 import { GatosPage } from './pages/documentos/GatosPage';
 
 import { SettingsLayout } from './pages/settings/SettingsLayout';
@@ -42,7 +43,8 @@ export const router = createBrowserRouter(
       path: '/',
       element: <RootLayout />,
       children: [
-        { index: true, element: <Navigate to="/financas" replace /> },
+        { index: true, element: <Navigate to="/hoje" replace /> },
+        { path: 'hoje', element: <HojePage /> },
         {
           path: 'financas',
           children: [

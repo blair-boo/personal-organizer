@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
+import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
+import { aposGravar, SEM_BLOQUEIO_OFFLINE } from './mutacoesOffline';
 import type { TagItem } from '../types';
 
 const QUERY_KEY = ['tarefa_classificacoes'];
@@ -29,20 +31,16 @@ export function useTodasTarefaClassificacoes() {
   });
 }
 
-/** Substitui o conjunto de tags (cômodos) de uma tarefa (o formulário sempre manda a lista completa). */
+/** Substitui o conjunto de tags (cômodos) de uma tarefa (o formulário sempre manda a lista completa). Funciona sem internet. */
 export function useDefinirClassificacoesTarefa() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ tarefaId, tagIds }: { tarefaId: string; tagIds: string[] }) => {
-      const { error: erroExcluir } = await supabase.from('tarefa_classificacoes').delete().eq('tarefa_id', tarefaId);
-      if (erroExcluir) throw erroExcluir;
-      if (tagIds.length > 0) {
-        const { error: erroInserir } = await supabase
-          .from('tarefa_classificacoes')
-          .insert(tagIds.map((tagId) => ({ tarefa_id: tarefaId, tag_id: tagId })));
-        if (erroInserir) throw erroInserir;
-      }
+    onMutate: SEM_BLOQUEIO_OFFLINE,
+    mutationFn: ({ tarefaId, tagIds }: { tarefaId: string; tagIds: string[] }) => {
+      const todas = qc.getQueryData<TagItem[]>(['tags_itens']) ?? [];
+      const tags = tagIds.map((id) => todas.find((t) => t.id === id)).filter((t): t is TagItem => !!t);
+      return executarOuEnfileirar(qc, 'tarefa.definirClassificacoes', { tarefaId, tagIds, tags });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+    onSuccess: aposGravar(qc, [QUERY_KEY]),
   });
 }

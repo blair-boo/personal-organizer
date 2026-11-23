@@ -14,7 +14,7 @@ import type { HistoricoTarefa, TarefaManutencao } from '../types';
 const HOJE = '2026-11-22'; // domingo
 
 function tarefa(id: string, nome: string, frequencia_dias: number, ultima_execucao: string | null, extra: Partial<TarefaManutencao> = {}): TarefaManutencao {
-  return { id, nome, frequencia_dias, ultima_execucao, proxima_a_partir_de: null, responsavel_tipo: 'nenhum', responsavel_pessoa_id: null, responsavel_casal_id: null, dias_semana: [], instrucoes: null, ativo: true, ...extra };
+  return { id, nome, frequencia_dias, ultima_execucao, proxima_a_partir_de: null, adiada_ate: null, responsavel_tipo: 'nenhum', responsavel_pessoa_id: null, responsavel_casal_id: null, dias_semana: [], instrucoes: null, ativo: true, ...extra };
 }
 
 function exec(id: string, tarefa_id: string, data_execucao: string, data_prevista: string | null, base_proxima: 'execucao' | 'prevista' = 'execucao'): HistoricoTarefa {
