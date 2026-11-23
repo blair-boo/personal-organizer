@@ -53,6 +53,7 @@ const BUCKET_POR_CONSULTA: Record<string, string> = {
   projeto_anexos: 'projetos-anexos',
   documento_anexos: 'confidencial',
   storage_anexos: 'confidencial',
+  gato_exames: 'confidencial',
 };
 
 /** Lê as listas de anexos que já estão no cache do react-query e devolve os arquivos que deveriam estar no aparelho. */

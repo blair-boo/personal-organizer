@@ -11,7 +11,7 @@ export type TipoCategoria = 'despesa' | 'receita';
 export type TipoLancamento = 'entrada' | 'saida';
 export type StatusProjeto = 'planejado' | 'andamento' | 'concluido';
 export type TipoDocumentoItem = 'nota_fiscal' | 'manual' | 'outro';
-export type AreaDocumento = 'pessoais' | 'apartamento' | 'arquivo' | 'outros';
+export type AreaDocumento = 'pessoais' | 'apartamento' | 'arquivo' | 'outros' | 'gatos';
 export type VencimentoTipo = 'data' | 'prazo' | 'indeterminado';
 export type VencimentoUnidade = 'dias' | 'meses' | 'anos';
 export type RenovarTipo = 'online' | 'presencial' | 'ambos';
@@ -161,6 +161,7 @@ export interface Documento {
   id: string;
   area: AreaDocumento;
   pessoa_id: string | null;
+  gato_id: string | null;
   titulo: string;
   ordem: number;
   numero: string | null;
@@ -237,6 +238,54 @@ export interface AnexoStorage {
   nome_arquivo: string;
 }
 
+export interface Gato {
+  id: string;
+  nome: string;
+  nascimento: string | null;
+  ordem: number;
+}
+
+export interface GatoVacina {
+  id: string;
+  gato_id: string;
+  vacina: string;
+  data: string;
+  proxima_data: string | null;
+}
+
+export interface GatoVermifugo {
+  id: string;
+  gato_id: string;
+  data: string;
+  produto: string;
+  proxima_data: string | null;
+}
+
+export interface GatoConsulta {
+  id: string;
+  gato_id: string;
+  data: string;
+  veterinario: string | null;
+  observacao: string | null;
+}
+
+export interface GatoExame {
+  id: string;
+  gato_id: string;
+  data: string;
+  nome: string;
+  arquivo_url: string;
+  nome_arquivo: string;
+}
+
+export interface GatoPeso {
+  id: string;
+  gato_id: string;
+  data: string;
+  peso_kg: number;
+  criado_em: string;
+}
+
 export interface IconeArquivo {
   id: string;
   nome: string;
@@ -282,6 +331,8 @@ export interface CalendarioFeed {
   nome: string;
   token: string;
   criado_em: string;
+  /** Inclui as próximas vacinas e vermífugos dos gatos. */
+  incluir_gatos: boolean;
   /** Pessoas incluídas nesse link. Vazio = todas as pessoas. */
   pessoas: PessoaDocumentos[];
 }

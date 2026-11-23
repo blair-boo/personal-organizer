@@ -35,6 +35,7 @@ const AREA_LABEL: Record<AreaDocumento, string> = {
   apartamento: 'Apartamento',
   arquivo: 'Arquivo',
   outros: 'Outros',
+  gatos: 'Gatos',
 };
 
 interface LinhaCampo {
@@ -414,12 +415,13 @@ function ItemDocumentoExpandido({ documento }: { documento: Documento }) {
   );
 }
 
-export function DocumentosAreaPage({ area }: { area: AreaDocumento }) {
-  const { data: documentos, isLoading } = useDocumentos(area);
-  const criarCompleto = useCriarDocumentoCompleto(area);
-  const renomear = useRenomearDocumento(area);
-  const excluir = useExcluirDocumento(area);
-  const reordenar = useReordenarDocumentos(area);
+/** Lista de documentos de uma área. Em Gatos, `gatoId` limita aos documentos de um gato. */
+export function DocumentosAreaPage({ area, gatoId }: { area: AreaDocumento; gatoId?: string }) {
+  const { data: documentos, isLoading } = useDocumentos(area, undefined, gatoId);
+  const criarCompleto = useCriarDocumentoCompleto(area, undefined, gatoId);
+  const renomear = useRenomearDocumento(area, undefined, gatoId);
+  const excluir = useExcluirDocumento(area, undefined, gatoId);
+  const reordenar = useReordenarDocumentos(area, undefined, gatoId);
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
 

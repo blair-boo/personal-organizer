@@ -29,16 +29,17 @@ export const MODELO_PADRAO_DOCUMENTOS_PESSOAIS = [
   'Passaporte',
 ];
 
-function queryKeyDocumentos(area: AreaDocumento, pessoaId?: string) {
-  return ['documentos', area, pessoaId ?? null];
+function queryKeyDocumentos(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
+  return ['documentos', area, pessoaId ?? null, gatoId ?? null];
 }
 
-export function useDocumentos(area: AreaDocumento, pessoaId?: string) {
+export function useDocumentos(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   return useQuery({
-    queryKey: queryKeyDocumentos(area, pessoaId),
+    queryKey: queryKeyDocumentos(area, pessoaId, gatoId),
     queryFn: async () => {
       let query = supabase.from('documentos').select('*').eq('area', area);
-      query = pessoaId ? query.eq('pessoa_id', pessoaId) : query.is('pessoa_id', null);
+      if (gatoId) query = query.eq('gato_id', gatoId);
+      else query = pessoaId ? query.eq('pessoa_id', pessoaId) : query.is('pessoa_id', null);
       const { data, error } = await query.order('ordem').order('titulo');
       if (error) throw error;
       return data as Documento[];
@@ -46,35 +47,35 @@ export function useDocumentos(area: AreaDocumento, pessoaId?: string) {
   });
 }
 
-export function useCriarDocumento(area: AreaDocumento, pessoaId?: string) {
+export function useCriarDocumento(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (titulo: string) => {
       const { data, error } = await supabase
         .from('documentos')
-        .insert({ area, pessoa_id: pessoaId ?? null, titulo })
+        .insert({ area, pessoa_id: pessoaId ?? null, gato_id: gatoId ?? null, titulo })
         .select()
         .single();
       if (error) throw error;
       return data as Documento;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
   });
 }
 
-export function useRenomearDocumento(area: AreaDocumento, pessoaId?: string) {
+export function useRenomearDocumento(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, titulo }: { id: string; titulo: string }) => {
       const { error } = await supabase.from('documentos').update({ titulo }).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
   });
 }
 
 /** Persiste uma nova ordem (id -> índice) pra um conjunto de documentos. */
-export function useReordenarDocumentos(area: AreaDocumento, pessoaId?: string) {
+export function useReordenarDocumentos(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (ordens: { id: string; ordem: number }[]) => {
@@ -90,18 +91,18 @@ export function useReordenarDocumentos(area: AreaDocumento, pessoaId?: string) {
         )
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
   });
 }
 
-export function useExcluirDocumento(area: AreaDocumento, pessoaId?: string) {
+export function useExcluirDocumento(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('documentos').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
   });
 }
 
@@ -290,14 +291,14 @@ export interface DadosDocumentoPessoal {
   renovar_site_link: string | null;
 }
 
-export function useAtualizarDocumentoPessoal(area: AreaDocumento, pessoaId?: string) {
+export function useAtualizarDocumentoPessoal(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, dados }: { id: string; dados: DadosDocumentoPessoal }) => {
       const { error } = await supabase.from('documentos').update(dados).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
   });
 }
 
@@ -441,7 +442,7 @@ export interface CriarDocumentoCompletoInput {
  * gerado no navegador, pra bater com os arquivos já enviados ao Storage
  * durante a criação), campos livres, locais de renovação e anexos.
  */
-export function useCriarDocumentoCompleto(area: AreaDocumento, pessoaId?: string) {
+export function useCriarDocumentoCompleto(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -454,7 +455,7 @@ export function useCriarDocumentoCompleto(area: AreaDocumento, pessoaId?: string
     }: CriarDocumentoCompletoInput) => {
       const { error: erroDocumento } = await supabase
         .from('documentos')
-        .insert({ id, area, pessoa_id: pessoaId ?? null, titulo, ...camposFixos });
+        .insert({ id, area, pessoa_id: pessoaId ?? null, gato_id: gatoId ?? null, titulo, ...camposFixos });
       if (erroDocumento) throw erroDocumento;
       if (camposLivres.length > 0) {
         const linhas = camposLivres.map((campo, ordem) => ({ documento_id: id, ordem, ...campo }));
@@ -472,7 +473,7 @@ export function useCriarDocumentoCompleto(area: AreaDocumento, pessoaId?: string
         if (error) throw error;
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeyDocumentos(area, pessoaId, gatoId) }),
   });
 }
 

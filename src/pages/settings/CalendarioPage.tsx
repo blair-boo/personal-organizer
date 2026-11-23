@@ -18,7 +18,8 @@ import { useDocumentosPessoas } from '../../hooks/useDocumentos';
 import type { CalendarioFeed, PessoaDocumentos } from '../../types';
 
 function nomesPessoas(feed: CalendarioFeed): string {
-  return feed.pessoas.length === 0 ? 'Todas as pessoas' : feed.pessoas.map((p) => p.nome).join(', ');
+  const quem = feed.pessoas.length === 0 ? 'Todas as pessoas' : feed.pessoas.map((p) => p.nome).join(', ');
+  return feed.incluir_gatos ? `${quem} + gatos` : quem;
 }
 
 function FormularioFeed({
@@ -28,14 +29,15 @@ function FormularioFeed({
   onCancelar,
   salvando,
 }: {
-  inicial: { nome: string; pessoaIds: string[] };
+  inicial: { nome: string; pessoaIds: string[]; incluirGatos: boolean };
   pessoas: PessoaDocumentos[];
-  onSalvar: (dados: { nome: string; pessoaIds: string[] }) => void;
+  onSalvar: (dados: { nome: string; pessoaIds: string[]; incluirGatos: boolean }) => void;
   onCancelar: () => void;
   salvando: boolean;
 }) {
   const [nome, setNome] = useState(inicial.nome);
   const [todas, setTodas] = useState(inicial.pessoaIds.length === 0);
+  const [incluirGatos, setIncluirGatos] = useState(inicial.incluirGatos);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set(inicial.pessoaIds));
 
   function alternarPessoa(id: string) {
@@ -49,8 +51,8 @@ function FormularioFeed({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!nome.trim() || (!todas && selecionadas.size === 0)) return;
-    onSalvar({ nome: nome.trim(), pessoaIds: todas ? [] : [...selecionadas] });
+    if (!nome.trim() || (!todas && selecionadas.size === 0 && !incluirGatos)) return;
+    onSalvar({ nome: nome.trim(), pessoaIds: todas ? [] : [...selecionadas], incluirGatos });
   }
 
   return (
@@ -74,8 +76,12 @@ function FormularioFeed({
           {pessoas.length === 0 && <p className="hierarquia-vazio">Nenhuma pessoa cadastrada em Documentos ainda.</p>}
         </div>
       )}
+      <label className="calendario-checkbox-linha">
+        <input type="checkbox" checked={incluirGatos} onChange={(e) => setIncluirGatos(e.target.checked)} />
+        Incluir as próximas vacinas e vermífugos dos gatos
+      </label>
       <div className="modal-acoes">
-        <button type="submit" disabled={salvando || !nome.trim() || (!todas && selecionadas.size === 0)}>
+        <button type="submit" disabled={salvando || !nome.trim() || (!todas && selecionadas.size === 0 && !incluirGatos)}>
           {salvando ? 'Salvando…' : 'Salvar'}
         </button>
         <button type="button" onClick={onCancelar}>
@@ -111,14 +117,14 @@ export function CalendarioPage() {
     setModalAberto(true);
   }
 
-  async function salvar(dados: { nome: string; pessoaIds: string[] }) {
+  async function salvar(dados: { nome: string; pessoaIds: string[]; incluirGatos: boolean }) {
     setSalvando(true);
     try {
       if (feedEditando) {
         if (dados.nome !== feedEditando.nome) {
           await renomear.mutateAsync({ id: feedEditando.id, nome: dados.nome });
         }
-        await atualizarPessoas.mutateAsync({ feedId: feedEditando.id, pessoaIds: dados.pessoaIds });
+        await atualizarPessoas.mutateAsync({ feedId: feedEditando.id, pessoaIds: dados.pessoaIds, incluirGatos: dados.incluirGatos });
       } else {
         await criar.mutateAsync(dados);
       }
@@ -171,7 +177,7 @@ export function CalendarioPage() {
     <div className="settings-secao">
       <h2>Calendário</h2>
       <p className="settings-secao-ajuda">
-        Links de assinatura (.ics) com os vencimentos de Documentos Pessoais, pro Calendário do iPhone ou Google
+        Links de assinatura (.ics) com os vencimentos de Documentos Pessoais e as próximas vacinas e vermífugos dos gatos, pro Calendário do iPhone ou Google
         Calendar. Cada link pode trazer todo mundo ou só pessoas específicas, e dá pra mudar quem está incluído
         depois sem trocar a URL — ou gerar uma URL nova se precisar invalidar a antiga.
       </p>
@@ -226,8 +232,8 @@ export function CalendarioPage() {
           key={feedEditando?.id ?? 'novo'}
           inicial={
             feedEditando
-              ? { nome: feedEditando.nome, pessoaIds: feedEditando.pessoas.map((p) => p.id) }
-              : { nome: '', pessoaIds: [] }
+              ? { nome: feedEditando.nome, pessoaIds: feedEditando.pessoas.map((p) => p.id), incluirGatos: feedEditando.incluir_gatos }
+              : { nome: '', pessoaIds: [], incluirGatos: true }
           }
           pessoas={pessoas ?? []}
           onSalvar={salvar}
