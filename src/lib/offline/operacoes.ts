@@ -142,3 +142,38 @@ export interface DefinirFotoDados {
   arquivoLocal?: Blob;
   nomeArquivo?: string;
 }
+
+// --- Sobras da fase 2 (Documentos e Gatos) -------------------------------------------
+
+export interface SubstituirConjuntoDados {
+  tabela: string;
+  /** Coluna que liga as linhas ao dono (ex.: documento_id). */
+  coluna: string;
+  vinculoId: string;
+  consulta: ChaveDeConsulta;
+  /** O conjunto completo, já com id e a coluna de vínculo. */
+  linhas: LinhaGenerica[];
+}
+
+export interface CriarDocumentoCompletoDados {
+  /** Consulta da lista de documentos onde o novo aparece. */
+  consulta: ChaveDeConsulta;
+  documento: LinhaGenerica;
+  campos: LinhaGenerica[];
+  locais: LinhaGenerica[];
+  anexos: { linha: LinhaGenerica; arquivoLocal?: Blob; nomeArquivo: string }[];
+  bucket: string;
+}
+
+export interface CriarCasalDados {
+  /** Pessoas novas (com o id gerado no aparelho) e os documentos padrão delas. */
+  pessoas: LinhaGenerica[];
+  documentosPessoas: LinhaGenerica[];
+  casal: LinhaGenerica;
+  membros: { casal_id: string; pessoa_id: string }[];
+  documentosCasal: LinhaGenerica[];
+}
+
+export interface ExcluirGatoDados {
+  gatoId: string;
+}

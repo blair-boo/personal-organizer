@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   aplicarAtualizarExecucao,
   aplicarAtualizarLinha,
+  aplicarCriarCasal,
+  aplicarSubstituirConjunto,
   aplicarDefinirClassificacoes,
   aplicarExcluirLinhas,
   aplicarInserirLinha,
@@ -204,5 +206,29 @@ describe('linhas genéricas', () => {
     const mapa = aplicarDefinirClassificacoes(new Map(), { tarefaId: 'x', tagIds: ['t1'], tags: [tag] });
     expect(mapa.get('x')).toEqual([tag]);
     expect(aplicarDefinirClassificacoes(mapa, { tarefaId: 'x', tagIds: [], tags: [] }).has('x')).toBe(false);
+  });
+});
+
+describe('sobras da fase 2', () => {
+  it('substituir conjunto troca só as linhas do dono', () => {
+    const lista = [{ id: 'a', documento_id: 'd1', nome: 'velho' }, { id: 'b', documento_id: 'd2', nome: 'outro' }];
+    const r = aplicarSubstituirConjunto(lista, { coluna: 'documento_id', vinculoId: 'd1', linhas: [{ id: 'c', documento_id: 'd1', nome: 'novo' }] });
+    expect(r.map((l) => l.id).sort()).toEqual(['b', 'c']);
+    expect(aplicarSubstituirConjunto(lista, { coluna: 'documento_id', vinculoId: 'd1', linhas: [] }).map((l) => l.id)).toEqual(['b']);
+  });
+
+  it('criar casal acrescenta pessoas novas, o casal e os vínculos sem repetir', () => {
+    const dados = {
+      pessoas: [{ id: 'p3', nome: 'Nova' }],
+      documentosPessoas: [],
+      casal: { id: 'c1', nome: 'Casal' },
+      membros: [{ casal_id: 'c1', pessoa_id: 'p1' }, { casal_id: 'c1', pessoa_id: 'p3' }],
+      documentosCasal: [],
+    };
+    const estado = { pessoas: [{ id: 'p1', nome: 'Ana' }], membros: [] };
+    const r = aplicarCriarCasal(estado, dados);
+    expect(r.pessoas.map((p) => p.id)).toEqual(['p1', 'p3', 'c1']);
+    expect(r.membros).toHaveLength(2);
+    expect(aplicarCriarCasal(r, dados)).toEqual(r);
   });
 });

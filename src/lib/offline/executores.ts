@@ -17,6 +17,10 @@ import type {
   IncluirAnexoDados,
   InserirExecucaoDados,
   InserirLinhaDados,
+  SubstituirConjuntoDados,
+  CriarDocumentoCompletoDados,
+  CriarCasalDados,
+  ExcluirGatoDados,
   SalvarCaixaDados,
 } from './operacoes';
 
@@ -241,6 +245,63 @@ export async function executarDefinirFoto({ gatoId, caminho, anterior, arquivoLo
   if (anterior && anterior !== caminho) await removerArquivos(BUCKET_STORAGE, [anterior]).catch(() => undefined);
 }
 
+/** Troca o conjunto de linhas de um dono: apaga as dele e grava as novas. */
+export async function executarSubstituirConjunto({ tabela, coluna, vinculoId, linhas }: SubstituirConjuntoDados): Promise<void> {
+  const { error: erroExcluir } = await supabase.from(tabela).delete().eq(coluna, vinculoId);
+  if (erroExcluir) throw erroExcluir;
+  if (linhas.length === 0) return;
+  const { error } = await supabase.from(tabela).insert(linhas);
+  if (error) throw error;
+}
+
+/** Cria o documento inteiro: linha, campos, locais de renovação e anexos (os arquivos tirados sem internet sobem agora). */
+export async function executarCriarDocumentoCompleto({ documento, campos, locais, anexos, bucket }: CriarDocumentoCompletoDados): Promise<void> {
+  const { error } = await supabase.from('documentos').upsert(documento);
+  if (error) throw error;
+  await executarSubstituirConjunto({ tabela: 'documentos_campos', coluna: 'documento_id', vinculoId: documento.id, consulta: [], linhas: campos });
+  await executarSubstituirConjunto({ tabela: 'documentos_locais_renovacao', coluna: 'documento_id', vinculoId: documento.id, consulta: [], linhas: locais });
+  for (const anexo of anexos) {
+    await executarIncluirAnexo({ tabela: 'documentos_anexos', consulta: [], linha: anexo.linha, bucket, arquivoLocal: anexo.arquivoLocal, nomeArquivo: anexo.nomeArquivo });
+  }
+}
+
+/** Cria o casal: pessoas novas e seus documentos padrão, o casal, os dois vínculos e os documentos do casal. */
+export async function executarCriarCasal({ pessoas, documentosPessoas, casal, membros, documentosCasal }: CriarCasalDados): Promise<void> {
+  if (pessoas.length > 0) {
+    const { error } = await supabase.from('documentos_pessoas').upsert(pessoas);
+    if (error) throw error;
+  }
+  if (documentosPessoas.length > 0) {
+    const { error } = await supabase.from('documentos').upsert(documentosPessoas);
+    if (error) throw error;
+  }
+  const { error: erroCasal } = await supabase.from('documentos_pessoas').upsert(casal);
+  if (erroCasal) throw erroCasal;
+  const { error: erroMembros } = await supabase.from('documentos_casal_membros').upsert(membros, { onConflict: 'casal_id,pessoa_id' });
+  if (erroMembros) throw erroMembros;
+  if (documentosCasal.length > 0) {
+    const { error } = await supabase.from('documentos').upsert(documentosCasal);
+    if (error) throw error;
+  }
+}
+
+/** Exclui o gato com tudo dele: as linhas saem por cascade e os arquivos (exames, foto e anexos de documentos) são apagados do bucket antes. */
+export async function executarExcluirGato({ gatoId }: ExcluirGatoDados): Promise<void> {
+  const { data: exames, error: erroExames } = await supabase.from('gato_exames').select('arquivo_url').eq('gato_id', gatoId);
+  if (erroExames) throw erroExames;
+  const { data: documentos, error: erroDocumentos } = await supabase.from('documentos').select('id').eq('gato_id', gatoId);
+  if (erroDocumentos) throw erroDocumentos;
+  const ids = (documentos as { id: string }[]).map((d) => d.id);
+  const { data: anexos, error: erroAnexos } = ids.length > 0 ? await supabase.from('documentos_anexos').select('arquivo_url').in('documento_id', ids) : { data: [], error: null };
+  if (erroAnexos) throw erroAnexos;
+  const { data: gato } = await supabase.from('gatos').select('foto_url').eq('id', gatoId).maybeSingle();
+  const foto = (gato as { foto_url: string | null } | null)?.foto_url;
+  const caminhos = [...(exames as { arquivo_url: string }[]), ...(anexos as { arquivo_url: string }[])].map((a) => a.arquivo_url).concat(foto ? [foto] : []);
+  await removerArquivos(BUCKET_STORAGE, caminhos);
+  const { error } = await supabase.from('gatos').delete().eq('id', gatoId);
+  if (error) throw error;
+}
+
 /** Roda uma operação da fila no servidor. */
 export async function executarOperacao({ tipo, dados }: Pick<OperacaoPendente, 'tipo' | 'dados'>): Promise<void> {
   switch (tipo) {
@@ -272,5 +333,13 @@ export async function executarOperacao({ tipo, dados }: Pick<OperacaoPendente, '
       return executarDefinirClassificacoes(dados as DefinirClassificacoesDados);
     case 'gato.definirFoto':
       return executarDefinirFoto(dados as DefinirFotoDados);
+    case 'tabela.substituirConjunto':
+      return executarSubstituirConjunto(dados as SubstituirConjuntoDados);
+    case 'documento.criarCompleto':
+      return executarCriarDocumentoCompleto(dados as CriarDocumentoCompletoDados);
+    case 'casal.criar':
+      return executarCriarCasal(dados as CriarCasalDados);
+    case 'gato.excluir':
+      return executarExcluirGato(dados as ExcluirGatoDados);
   }
 }
