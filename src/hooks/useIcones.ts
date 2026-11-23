@@ -99,6 +99,26 @@ export function useCriarPastaIcone() {
   });
 }
 
+/** Exclui a pasta inteira: todos os arquivos do Storage (inclusive o marcador da pasta) e os metadados. Quem chama garante que nada dentro está em uso. */
+export function useExcluirPastaIcone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (pasta: string) => {
+      if (!pasta) throw new Error('A raiz do bucket não pode ser excluída.');
+      const { data: arquivos, error: erroLista } = await supabase.storage.from(BUCKET).list(pasta, { limit: 1000 });
+      if (erroLista) throw erroLista;
+      const caminhos = (arquivos ?? []).filter((item) => item.id !== null).map((item) => caminhoIcone(pasta, item.name));
+      if (caminhos.length > 0) {
+        const { error: erroRemove } = await supabase.storage.from(BUCKET).remove(caminhos);
+        if (erroRemove) throw erroRemove;
+      }
+      const { error: erroMeta } = await supabase.from('icones_metadados').delete().eq('pasta', pasta);
+      if (erroMeta) throw erroMeta;
+    },
+    onSettled: () => invalidarGaleria(qc),
+  });
+}
+
 /** Todas as pastas (a raiz como '') com seus ícones, para escolher um ícone em qualquer pasta. */
 export function useIconesTodasPastas(): { pastas: PastaIcones[]; carregando: boolean; erro: unknown } {
   const subpastas = useSubpastasIcones();
