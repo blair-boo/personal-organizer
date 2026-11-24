@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   FILTROS_VAZIOS,
+  contarFiltrosDoTipo,
   filtrarTarefas,
+  guardarFiltros,
+  lerFiltrosSalvos,
   haFiltroAtivo,
   periodosDasTarefas,
   rotuloPeriodo,
@@ -112,5 +115,38 @@ describe('rotuloPeriodo e periodosDasTarefas', () => {
 
   it('lista as frequências sem repetir, da menor para a maior', () => {
     expect(periodosDasTarefas(tarefas)).toEqual([1, 7, 120, 730]);
+  });
+});
+
+describe('filtros por tipo e persistência', () => {
+  const guardado = new Map<string, string>();
+  beforeEach(() => {
+    guardado.clear();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => guardado.get(k) ?? null,
+      setItem: (k: string, v: string) => void guardado.set(k, v),
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('conta as opções ligadas de cada tipo', () => {
+    const f = { ...FILTROS_VAZIOS, comodoIds: ['a', 'b'], dias: [0], status: ['atrasada' as const] };
+    expect(contarFiltrosDoTipo(f, 'comodo')).toBe(2);
+    expect(contarFiltrosDoTipo(f, 'dia')).toBe(1);
+    expect(contarFiltrosDoTipo(f, 'status')).toBe(1);
+    expect(contarFiltrosDoTipo(f, 'frequencia')).toBe(0);
+    expect(contarFiltrosDoTipo(f, 'responsavel')).toBe(0);
+  });
+
+  it('guarda e lê os filtros e os tipos abertos, sem a busca', () => {
+    guardarFiltros({ filtros: { ...FILTROS_VAZIOS, busca: 'forno', periodos: [30], responsaveis: ['p1'] }, tiposAbertos: ['frequencia', 'responsavel'] });
+    expect(lerFiltrosSalvos()).toEqual({ filtros: { ...FILTROS_VAZIOS, periodos: [30], responsaveis: ['p1'] }, tiposAbertos: ['frequencia', 'responsavel'] });
+  });
+
+  it('ignora dado salvo estragado ou de tipo desconhecido', () => {
+    guardado.set('po-tarefas-filtros', '{"filtros":{"periodos":["x",7]},"tiposAbertos":["comodo","nada"]}');
+    expect(lerFiltrosSalvos()).toEqual({ filtros: { ...FILTROS_VAZIOS, periodos: [7] }, tiposAbertos: ['comodo'] });
+    guardado.set('po-tarefas-filtros', 'não é json');
+    expect(lerFiltrosSalvos()).toEqual({ filtros: FILTROS_VAZIOS, tiposAbertos: [] });
   });
 });

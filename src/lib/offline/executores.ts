@@ -155,9 +155,14 @@ async function recalcularTarefa(tarefaId: string, encerrarAdiamentoSeFeitaEm?: s
 }
 
 /** Adia a tarefa para uma data (ou cancela o adiamento com null). */
-export async function executarDefinirAdiamento({ tarefaId, adiadaAte }: DefinirAdiamentoDados): Promise<void> {
+export async function executarDefinirAdiamento({ id, tarefaId, adiadaAte, tipo, dataAnterior, pessoaId, observacao }: DefinirAdiamentoDados): Promise<void> {
   const { error } = await supabase.from('tarefas_manutencao').update({ adiada_ate: adiadaAte }).eq('id', tarefaId);
   if (error) throw error;
+  // upsert pelo id: reenviar a fila não duplica o registro.
+  const { error: erroRegistro } = await supabase
+    .from('tarefas_adiamentos')
+    .upsert({ id, tarefa_id: tarefaId, tipo, data_anterior: dataAnterior, adiada_para: adiadaAte, pessoa_id: pessoaId, observacao });
+  if (erroRegistro) throw erroRegistro;
 }
 
 /** Troca quem fez uma execução (o conjunto inteiro, como nas observações). */

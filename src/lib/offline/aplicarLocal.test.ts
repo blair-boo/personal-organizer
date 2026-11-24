@@ -118,6 +118,17 @@ const manutencao = (): EstadoManutencao => ({
   tarefas: [{ id: 't1', nome: 'Forno', frequencia_dias: 30, ultima_execucao: null, proxima_a_partir_de: null, adiada_ate: null, responsavel_tipo: 'nenhum', responsavel_pessoa_id: null, responsavel_casal_id: null, dias_semana: [], instrucoes: null, ativo: true }],
   historico: [],
   historicoPessoas: [],
+  adiamentos: [],
+});
+
+const adiamento = (dados: { adiadaAte: string | null; id?: string; tipo?: 'adiada' | 'pulada' | 'cancelada'; observacao?: string | null; pessoaId?: string | null }) => ({
+  id: 'a1',
+  tarefaId: 't1',
+  tipo: 'adiada' as const,
+  dataAnterior: null,
+  pessoaId: null,
+  observacao: null,
+  ...dados,
 });
 
 describe('histórico de execuções', () => {
@@ -165,16 +176,25 @@ describe('histórico de execuções', () => {
   });
 
   it('adiar guarda a data e fazer a tarefa encerra o adiamento', () => {
-    const adiada = aplicarDefinirAdiamento(manutencao(), { tarefaId: 't1', adiadaAte: '2026-12-01' });
+    const adiada = aplicarDefinirAdiamento(manutencao(), adiamento({ adiadaAte: '2026-12-01' }));
     expect(adiada.tarefas[0].adiada_ate).toBe('2026-12-01');
     const feita = aplicarInserirExecucao(adiada, { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-20', dataPrevista: null, base: 'execucao', pessoaIds: [] });
     expect(feita.tarefas[0].adiada_ate).toBeNull();
-    expect(aplicarDefinirAdiamento(adiada, { tarefaId: 't1', adiadaAte: null }).tarefas[0].adiada_ate).toBeNull();
+    expect(aplicarDefinirAdiamento(adiada, adiamento({ id: 'a2', adiadaAte: null, tipo: 'cancelada' })).tarefas[0].adiada_ate).toBeNull();
+  });
+
+  it('adiar registra quem adiou, a observação e o tipo no histórico de adiamentos', () => {
+    const r = aplicarDefinirAdiamento(manutencao(), adiamento({ adiadaAte: '2026-12-01', pessoaId: 'p1', observacao: 'Visita em casa' }), '2026-11-24T10:00:00.000Z');
+    expect(r.adiamentos).toEqual([
+      { id: 'a1', tarefa_id: 't1', tipo: 'adiada', data_anterior: null, adiada_para: '2026-12-01', pessoa_id: 'p1', observacao: 'Visita em casa', criado_em: '2026-11-24T10:00:00.000Z' },
+    ]);
+    const outro = aplicarDefinirAdiamento(r, adiamento({ id: 'a2', adiadaAte: '2026-12-05', tipo: 'pulada' }));
+    expect(outro.adiamentos.map((a) => a.id)).toEqual(['a2', 'a1']);
   });
 
   it('uma execução antiga incluída à mão não encerra o adiamento', () => {
     const base = aplicarInserirExecucao(manutencao(), { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: null, base: 'execucao', pessoaIds: [] });
-    const adiada = aplicarDefinirAdiamento(base, { tarefaId: 't1', adiadaAte: '2026-12-20' });
+    const adiada = aplicarDefinirAdiamento(base, adiamento({ adiadaAte: '2026-12-20' }));
     const r = aplicarInserirExecucao(adiada, { id: 'h2', tarefaId: 't1', dataExecucao: '2026-10-01', dataPrevista: null, base: 'execucao', pessoaIds: [] });
     expect(r.tarefas[0].adiada_ate).toBe('2026-12-20');
   });

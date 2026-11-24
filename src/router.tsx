@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useLocation } from 'react-router-dom';
 import { RootLayout } from './RootLayout';
 import { competenciaAtual } from './lib/datas';
 
@@ -36,6 +36,11 @@ import { CalendarioPage } from './pages/settings/CalendarioPage';
 import { IconesPage } from './pages/settings/IconesPage';
 import { BackupPage } from './pages/settings/BackupPage';
 import { AppPage } from './pages/settings/AppPage';
+
+function RedirecionarParaTarefas() {
+  const { search } = useLocation();
+  return <Navigate to={`/apartamento/tarefas${search}`} replace />;
+}
 
 export const router = createBrowserRouter(
   [
@@ -77,7 +82,9 @@ export const router = createBrowserRouter(
             { index: true, element: <Navigate to="/apartamento/itens" replace /> },
             { path: 'itens', element: <ItensPage /> },
             { path: 'projetos', element: <ProjetosPage /> },
-            { path: 'manutencao', element: <ManutencaoPage /> },
+            { path: 'tarefas', element: <ManutencaoPage /> },
+            // Rota antiga (favoritos e atalhos salvos): leva para Tarefas mantendo os filtros da URL.
+            { path: 'manutencao', element: <RedirecionarParaTarefas /> },
           ],
         },
         { path: 'storage', element: <StoragePage /> },

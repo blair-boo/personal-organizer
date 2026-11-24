@@ -2,7 +2,7 @@ import { ArquivoLink, BotaoBaixarArquivo } from '../../components/ArquivoLink';
 import { useToast } from '../../components/Toast';
 import { formatarData, hojeIso } from '../../lib/datas';
 import { mensagemDeErro } from '../../lib/erros';
-import { formatarKg, formatarVariacaoKg, idadeDoGato, textoDeDias, diasEntre, variacoesDePeso } from '../../lib/gatos';
+import { formatarKg, formatarVariacaoKg, textoDeDias, diasEntre, variacoesDePeso } from '../../lib/gatos';
 import { useAtualizarGato } from '../../hooks/useGatos';
 import { useAtualizarGatoConsulta, useExcluirGatoConsulta, useGatoConsultas, useIncluirGatoConsulta } from '../../hooks/useGatoConsultas';
 import { BUCKET_GATOS, useAtualizarGatoExame, useExcluirGatoExame, useGatoExames, useIncluirGatoExame } from '../../hooks/useGatoExames';
@@ -92,8 +92,6 @@ export function FichaGato({ gato }: { gato: Gato }) {
   const atualizarPeso = useAtualizarGatoPeso();
   const excluirPeso = useExcluirGatoPeso();
 
-  const idade = idadeDoGato(gato.nascimento, hoje);
-
   async function trocarNascimento(valor: string) {
     try {
       await atualizarGato.mutateAsync({ id: gato.id, dados: { nascimento: valor === '' ? null : valor } });
@@ -111,9 +109,6 @@ export function FichaGato({ gato }: { gato: Gato }) {
           Data de nascimento
           <input type="date" value={gato.nascimento ?? ''} max={hoje} onChange={(e) => void trocarNascimento(e.target.value)} />
         </label>
-        <p className="gatos-idade" aria-live="polite">
-          {idade ? `Idade: ${idade}` : 'Informe o nascimento para ver a idade.'}
-        </p>
       </div>
 
       <SecaoRegistros

@@ -1,5 +1,5 @@
 import { resumoDoHistorico } from '../historicoTarefa';
-import type { AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TagItem, TarefaManutencao } from '../../types';
+import type { AdiamentoTarefa, AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TagItem, TarefaManutencao } from '../../types';
 import type {
   AtualizarExecucaoDados,
   AtualizarLinhaDados,
@@ -100,6 +100,7 @@ export interface EstadoManutencao {
   tarefas: TarefaManutencao[];
   historico: HistoricoTarefa[];
   historicoPessoas: HistoricoPessoa[];
+  adiamentos: AdiamentoTarefa[];
 }
 
 /** Recalcula a última execução e a data-base da tarefa a partir do histórico, como o servidor faz ao enviar. */
@@ -128,8 +129,22 @@ export function aplicarInserirExecucao(estado: EstadoManutencao, dados: InserirE
   };
 }
 
-export function aplicarDefinirAdiamento(estado: EstadoManutencao, dados: DefinirAdiamentoDados): EstadoManutencao {
-  return { ...estado, tarefas: estado.tarefas.map((t) => (t.id === dados.tarefaId ? { ...t, adiada_ate: dados.adiadaAte } : t)) };
+export function aplicarDefinirAdiamento(estado: EstadoManutencao, dados: DefinirAdiamentoDados, agora = new Date().toISOString()): EstadoManutencao {
+  const registro: AdiamentoTarefa = {
+    id: dados.id,
+    tarefa_id: dados.tarefaId,
+    tipo: dados.tipo,
+    data_anterior: dados.dataAnterior,
+    adiada_para: dados.adiadaAte,
+    pessoa_id: dados.pessoaId,
+    observacao: dados.observacao,
+    criado_em: agora,
+  };
+  return {
+    ...estado,
+    tarefas: estado.tarefas.map((t) => (t.id === dados.tarefaId ? { ...t, adiada_ate: dados.adiadaAte } : t)),
+    adiamentos: [registro, ...estado.adiamentos.filter((a) => a.id !== dados.id)],
+  };
 }
 
 export function aplicarAtualizarExecucao(estado: EstadoManutencao, dados: AtualizarExecucaoDados): EstadoManutencao {

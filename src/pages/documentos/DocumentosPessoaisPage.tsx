@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -7,9 +6,14 @@ import { CriarCasalModal } from './CriarCasalModal';
 import { ModalBase } from '../../components/ModalBase';
 import { ArquivoLink, BotaoBaixarArquivo } from '../../components/ArquivoLink';
 import { IconeFuncao } from '../../components/IconeUso';
+import { IconePessoa } from '../../components/IconePessoa';
+import { ModalIcone } from '../../components/ModalIcone';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
+import { resolverUso } from '../../lib/iconesUsos';
+import { useIconesUsos, useRemoverUsoIcone, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
+import { useTemaEfetivo } from '../../hooks/useTema';
 import { copiarConteudo } from '../../lib/clipboard';
 import { formatarData, somarPeriodo } from '../../lib/datas';
 import { caminhoAnexoDocumento, enviarArquivo, removerArquivo } from '../../lib/storage';
@@ -41,6 +45,7 @@ import type {
   DocumentoLocalRenovacao,
   PessoaDocumentos,
   RenovarTipo,
+  UsoIcone,
   VencimentoTipo,
   VencimentoUnidade,
 } from '../../types';
@@ -546,6 +551,11 @@ function ItemDocumentoLinha({
 }
 
 function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pessoaNome: string }) {
+  const { data: usosIcones = [] } = useIconesUsos();
+  const temaEfetivo = useTemaEfetivo();
+  const salvarUso = useSalvarUsoIcone();
+  const removerUso = useRemoverUsoIcone();
+  const [escolhendoIcone, setEscolhendoIcone] = useState(false);
   const { data: documentos, isLoading } = useDocumentos('pessoais', pessoaId);
   const criarCompleto = useCriarDocumentoCompleto('pessoais', pessoaId);
   const atualizar = useAtualizarDocumentoPessoal('pessoais', pessoaId);
@@ -789,6 +799,33 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
     }
   }
 
+  async function aplicarIconePessoa(uso: UsoIcone) {
+    try {
+      await salvarUso.mutateAsync(uso);
+      mostrarToast(`Ícone de ${pessoaNome} salvo.`);
+      setEscolhendoIcone(false);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  async function removerIconePessoa() {
+    const ok = await confirmar({
+      titulo: 'Remover ícone?',
+      mensagem: `O ícone sai de "${pessoaNome}". O arquivo continua disponível na lista de ícones.`,
+      confirmarRotulo: 'Remover',
+      perigoso: true,
+    });
+    if (!ok) return;
+    try {
+      await removerUso.mutateAsync({ alvoTipo: 'pessoa', alvoId: pessoaId });
+      mostrarToast(`Ícone de ${pessoaNome} removido.`);
+      setEscolhendoIcone(false);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
   const isCNHEditando = documentoEditando ? ehCNH(documentoEditando.titulo) : false;
   const isCNHNovo = ehCNH(novoTitulo);
 
@@ -826,6 +863,33 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
           <IconeFuncao funcao="salvar" />
         </button>
       </div>
+
+      <div className="documentos-icone-pessoa">
+        <button
+          type="button"
+          className="btn-icone documentos-icone-pessoa-botao"
+          onClick={() => setEscolhendoIcone(true)}
+          title={`Escolher ícone de ${pessoaNome}`}
+          aria-label={`Escolher ícone de ${pessoaNome}`}
+        >
+          <IconePessoa pessoa={{ id: pessoaId, nome: pessoaNome }} tamanho={24} />
+        </button>
+        <span className="conta-detalhe">Ícone de {pessoaNome}, usado onde há pouco espaço.</span>
+      </div>
+      {escolhendoIcone && (
+        <ModalIcone
+          aberto
+          rotuloAlvo={pessoaNome}
+          alvoTipo="pessoa"
+          alvoId={pessoaId}
+          inicial={resolverUso(usosIcones, 'pessoa', pessoaId, temaEfetivo)}
+          tamanhoBase={18}
+          permiteRemover
+          onConfirmar={(uso: UsoIcone) => void aplicarIconePessoa(uso)}
+          onRemover={() => void removerIconePessoa()}
+          onFechar={() => setEscolhendoIcone(false)}
+        />
+      )}
 
       {isLoading ? (
         <p>Carregando…</p>
@@ -1017,6 +1081,7 @@ function AbasPessoas({
   onCriarCasal: () => void;
 }) {
   const [modoEdicao, setModoEdicao] = useState(false);
+  const [menuMaisAberto, setMenuMaisAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [rascunho, setRascunho] = useState('');
   const renomear = useRenomearPessoaDocumentos();
@@ -1082,6 +1147,7 @@ function AbasPessoas({
               />
             ) : (
               <button type="button" onClick={() => iniciarRenomear(p)}>
+                <IconePessoa pessoa={p} />
                 {p.nome}
               </button>
             )}
@@ -1090,17 +1156,49 @@ function AbasPessoas({
             </button>
           </span>
         ) : (
-          <button key={p.id} type="button" className={pessoaAtualId === p.id ? 'active' : ''} onClick={() => onSelecionar(p.id)}>
+          <button key={p.id} type="button" className={`documentos-aba-pessoa${pessoaAtualId === p.id ? ' active' : ''}`} onClick={() => onSelecionar(p.id)}>
+            <IconePessoa pessoa={p} />
             {p.nome}
           </button>
         )
       )}
-      <button type="button" onClick={onCriar} disabled={modoEdicao}>
-        + Pessoa
-      </button>
-      <button type="button" onClick={onCriarCasal} disabled={modoEdicao}>
-        + Casal
-      </button>
+      <div className="documentos-mais">
+        <button
+          type="button"
+          onClick={() => setMenuMaisAberto((v) => !v)}
+          disabled={modoEdicao}
+          aria-haspopup="menu"
+          aria-expanded={menuMaisAberto}
+          title="Adicionar pessoa ou casal"
+          aria-label="Adicionar pessoa ou casal"
+        >
+          +
+        </button>
+        {menuMaisAberto && (
+          <div className="documentos-mais-menu" role="menu">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuMaisAberto(false);
+                onCriar();
+              }}
+            >
+              Pessoa
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuMaisAberto(false);
+                onCriarCasal();
+              }}
+            >
+              Casal
+            </button>
+          </div>
+        )}
+      </div>
       <button
         type="button"
         className={`btn-icone${modoEdicao ? ' documentos-modo-ativo' : ''}`}
@@ -1111,18 +1209,6 @@ function AbasPessoas({
         <IconeFuncao funcao="editar" />
       </button>
     </nav>
-  );
-}
-
-function AssinaturaCalendario() {
-  return (
-    <div className="documentos-assinatura-calendario">
-      <p>
-        Os links de assinatura de calendário (.ics) agora ficam em{' '}
-        <Link to="/settings/calendario">Settings → Calendário</Link>, onde dá pra criar um link por pessoa ou com
-        todo mundo.
-      </p>
-    </div>
   );
 }
 
@@ -1157,7 +1243,6 @@ export function DocumentosPessoaisPage() {
   return (
     <div>
       <ResumoVencimentos onSelecionarPessoa={setPessoaAtualId} />
-      <AssinaturaCalendario />
       {isLoading ? (
         <p>Carregando…</p>
       ) : (

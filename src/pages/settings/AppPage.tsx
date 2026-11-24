@@ -177,7 +177,7 @@ export function AppPage() {
       <section>
         <h3>Alterações pendentes</h3>
         <p className="backup-nota">
-          Storage e a Manutenção (feita hoje e histórico) aceitam alterações sem internet. Elas ficam guardadas no aparelho e são enviadas, em ordem, quando a conexão volta.
+          Storage e as Tarefas (feita hoje e histórico) aceitam alterações sem internet. Elas ficam guardadas no aparelho e são enviadas, em ordem, quando a conexão volta.
         </p>
         <ul className="lista-contas">
           <li>

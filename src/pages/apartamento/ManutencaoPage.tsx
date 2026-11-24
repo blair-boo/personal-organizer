@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BotaoExportarCsv } from '../../components/BotaoExportarCsv';
 import { IconeFuncao } from '../../components/IconeUso';
+import { IconePessoa } from '../../components/IconePessoa';
 import { IconeBandeira, IconeKanban, IconeLista } from '../../components/IconesProvisorios';
 import { ModalBase } from '../../components/ModalBase';
 import { CalendarioMensal } from '../../components/CalendarioMensal';
@@ -13,11 +14,12 @@ import { mensagemDeErro } from '../../lib/erros';
 import { formatarData, hojeIso } from '../../lib/datas';
 import { aceitaDiaDaSemana, alternarDia, DIAS_DA_SEMANA, resumoDosDias, ROTULOS_DIA, ROTULOS_DIA_CURTO } from '../../lib/diasSemana';
 import { dataPrevistaDaTarefa, entradaAtrasada, tarefaAtrasada, ultimaEntrada } from '../../lib/historicoTarefa';
-import { FILTROS_VAZIOS, filtrarTarefas, haFiltroAtivo, periodosDasTarefas, rotuloPeriodo, type FiltrosManutencao, type StatusTarefa } from '../../lib/filtrosManutencao';
+import { adiamentosDaTarefa, adiamentoVigente, vezesAdiadaDesdeUltimaExecucao } from '../../lib/adiamentos';
+import { contarFiltrosDoTipo, FILTROS_VAZIOS, filtrarTarefas, guardarFiltros, haFiltroAtivo, lerFiltrosSalvos, periodosDasTarefas, rotuloPeriodo, TIPOS_FILTRO, type FiltrosManutencao, type StatusTarefa, type TipoFiltro } from '../../lib/filtrosManutencao';
 import { ocorrenciasNoIntervalo, proximaExecucao } from '../../lib/manutencao';
 import { useTagsItens } from '../../hooks/useTagsItens';
 import { useDefinirClassificacoesTarefa, useTodasTarefaClassificacoes } from '../../hooks/useTarefaClassificacoes';
-import { useDefinirAdiamentoTarefa, useHistoricoPessoas, useHistoricoTarefas, useRegistrarExecucaoTarefa } from '../../hooks/useTarefasHistorico';
+import { useAdiamentosTarefas, useDefinirAdiamentoTarefa, useHistoricoPessoas, useHistoricoTarefas, useRegistrarExecucaoTarefa } from '../../hooks/useTarefasHistorico';
 import { useCasalMembros, useDocumentosPessoas } from '../../hooks/useDocumentos';
 import { usePessoaLogada } from '../../hooks/usePessoaLogada';
 import { chaveDoResponsavel, membrosPorCasal, opcoesDeResponsavel, pessoasIndividuais, pessoasPadraoDaExecucao, responsavelDaColuna, SEM_RESPONSAVEL, textoDoResponsavel, casais } from '../../lib/responsaveis';
@@ -28,12 +30,12 @@ import {
   useTarefasManutencao,
   type DadosTarefaManutencao,
 } from '../../hooks/useTarefasManutencao';
-import type { BaseProximaExecucao, HistoricoTarefa, PessoaDocumentos, TarefaManutencao } from '../../types';
-import { AdiarTarefaModal } from './AdiarTarefaModal';
+import type { AdiamentoTarefa, BaseProximaExecucao, HistoricoTarefa, PessoaDocumentos, TarefaManutencao } from '../../types';
+import { AdiarTarefaModal, type ConfirmacaoDeAdiamento } from './AdiarTarefaModal';
 import { FeitaHojeModal } from './FeitaHojeModal';
 import { ExportarPlanilhaModal } from './ExportarPlanilhaModal';
-import { HistoricoTarefaModal } from './HistoricoTarefaModal';
-import { CHAVE_SEM_COMODO, CHAVE_SEM_DIA, ManutencaoKanban, PREFIXO_DIA, type AgrupamentoKanban } from './ManutencaoKanban';
+import { HistoricoTarefaSecao } from './HistoricoTarefaSecao';
+import { CHAVE_SEM_COMODO, CHAVE_SEM_DIA, ManutencaoKanban, PREFIXO_DIA, SeloAdiamento, type AgrupamentoKanban, type InfoAdiamento } from './ManutencaoKanban';
 
 const TAREFA_VAZIA: DadosTarefaManutencao = { nome: '', frequencia_dias: 30, ativo: true, dias_semana: [], instrucoes: null, ...SEM_RESPONSAVEL };
 
@@ -179,6 +181,7 @@ export function ManutencaoPage() {
   const { data: tags } = useTagsItens();
   const { data: historico } = useHistoricoTarefas();
   const { data: historicoPessoas } = useHistoricoPessoas();
+  const { data: adiamentos } = useAdiamentosTarefas();
   const { data: pessoas } = useDocumentosPessoas();
   const { data: casalMembros } = useCasalMembros();
   const pessoaLogada = usePessoaLogada();
@@ -194,14 +197,15 @@ export function ManutencaoPage() {
 
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<TarefaManutencao | null>(null);
-  const [filtros, setFiltros] = useState<FiltrosManutencao>(FILTROS_VAZIOS);
+  const [salvos] = useState(lerFiltrosSalvos);
+  const [filtros, setFiltros] = useState<FiltrosManutencao>(salvos.filtros);
+  const [tiposAbertos, setTiposAbertos] = useState<TipoFiltro[]>(salvos.tiposAbertos);
   const [visao, setVisao] = useState<'lista' | 'kanban'>('lista');
   const [agrupamento, setAgrupamento] = useState<AgrupamentoKanban>('comodo');
   const [instrucoesAbertas, setInstrucoesAbertas] = useState<Set<string>>(new Set());
   const [exportarAberto, setExportarAberto] = useState(false);
   const [adiando, setAdiando] = useState<TarefaManutencao | null>(null);
   const [feitaHoje, setFeitaHoje] = useState<{ tarefa: TarefaManutencao; dataPrevistaAtrasada: string | null } | null>(null);
-  const [historicoDe, setHistoricoDe] = useState<TarefaManutencao | null>(null);
   const [params, setParams] = useSearchParams();
   const hojeDia = hojeIso();
   const hoje = new Date();
@@ -220,15 +224,40 @@ export function ManutencaoPage() {
     if (params.get('filtro') === 'atrasadas') {
       const pessoa = params.get('pessoa');
       setFiltros({ ...FILTROS_VAZIOS, status: ['atrasada'], responsaveis: pessoa ? [pessoa] : [] });
+      setTiposAbertos(pessoa ? ['status', 'responsavel'] : ['status']);
       setParams({}, { replace: true });
     }
   }, [params, setParams]);
+
+  // Filtros e tipos abertos ficam guardados no aparelho (a busca por texto não).
+  useEffect(() => {
+    guardarFiltros({ filtros, tiposAbertos });
+  }, [filtros, tiposAbertos]);
 
   const entradasPorTarefa = useMemo(() => {
     const mapa = new Map<string, HistoricoTarefa[]>();
     for (const entrada of historico ?? []) mapa.set(entrada.tarefa_id, [...(mapa.get(entrada.tarefa_id) ?? []), entrada]);
     return mapa;
   }, [historico]);
+
+  /** Tarefa -> adiamentos, do mais recente para o mais antigo. */
+  const adiamentosPorTarefa = useMemo(() => {
+    const mapa = new Map<string, AdiamentoTarefa[]>();
+    for (const t of tarefas ?? []) mapa.set(t.id, adiamentosDaTarefa(adiamentos ?? [], t.id));
+    return mapa;
+  }, [tarefas, adiamentos]);
+
+  /** Adiamento vigente (quem adiou e a observação) e quantas vezes a tarefa foi adiada desde a última execução. */
+  const infoAdiamentoPorTarefa = useMemo(() => {
+    const mapa = new Map<string, InfoAdiamento>();
+    for (const t of tarefas ?? []) {
+      const dela = adiamentosPorTarefa.get(t.id) ?? [];
+      const vigente = adiamentoVigente(dela, t.adiada_ate);
+      const vezes = vezesAdiadaDesdeUltimaExecucao(dela, t.ultima_execucao);
+      if (vigente || vezes > 0) mapa.set(t.id, { quem: vigente?.pessoa_id ? (nomePorPessoa.get(vigente.pessoa_id) ?? null) : null, observacao: vigente?.observacao ?? null, vezes });
+    }
+    return mapa;
+  }, [tarefas, adiamentosPorTarefa, nomePorPessoa]);
 
   /** Execução -> ids de quem fez. */
   const pessoasPorEntrada = useMemo(() => {
@@ -337,10 +366,10 @@ export function ManutencaoPage() {
     }
   }
 
-  async function adiarTarefa(tarefa: TarefaManutencao, adiadaAte: string | null, rotulo: string) {
+  async function adiarTarefa(tarefa: TarefaManutencao, { adiadaAte, tipo, observacao, rotulo }: ConfirmacaoDeAdiamento) {
     setAdiando(null);
     try {
-      const resultado = await definirAdiamento.mutateAsync({ tarefaId: tarefa.id, adiadaAte });
+      const resultado = await definirAdiamento.mutateAsync({ tarefaId: tarefa.id, adiadaAte, tipo, observacao, dataAnterior: proximaExecucao(tarefa), pessoaId: pessoaLogada?.id ?? null });
       mostrarToast(resultado === 'enfileirada' ? `${rotulo} Será enviada quando houver internet.` : rotulo);
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
@@ -397,6 +426,21 @@ export function ManutencaoPage() {
     }
   }
 
+  /** Histórico recolhido no pé do cartão (lista e kanban). */
+  function renderHistorico(tarefa: TarefaManutencao) {
+    return (
+      <HistoricoTarefaSecao
+        tarefa={tarefa}
+        entradas={entradasPorTarefa.get(tarefa.id) ?? []}
+        adiamentos={adiamentosPorTarefa.get(tarefa.id) ?? []}
+        pessoas={individuais}
+        pessoasPorEntrada={pessoasPorEntrada}
+        nomePorPessoa={nomePorPessoa}
+        hoje={hojeDia}
+      />
+    );
+  }
+
   function mudarMes(delta: number) {
     setMesCalendario((atual) => {
       const data = new Date(atual.ano, atual.mes - 1 + delta, 1);
@@ -407,7 +451,7 @@ export function ManutencaoPage() {
   return (
     <div className="settings-secao">
       <div className="manutencao-titulo-linha">
-        <h2>Manutenção</h2>
+        <h2>Tarefas</h2>
         <div className="manutencao-visoes">
           <button
             type="button"
@@ -448,7 +492,7 @@ export function ManutencaoPage() {
           Exportar planilha
         </button>
         <BotaoExportarCsv
-          nome="Tarefas de manutenção"
+          nome="Tarefas"
           linhas={tarefasFiltradas}
           colunas={[
             { titulo: 'Nome', valor: (t: TarefaManutencao) => t.nome },
@@ -464,85 +508,125 @@ export function ManutencaoPage() {
       </div>
 
       <div className="manutencao-filtros">
-        <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por cômodo">
-          {(tags ?? []).map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={filtros.comodoIds.includes(c.id) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
-              aria-pressed={filtros.comodoIds.includes(c.id)}
-              onClick={() => setFiltros({ ...filtros, comodoIds: alternarNaLista(filtros.comodoIds, c.id) })}
-            >
-              {c.nome}
-            </button>
-          ))}
-        </div>
-        <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por período">
-          {periodos.map((dias) => (
-            <button
-              key={dias}
-              type="button"
-              className={filtros.periodos.includes(dias) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
-              aria-pressed={filtros.periodos.includes(dias)}
-              onClick={() => setFiltros({ ...filtros, periodos: alternarNaLista(filtros.periodos, dias) })}
-            >
-              {rotuloPeriodo(dias)}
-            </button>
-          ))}
-        </div>
-        <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por responsável">
-          {individuais.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className={filtros.responsaveis.includes(p.id) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
-              aria-pressed={filtros.responsaveis.includes(p.id)}
-              onClick={() => setFiltros({ ...filtros, responsaveis: alternarNaLista(filtros.responsaveis, p.id) })}
-            >
-              {p.nome}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={filtros.responsaveis.includes('nenhum') ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
-            aria-pressed={filtros.responsaveis.includes('nenhum')}
-            onClick={() => setFiltros({ ...filtros, responsaveis: alternarNaLista(filtros.responsaveis, 'nenhum') })}
-          >
-            Sem responsável
-          </button>
-        </div>
-        <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por dia da semana">
-          {DIAS_DA_SEMANA.map((dia) => (
-            <button
-              key={dia}
-              type="button"
-              className={filtros.dias.includes(dia) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
-              aria-pressed={filtros.dias.includes(dia)}
-              aria-label={ROTULOS_DIA[dia]}
-              onClick={() => setFiltros({ ...filtros, dias: alternarNaLista(filtros.dias, dia) })}
-            >
-              {ROTULOS_DIA_CURTO[dia]}
-            </button>
-          ))}
-        </div>
-        <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por situação">
-          {([['feita', 'Feitas'], ['nao_feita', 'Não feitas'], ['atrasada', 'Atrasadas']] as [StatusTarefa, string][]).map(([valor, rotulo]) => (
-            <button
-              key={valor}
-              type="button"
-              className={filtros.status.includes(valor) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
-              aria-pressed={filtros.status.includes(valor)}
-              onClick={() => setFiltros({ ...filtros, status: alternarNaLista(filtros.status, valor) })}
-            >
-              {rotulo}
-            </button>
-          ))}
+        <div className="manutencao-tipos-filtro" role="group" aria-label="Tipos de filtro">
+          {TIPOS_FILTRO.map(({ tipo, rotulo }) => {
+            const aberto = tiposAbertos.includes(tipo);
+            const quantos = contarFiltrosDoTipo(filtros, tipo);
+            return (
+              <button
+                key={tipo}
+                type="button"
+                className={aberto || quantos > 0 ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+                aria-expanded={aberto}
+                onClick={() => setTiposAbertos(alternarNaLista(tiposAbertos, tipo))}
+                title={aberto ? `Recolher as opções de ${rotulo}` : `Mostrar as opções de ${rotulo}`}
+              >
+                {rotulo}
+                {quantos > 0 ? ` (${quantos})` : ''}
+              </button>
+            );
+          })}
           {haFiltroAtivo(filtros) && (
-            <button type="button" className="tag-opcao" onClick={() => setFiltros(FILTROS_VAZIOS)}>
+            <button
+              type="button"
+              className="tag-opcao"
+              onClick={() => {
+                setFiltros(FILTROS_VAZIOS);
+                setTiposAbertos([]);
+              }}
+            >
               Limpar filtros
             </button>
           )}
         </div>
+
+        {tiposAbertos.includes('comodo') && (
+          <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por cômodo">
+            {(tags ?? []).map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={filtros.comodoIds.includes(c.id) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+                aria-pressed={filtros.comodoIds.includes(c.id)}
+                onClick={() => setFiltros({ ...filtros, comodoIds: alternarNaLista(filtros.comodoIds, c.id) })}
+              >
+                {c.nome}
+              </button>
+            ))}
+            {(tags ?? []).length === 0 && <span className="hierarquia-vazio">Nenhum cômodo cadastrado.</span>}
+          </div>
+        )}
+        {tiposAbertos.includes('frequencia') && (
+          <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por frequência">
+            {periodos.map((dias) => (
+              <button
+                key={dias}
+                type="button"
+                className={filtros.periodos.includes(dias) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+                aria-pressed={filtros.periodos.includes(dias)}
+                onClick={() => setFiltros({ ...filtros, periodos: alternarNaLista(filtros.periodos, dias) })}
+              >
+                {rotuloPeriodo(dias)}
+              </button>
+            ))}
+            {periodos.length === 0 && <span className="hierarquia-vazio">Nenhuma tarefa cadastrada ainda.</span>}
+          </div>
+        )}
+        {tiposAbertos.includes('responsavel') && (
+          <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por responsável">
+            {individuais.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={filtros.responsaveis.includes(p.id) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+                aria-pressed={filtros.responsaveis.includes(p.id)}
+                onClick={() => setFiltros({ ...filtros, responsaveis: alternarNaLista(filtros.responsaveis, p.id) })}
+              >
+                <IconePessoa pessoa={p} tamanho={14} />
+                {p.nome}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={filtros.responsaveis.includes('nenhum') ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+              aria-pressed={filtros.responsaveis.includes('nenhum')}
+              onClick={() => setFiltros({ ...filtros, responsaveis: alternarNaLista(filtros.responsaveis, 'nenhum') })}
+            >
+              Sem responsável
+            </button>
+          </div>
+        )}
+        {tiposAbertos.includes('status') && (
+          <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por status">
+            {([['feita', 'Feitas'], ['nao_feita', 'Não feitas'], ['atrasada', 'Atrasadas']] as [StatusTarefa, string][]).map(([valor, rotulo]) => (
+              <button
+                key={valor}
+                type="button"
+                className={filtros.status.includes(valor) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+                aria-pressed={filtros.status.includes(valor)}
+                onClick={() => setFiltros({ ...filtros, status: alternarNaLista(filtros.status, valor) })}
+              >
+                {rotulo}
+              </button>
+            ))}
+          </div>
+        )}
+        {tiposAbertos.includes('dia') && (
+          <div className="manutencao-grupo-filtro" role="group" aria-label="Filtrar por dia da semana">
+            {DIAS_DA_SEMANA.map((dia) => (
+              <button
+                key={dia}
+                type="button"
+                className={filtros.dias.includes(dia) ? 'tag-opcao tag-opcao-ativa' : 'tag-opcao'}
+                aria-pressed={filtros.dias.includes(dia)}
+                aria-label={ROTULOS_DIA[dia]}
+                onClick={() => setFiltros({ ...filtros, dias: alternarNaLista(filtros.dias, dia) })}
+              >
+                {ROTULOS_DIA_CURTO[dia]}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {visao === 'kanban' && (
@@ -576,16 +660,17 @@ export function ManutencaoPage() {
           temCasal={primeiroCasalId !== null}
           comodosPorTarefa={comodosPorTarefa}
           agrupamento={agrupamento}
+          adiamentoPorTarefa={infoAdiamentoPorTarefa}
+          renderHistorico={renderHistorico}
           onFeita={tratarMarcarFeita}
           onAdiar={setAdiando}
           onEditar={abrirEdicao}
-          onHistorico={setHistoricoDe}
           onMover={moverTarefa}
         />
       ) : (
         <ul className="lista-contas">
           {tarefasFiltradas.map((tarefa) => (
-            <li key={tarefa.id} className={tarefa.ativo ? '' : 'conta-inativa'}>
+            <li key={tarefa.id} className={`manutencao-item${tarefa.ativo ? '' : ' conta-inativa'}`}>
               <div>
                 {tarefa.instrucoes ? (
                   <button type="button" className="manutencao-nome-botao" aria-expanded={instrucoesAbertas.has(tarefa.id)} onClick={() => alternarInstrucoes(tarefa.id)} title={instrucoesAbertas.has(tarefa.id) ? 'Ocultar instruções' : 'Mostrar instruções'}>
@@ -599,7 +684,7 @@ export function ManutencaoPage() {
                   <TagsChips tags={tarefaClassificacoes?.get(tarefa.id)} /> · {rotuloPeriodo(tarefa.frequencia_dias)}{tarefa.dias_semana.length > 0 ? ` (${resumoDosDias(tarefa.dias_semana)})` : ''} · próxima em {formatarData(proximaExecucao(tarefa))}
                 </span>
                 {textoDoResponsavel(tarefa, membrosDosCasais, nomePorPessoa) && <span className="tag-chip">{textoDoResponsavel(tarefa, membrosDosCasais, nomePorPessoa)}</span>}
-                {tarefa.adiada_ate && <span className="tag-chip">Adiada até {formatarData(tarefa.adiada_ate)}</span>}
+                <SeloAdiamento tarefa={tarefa} adiamento={infoAdiamentoPorTarefa.get(tarefa.id) ?? null} />
                 {atrasoPorTarefa.get(tarefa.id)?.data_prevista && (
                   <span className="manutencao-flag-atraso" title={`Feita com atraso em ${formatarData(atrasoPorTarefa.get(tarefa.id)?.data_execucao ?? '')}`}>
                     <IconeBandeira /> Feita com atraso (devia ser {formatarData(atrasoPorTarefa.get(tarefa.id)?.data_prevista ?? '')})
@@ -607,14 +692,11 @@ export function ManutencaoPage() {
                 )}
               </div>
               <div className="hierarquia-item-acoes">
-                <button type="button" onClick={() => tratarMarcarFeita(tarefa)}>
-                  Feita hoje
-                </button>
                 <button type="button" onClick={() => setAdiando(tarefa)} title={`Adiar ${tarefa.nome}`} aria-label={`Adiar ${tarefa.nome}`}>
                   Adiar
                 </button>
-                <button type="button" onClick={() => setHistoricoDe(tarefa)} title={`Histórico de ${tarefa.nome}`} aria-label={`Histórico de ${tarefa.nome}`}>
-                  Histórico
+                <button type="button" onClick={() => tratarMarcarFeita(tarefa)}>
+                  Feita hoje
                 </button>
                 <button type="button" className="btn-icone" onClick={() => abrirEdicao(tarefa)} title={`Editar ${tarefa.nome}`} aria-label={`Editar ${tarefa.nome}`}>
                   <IconeFuncao funcao="editar" />
@@ -623,6 +705,7 @@ export function ManutencaoPage() {
                   <IconeFuncao funcao="excluir" />
                 </button>
               </div>
+              {renderHistorico(tarefa)}
             </li>
           ))}
         </ul>
@@ -669,19 +752,9 @@ export function ManutencaoPage() {
         <AdiarTarefaModal
           tarefa={tarefas?.find((t) => t.id === adiando.id) ?? adiando}
           hoje={hojeDia}
-          onConfirmar={(adiadaAte, rotulo) => void adiarTarefa(adiando, adiadaAte, rotulo)}
+          quemAdia={pessoaLogada}
+          onConfirmar={(confirmacao) => void adiarTarefa(adiando, confirmacao)}
           onCancelar={() => setAdiando(null)}
-        />
-      )}
-
-      {historicoDe && (
-        <HistoricoTarefaModal
-          tarefa={tarefas?.find((t) => t.id === historicoDe.id) ?? historicoDe}
-          entradas={entradasPorTarefa.get(historicoDe.id) ?? []}
-          pessoas={individuais}
-          pessoasPorEntrada={pessoasPorEntrada}
-          hoje={hojeDia}
-          onFechar={() => setHistoricoDe(null)}
         />
       )}
 

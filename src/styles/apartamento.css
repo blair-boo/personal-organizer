@@ -63,7 +63,7 @@
   gap: 8px;
 }
 
-/* Manutenção: título com visões, busca, filtros em botões e kanban */
+/* Tarefas: título com visões, busca, filtros em botões e kanban */
 
 .manutencao-titulo-linha {
   display: flex;
@@ -214,4 +214,87 @@
   border-radius: 8px;
   padding: 8px 10px;
   margin: 0;
+}
+
+/* Tarefas: filtros por tipo (clicar no tipo abre as opções) */
+
+.manutencao-tipos-filtro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.manutencao-opcoes-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+}
+
+.manutencao-opcoes-filtro-titulo {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.tag-opcao {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Tarefas: histórico recolhido no pé do cartão */
+
+.manutencao-historico {
+  flex-basis: 100%;
+  width: 100%;
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+
+.manutencao-historico-botao {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-h);
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.manutencao-historico-botao-aberto {
+  font-weight: 700;
+}
+
+.manutencao-historico-conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.manutencao-historico-subtitulo {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.manutencao-adiar-atalhos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.manutencao-aviso-adiamentos {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.lista-contas li.manutencao-item {
+  flex-wrap: wrap;
 }

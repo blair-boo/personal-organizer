@@ -4,7 +4,7 @@ import { dataPrevistaParaNova } from '../lib/historicoTarefa';
 import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
 import { entradasDaTarefa } from '../lib/offline/executores';
 import { contarFila } from '../lib/offline/fila';
-import type { BaseProximaExecucao, HistoricoPessoa, HistoricoTarefa } from '../types';
+import type { AdiamentoTarefa, BaseProximaExecucao, HistoricoPessoa, HistoricoTarefa, TipoAdiamento } from '../types';
 
 const CHAVE = ['tarefas_manutencao_historico'];
 
@@ -13,6 +13,7 @@ function invalidar(qc: QueryClient) {
     qc.invalidateQueries({ queryKey: CHAVE }),
     qc.invalidateQueries({ queryKey: ['tarefas_manutencao'] }),
     qc.invalidateQueries({ queryKey: ['tarefas_historico_pessoas'] }),
+    qc.invalidateQueries({ queryKey: ['tarefas_adiamentos'] }),
   ]);
 }
 
@@ -124,12 +125,36 @@ export function useDefinirPessoasExecucao() {
   });
 }
 
-/** Adia a tarefa para uma data, ou cancela o adiamento (adiadaAte = null). "Pular desta vez" é adiar para a data do ciclo seguinte. */
+/** Histórico de adiamentos de todas as tarefas (quem adiou, para quando e a observação). */
+export function useAdiamentosTarefas() {
+  return useQuery({
+    queryKey: ['tarefas_adiamentos'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('tarefas_adiamentos').select('*').order('criado_em', { ascending: false });
+      if (error) throw error;
+      return data as AdiamentoTarefa[];
+    },
+  });
+}
+
+export interface RegistroDeAdiamento {
+  tarefaId: string;
+  /** Nova data da próxima execução; null cancela o adiamento. */
+  adiadaAte: string | null;
+  tipo: TipoAdiamento;
+  /** Próxima execução prevista antes da mudança. */
+  dataAnterior: string | null;
+  /** Quem adiou: a pessoa ligada ao login. */
+  pessoaId: string | null;
+  observacao: string | null;
+}
+
+/** Adia a tarefa para uma data, ou cancela o adiamento (adiadaAte = null), guardando quem adiou e a observação. "Pular desta vez" é adiar para a data do ciclo seguinte. */
 export function useDefinirAdiamentoTarefa() {
   const qc = useQueryClient();
   return useMutation({
     onMutate: () => undefined,
-    mutationFn: (dados: { tarefaId: string; adiadaAte: string | null }) => executarOuEnfileirar(qc, 'manutencao.definirAdiamento', dados),
+    mutationFn: (dados: RegistroDeAdiamento) => executarOuEnfileirar(qc, 'manutencao.definirAdiamento', { id: crypto.randomUUID(), ...dados }),
     onSuccess: depois(qc),
   });
 }

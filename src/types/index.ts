@@ -134,6 +134,23 @@ export interface HistoricoTarefa {
   criado_em: string;
 }
 
+export type TipoAdiamento = 'adiada' | 'pulada' | 'cancelada';
+
+/** Uma vez em que a tarefa foi adiada, pulada ou teve o adiamento cancelado. */
+export interface AdiamentoTarefa {
+  id: string;
+  tarefa_id: string;
+  tipo: TipoAdiamento;
+  /** Próxima execução prevista antes da mudança. */
+  data_anterior: string | null;
+  /** Nova data da próxima execução; null quando o adiamento foi cancelado. */
+  adiada_para: string | null;
+  /** Quem adiou (a pessoa ligada ao login). */
+  pessoa_id: string | null;
+  observacao: string | null;
+  criado_em: string;
+}
+
 export type TipoPessoaDocumentos = 'pessoa' | 'casal';
 
 /** Cadastro de Documentos > Pessoais: uma pessoa ou um casal (junção de duas pessoas). */
@@ -303,7 +320,7 @@ export interface PastaIcones {
   icones: IconeArquivo[];
 }
 
-export type AlvoIcone = 'funcao' | 'categoria' | 'aba';
+export type AlvoIcone = 'funcao' | 'categoria' | 'aba' | 'pessoa';
 export type TemaIcone = 'claro' | 'escuro' | 'ambos';
 export type CorOrigemIcone = 'padrao' | 'app' | 'minha';
 

@@ -1,4 +1,4 @@
-import type { AnexoStorage, BaseProximaExecucao, TagItem } from '../../types';
+import type { AnexoStorage, BaseProximaExecucao, TagItem, TipoAdiamento } from '../../types';
 
 /** Dados de cada tipo de alteração que pode esperar internet na fila. Só tipos: nada daqui fala com o servidor. */
 
@@ -73,9 +73,17 @@ export interface ExcluirExecucaoDados {
 }
 
 export interface DefinirAdiamentoDados {
+  /** Id do registro no histórico de adiamentos, gerado no aparelho. */
+  id: string;
   tarefaId: string;
   /** Data para onde a tarefa foi adiada (ou pulada); null cancela o adiamento. */
   adiadaAte: string | null;
+  tipo: TipoAdiamento;
+  /** Próxima execução prevista antes da mudança. */
+  dataAnterior: string | null;
+  /** Quem adiou (a pessoa ligada ao login); null se o login não está ligado a ninguém. */
+  pessoaId: string | null;
+  observacao: string | null;
 }
 
 // --- Operações genéricas (Itens, Projetos, Tarefas, Gatos e Documentos) ---------------

@@ -72,7 +72,7 @@ function IndicadorConexao() {
   );
 }
 
-/** Quantas tarefas de manutenção estão atrasadas; tocar leva à Manutenção já filtrada. Some quando não há nenhuma. */
+/** Quantas tarefas estão atrasadas; tocar leva a Tarefas já filtrada. Some quando não há nenhuma. */
 function IndicadorAtrasadas() {
   const { data: tarefas } = useTarefasManutencao();
   const navigate = useNavigate();
@@ -86,9 +86,9 @@ function IndicadorAtrasadas() {
     <button
       type="button"
       className="indicador-conexao"
-      onClick={() => navigate('/apartamento/manutencao?filtro=atrasadas')}
-      title={`${texto}: ver as tarefas de manutenção atrasadas`}
-      aria-label={`${texto}: ver as tarefas de manutenção atrasadas`}
+      onClick={() => navigate('/apartamento/tarefas?filtro=atrasadas')}
+      title={`${texto}: ver as tarefas atrasadas`}
+      aria-label={`${texto}: ver as tarefas atrasadas`}
     >
       <span className="conexao-ponto conexao-offline" aria-hidden="true" />
       <span>{texto}</span>

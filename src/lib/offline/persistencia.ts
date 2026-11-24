@@ -18,6 +18,7 @@ const CONSULTAS_OFFLINE = new Set([
   'tarefas_manutencao',
   'tarefas_manutencao_historico',
   'tarefas_historico_pessoas',
+  'tarefas_adiamentos',
   'documentos_casal_membros',
   'gatos',
   'gato_vacinas',

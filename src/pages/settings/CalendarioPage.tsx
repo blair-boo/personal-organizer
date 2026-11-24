@@ -84,7 +84,7 @@ function FormularioFeed({
       </label>
       <label className="calendario-checkbox-linha">
         <input type="checkbox" checked={incluirTarefas} onChange={(e) => setIncluirTarefas(e.target.checked)} />
-        Incluir as próximas tarefas de manutenção (menos as diárias e semanais)
+        Incluir as próximas tarefas (menos as diárias e semanais)
       </label>
       <div className="modal-acoes">
         <button type="submit" disabled={salvando || !nome.trim() || (!todas && selecionadas.size === 0 && !incluirGatos && !incluirTarefas)}>
@@ -183,7 +183,7 @@ export function CalendarioPage() {
     <div className="settings-secao">
       <h2>Calendário</h2>
       <p className="settings-secao-ajuda">
-        Links de assinatura (.ics) com os vencimentos de Documentos Pessoais, as próximas vacinas e vermífugos dos gatos e as próximas tarefas de manutenção, pro Calendário do iPhone ou Google
+        Links de assinatura (.ics) com os vencimentos de Documentos Pessoais, as próximas vacinas e vermífugos dos gatos e as próximas tarefas, pro Calendário do iPhone ou Google
         Calendar. Cada link pode trazer todo mundo ou só pessoas específicas, e dá pra mudar quem está incluído
         depois sem trocar a URL — ou gerar uma URL nova se precisar invalidar a antiga.
       </p>
