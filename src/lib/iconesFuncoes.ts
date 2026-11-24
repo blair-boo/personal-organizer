@@ -15,7 +15,10 @@ export type FuncaoIcone =
   | 'editar_abas'
   | 'tema_claro'
   | 'tema_sistema'
-  | 'tema_escuro';
+  | 'tema_escuro'
+  | 'voltar'
+  | 'avancar'
+  | 'topo';
 
 export interface DefinicaoFuncao {
   chave: FuncaoIcone;
@@ -41,6 +44,9 @@ export const FUNCOES_ICONE: DefinicaoFuncao[] = [
   { chave: 'tema_claro', rotulo: 'Tema claro', arquivoPadrao: null },
   { chave: 'tema_sistema', rotulo: 'Tema do sistema', arquivoPadrao: null },
   { chave: 'tema_escuro', rotulo: 'Tema escuro', arquivoPadrao: null },
+  { chave: 'voltar', rotulo: 'Voltar', arquivoPadrao: null },
+  { chave: 'avancar', rotulo: 'Avançar', arquivoPadrao: null },
+  { chave: 'topo', rotulo: 'Subir ao topo', arquivoPadrao: null },
 ];
 
 /** Ícone que ocupa o lugar de uma categoria ou aba sem ícone, só no modo de edição. Fica na raiz do bucket. */

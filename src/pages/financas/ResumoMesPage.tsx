@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { formatarMoeda } from '../../lib/datas';
+import { competenciaAtual, formatarMoeda, ultimoDiaDaCompetencia } from '../../lib/datas';
 import { rotuloHierarquico } from '../../lib/hierarquia';
 import { useContas } from '../../hooks/useContas';
 import { useCategorias } from '../../hooks/useCategorias';
@@ -8,7 +8,7 @@ import { useLancamentosPeriodo } from '../../hooks/useResumoFinanceiro';
 
 export function ResumoMesPage() {
   const { competencia } = useParams<{ competencia: string }>();
-  const { data: lancamentos, isLoading } = useLancamentosPeriodo(`${competencia}-01`, `${competencia}-31`);
+  const { data: lancamentos, isLoading } = useLancamentosPeriodo(`${competencia}-01`, ultimoDiaDaCompetencia(competencia ?? competenciaAtual()));
   const { data: contas } = useContas();
   const { data: categoriasDespesa } = useCategorias('despesa');
   const { data: categoriasReceita } = useCategorias('receita');

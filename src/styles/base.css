@@ -172,12 +172,25 @@ label {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* Nunca passa da tela (20px de folga em cada lado, do backdrop): o conteúdo rola dentro da caixa. */
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
+/* Linha de botões (salvar, cancelar...) sempre à vista no rodapé da caixa, com fundo opaco. */
 .modal-acoes {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: sticky;
+  bottom: -20px; /* o rolável conta o padding da caixa: compensa para colar rente à borda */
+  z-index: 1;
+  margin: 0 -20px -20px;
+  padding: 12px 20px 20px;
+  background: var(--bg-raised);
+  border-top: 1px solid var(--border);
 }
 
 .modal-titulo {

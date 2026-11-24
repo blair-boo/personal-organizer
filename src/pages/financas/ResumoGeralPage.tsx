@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { competenciaAtual, competenciaParaData, formatarMoeda, somarMeses } from '../../lib/datas';
+import { competenciaAtual, competenciaParaData, formatarMoeda, somarMeses, ultimoDiaDaCompetencia } from '../../lib/datas';
+import { BotaoVoltar } from '../../components/BotaoVoltar';
 import { useLancamentosPeriodo } from '../../hooks/useResumoFinanceiro';
 
 const OPCOES_PERIODO = [3, 6, 12];
@@ -14,7 +15,7 @@ export function ResumoGeralPage() {
   }, [meses]);
 
   const inicio = competenciaParaData(competencias[0]);
-  const fim = `${competencias[competencias.length - 1]}-31`;
+  const fim = ultimoDiaDaCompetencia(competencias[competencias.length - 1]);
   const { data: lancamentos, isLoading } = useLancamentosPeriodo(inicio, fim);
 
   const dadosGrafico = useMemo(() => {
@@ -31,6 +32,7 @@ export function ResumoGeralPage() {
 
   return (
     <div className="resumo-geral">
+      <BotaoVoltar />
       <div className="abas-internas">
         {OPCOES_PERIODO.map((n) => (
           <button key={n} type="button" className={meses === n ? 'ativa' : ''} onClick={() => setMeses(n)}>

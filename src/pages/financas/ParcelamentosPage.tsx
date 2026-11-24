@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { BotaoVoltar } from '../../components/BotaoVoltar';
 import { formatarData, formatarMoeda } from '../../lib/datas';
 import { useLancamentosParcelados } from '../../hooks/useResumoFinanceiro';
 
@@ -29,10 +30,22 @@ export function ParcelamentosPage() {
       .sort((a, b) => b.ultimaData.localeCompare(a.ultimaData));
   }, [lancamentos]);
 
-  if (isLoading) return <p>Carregando…</p>;
-  if (compras.length === 0) return <p className="hierarquia-vazio">Nenhum parcelamento em andamento.</p>;
+  if (isLoading) return (
+    <>
+      <BotaoVoltar />
+      <p>Carregando…</p>
+    </>
+  );
+  if (compras.length === 0) return (
+    <>
+      <BotaoVoltar />
+      <p className="hierarquia-vazio">Nenhum parcelamento em andamento.</p>
+    </>
+  );
 
   return (
+    <>
+    <BotaoVoltar />
     <ul className="lista-lancamentos lista-parcelamentos">
       {compras.map((c, i) => {
         const parcelasRestantes = c.parcelaTotal - c.ultimaParcelaVista;
@@ -54,5 +67,6 @@ export function ParcelamentosPage() {
         );
       })}
     </ul>
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
+import { ultimoDiaDaCompetencia } from '../lib/datas';
 import type { Lancamento, TipoLancamento } from '../types';
 
 export interface DadosLancamento {
@@ -26,7 +27,7 @@ export function useLancamentosDoMes(contaId: string | null, competencia: string)
     enabled: !!contaId,
     queryFn: async () => {
       const inicio = `${competencia}-01`;
-      const fim = `${competencia}-31`;
+      const fim = ultimoDiaDaCompetencia(competencia);
       const { data, error } = await supabase
         .from('lancamentos')
         .select('*')
