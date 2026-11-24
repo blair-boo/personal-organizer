@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -7,14 +7,15 @@ import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { IconeChevron } from '../../components/IconesProvisorios';
 import { IconeDoUso, IconeFuncao } from '../../components/IconeUso';
+import { ModalAtribuirIcone } from '../../components/ModalAtribuirIcone';
 import { ModalIcone } from '../../components/ModalIcone';
 import { ModalUsosIcone } from '../../components/ModalUsosIcone';
 import { SeletorCor } from '../../components/SeletorCor';
 import { mensagemDeErro } from '../../lib/erros';
 import { FUNCOES_ICONE, usoPadraoDaFuncao, type DefinicaoFuncao } from '../../lib/iconesFuncoes';
-import { arquivosEmUso, caminhoDoUso, contarUsos, resolverUso } from '../../lib/iconesUsos';
+import { PASTA_EM_USO, arquivosEmUso, caminhoDoUso, contarUsos, resolverUso } from '../../lib/iconesUsos';
 import { caminhoIcone, slugify } from '../../lib/storage';
-import { useAdicionarIcones, useCriarPastaIcone, useExcluirIcone, useExcluirPastaIcone, useRenomearPastaIcone, useIconesGaleria, useRenomearIcone, useReordenarIcones, useSubpastasIcones } from '../../hooks/useIcones';
+import { useAdicionarIcones, useCriarPastaIcone, useMigrarUsosParaEmUso, useExcluirIcone, useExcluirPastaIcone, useRenomearPastaIcone, useIconesGaleria, useRenomearIcone, useReordenarIcones, useSubpastasIcones } from '../../hooks/useIcones';
 import { useIconesUsos, useRemoverUsoIcone, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
 import { useTemaEfetivo } from '../../hooks/useTema';
 import type { IconeArquivo, UsoIcone } from '../../types';
@@ -43,8 +44,22 @@ export function IconesPage() {
   const [aplicarFonte, setAplicarFonte] = useState(true);
   const [aplicarIcones, setAplicarIcones] = useState(true);
   const [mascara, setMascara] = useState(false);
-  const { data: usos = [] } = useIconesUsos();
+  const { data: usos = [], isSuccess: usosCarregados } = useIconesUsos();
   const emUso = arquivosEmUso(usos);
+  const migrarUsos = useMigrarUsosParaEmUso();
+  const { mostrarToast } = useToast();
+  const migracaoIniciada = useRef(false);
+
+  // Uma vez por abertura da aba: leva para `em-uso` os ícones que ainda apontam para outra pasta.
+  useEffect(() => {
+    if (!usosCarregados || migracaoIniciada.current) return;
+    migracaoIniciada.current = true;
+    if (!usos.some((u) => u.icone_pasta !== PASTA_EM_USO)) return;
+    migrarUsos
+      .mutateAsync(usos)
+      .then((total) => mostrarToast(`${total} ícone(s) em uso copiado(s) para a pasta Em uso.`))
+      .catch((err) => mostrarToast(mensagemDeErro(err), 'erro'));
+  }, [usosCarregados, usos, migrarUsos, mostrarToast]);
   const tamanhoFonte = aplicarFonte ? tamanho : TAMANHO_PADRAO;
   const tamanhoIcones = aplicarIcones ? tamanho : TAMANHO_PADRAO;
   const conteudoRef = useRef<HTMLDivElement>(null);
@@ -279,12 +294,12 @@ function SecaoGaleria({ tamanho, emUso, mascara, onMascara }: { tamanho: number;
           </button>
         </div>
       </div>
-      <p className="testes-legenda">Cada pasta do bucket é uma divisão. Ícones em uso aparecem em Ícones (Settings) ou Ícones (UI) e não podem ser renomeados nem excluídos daqui.</p>
+      <p className="testes-legenda">Cada pasta do bucket é uma divisão. Ao escolher um ícone, uma cópia dele vai para a pasta Em uso. Ícones em uso aparecem marcados e não podem ser renomeados nem excluídos daqui.</p>
       {isLoading && <p className="hierarquia-vazio">Carregando…</p>}
       {isError && <p className="testes-erro">Não foi possível carregar as pastas: {mensagemDeErro(error)}</p>}
       <GrupoIcones pasta="" titulo="Sem pasta" tamanho={tamanho} emUso={emUso} mascara={mascara} pastasExistentes={pastas} />
       {pastas.map((pasta) => (
-        <GrupoIcones key={pasta} pasta={pasta} titulo={pasta} tamanho={tamanho} emUso={emUso} mascara={mascara} pastasExistentes={pastas} />
+        <GrupoIcones key={pasta} pasta={pasta} titulo={pasta === PASTA_EM_USO ? 'Em uso' : pasta} tamanho={tamanho} emUso={emUso} mascara={mascara} pastasExistentes={pastas} />
       ))}
     </section>
   );
@@ -304,6 +319,9 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
   const [atualizando, setAtualizando] = useState(false);
   const [aberta, setAberta] = useState(true);
   const [pastaPendenteExclusao, setPastaPendenteExclusao] = useState(false);
+  // A pasta Em uso é do sistema: não pode ser excluída nem renomeada.
+  const protegida = pasta === PASTA_EM_USO;
+  const [iconeParaAtribuir, setIconeParaAtribuir] = useState<IconeArquivo | null>(null);
   const [nomePastaPendente, setNomePastaPendente] = useState<string | null>(null);
   const [editandoPasta, setEditandoPasta] = useState(false);
   const [rascunhoPasta, setRascunhoPasta] = useState('');
@@ -319,9 +337,8 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  // Ícones em uso (funções, títulos, placeholder) saem daqui e aparecem em Settings ou UI.
-  const livres = (lista: IconeArquivo[]) => lista.filter((i) => !emUso.has(caminhoIcone(pasta, i.nome)));
-  const dados = livres(ordemLocal ?? data ?? []);
+  // Ícones em uso continuam na pasta, marcados, e não podem ser renomeados nem excluídos.
+  const dados = ordemLocal ?? data ?? [];
   const temPendencias = ordemLocal !== null || exclusoesPendentes.size > 0 || renomeacoesPendentes.size > 0 || pastaPendenteExclusao || nomePastaPendente !== null;
   // A pasta só pode ser excluída se nenhum ícone dela estiver em uso (a raiz nunca pode).
   const usadosNaPasta = (data ?? []).filter((i) => emUso.has(caminhoIcone(pasta, i.nome))).length;
@@ -504,7 +521,7 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
   return (
     <div className="icones-grupo">
       <div className="testes-secao-cabecalho">
-        {modoEdicao && pasta !== '' ? (
+        {modoEdicao && pasta !== '' && !protegida ? (
           <div className="icones-secao-titulo">
             <button type="button" className="btn-icone" onClick={() => setAberta((v) => !v)} aria-expanded={aberta} title={aberta ? 'Recolher' : 'Expandir'} aria-label={aberta ? `Recolher ${titulo}` : `Expandir ${titulo}`}>
               <IconeChevron aberto={aberta} />
@@ -553,7 +570,7 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
           </button>
         )}
         <div className="testes-secao-acoes">
-          {modoEdicao && pasta !== '' && (
+          {modoEdicao && pasta !== '' && !protegida && (
             pastaPendenteExclusao ? (
               <button type="button" onClick={() => setPastaPendenteExclusao(false)} title={`Desfazer a exclusão da pasta ${titulo}`} aria-label={`Desfazer a exclusão da pasta ${titulo}`}>
                 Desfazer
@@ -620,6 +637,7 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
         </div>
       </div>
 
+      {iconeParaAtribuir && <ModalAtribuirIcone icone={{ pasta, nome: iconeParaAtribuir.nome }} onFechar={() => setIconeParaAtribuir(null)} />}
       {aberta && (
         <>
       {isLoading && <p className="hierarquia-vazio">Carregando…</p>}
@@ -638,6 +656,8 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
                 nomeExibido={nomeAtual(icone)}
                 tamanho={tamanho}
                 mascara={mascara}
+                emUso={emUso.has(caminhoIcone(pasta, icone.nome))}
+                onAtribuir={() => setIconeParaAtribuir(icone)}
                 modoEdicao={modoEdicao}
                 pendenteExclusao={exclusoesPendentes.has(icone.id)}
                 editando={edicaoAtivaId === icone.id}
@@ -663,6 +683,8 @@ function IconeItem({
   nomeExibido,
   tamanho,
   mascara,
+  emUso,
+  onAtribuir,
   modoEdicao,
   pendenteExclusao,
   editando,
@@ -677,6 +699,8 @@ function IconeItem({
   nomeExibido: string;
   tamanho: number;
   mascara: boolean;
+  emUso: boolean;
+  onAtribuir: () => void;
   modoEdicao: boolean;
   pendenteExclusao: boolean;
   editando: boolean;
@@ -703,7 +727,14 @@ function IconeItem({
   return (
     <div ref={sortable.setNodeRef} style={style} className={`testes-icone-item${pendenteExclusao ? ' testes-icone-item-pendente' : ''}`}>
       {/* Arraste só a partir da miniatura (não do nome): sem alça de 3 traços, como pedido. */}
-      <div className="testes-icone-arrastar" aria-label={`Arrastar ${icone.nome}`} {...sortable.attributes} {...sortable.listeners}>
+      <div
+        className="testes-icone-arrastar"
+        aria-label={modoEdicao ? `Arrastar ${icone.nome}` : `Atribuir ${icone.nome} a um lugar do app`}
+        title={modoEdicao ? undefined : 'Atribuir a um lugar do app'}
+        onClick={modoEdicao ? undefined : onAtribuir}
+        {...sortable.attributes}
+        {...sortable.listeners}
+      >
         {mascara ? (
           <span
             className="testes-icone-svg"
@@ -729,7 +760,7 @@ function IconeItem({
         )}
       </div>
 
-      {modoEdicao && (
+      {modoEdicao && !emUso && (
         <button
           type="button"
           className={`testes-icone-excluir${pendenteExclusao ? ' testes-icone-excluir-marcado' : ''}`}
@@ -768,9 +799,10 @@ function IconeItem({
           type="button"
           className={`testes-icone-nome${pendenteExclusao ? ' testes-icone-nome-riscado' : ''}`}
           onClick={onIniciarEdicao}
-          disabled={!modoEdicao || pendenteExclusao}
+          disabled={!modoEdicao || pendenteExclusao || emUso}
         >
           {nomeExibido}
+          {emUso && <span className="testes-icone-em-uso"> (em uso)</span>}
         </button>
       )}
     </div>

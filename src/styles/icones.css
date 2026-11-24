@@ -313,3 +313,32 @@
 .painel-abas-nome-invalido {
   border-color: var(--danger);
 }
+
+/* Marca de ícone em uso na galeria. */
+.testes-icone-em-uso {
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+/* Modal de atribuir um ícone da galeria a um lugar do app. */
+.modal-atribuir-grupo h3 {
+  margin: 10px 0 6px;
+  font-size: 13px;
+}
+
+.modal-atribuir-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.modal-atribuir-lista button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+}

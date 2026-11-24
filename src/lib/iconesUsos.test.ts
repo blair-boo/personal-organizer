@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { UsoIcone } from '../types';
-import { arquivosEmUso, contarUsos, corCssDoUso, resolverUso, tamanhoDoUso, usosDoIcone } from './iconesUsos';
+import { PASTA_EM_USO, arquivosEmUso, contarUsos, nomeCopiaEmUso, corCssDoUso, resolverUso, tamanhoDoUso, usosDoIcone } from './iconesUsos';
 import { ICONE_PLACEHOLDER } from './iconesFuncoes';
 
 function uso(parcial: Partial<UsoIcone>): UsoIcone {
@@ -61,5 +61,13 @@ describe('arquivosEmUso e usos', () => {
     expect(usosDoIcone(usos, 'PNG/casa.png')).toHaveLength(2);
     expect(contarUsos(usos, 'PNG/casa.png')).toBe(2);
     expect(contarUsos([], 'save.svg')).toBe(1);
+  });
+});
+
+describe('cópia em uso', () => {
+  it('nomeia a cópia com a pasta de origem', () => {
+    expect(nomeCopiaEmUso('acao', 'save.svg')).toBe('acao__save.svg');
+    expect(nomeCopiaEmUso('', 'save.svg')).toBe('raiz__save.svg');
+    expect(PASTA_EM_USO).toBe('em-uso');
   });
 });
