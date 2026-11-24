@@ -54,3 +54,9 @@ export function contarUsos(usos: UsoIcone[], caminho: string): number {
   ).length;
   return nasLinhas + padroes + (caminho === ICONE_PLACEHOLDER ? 1 : 0);
 }
+
+/** Erro do Storage quando o arquivo de origem não existe mais (foi apagado ou movido de pasta). */
+export function arquivoNaoEncontrado(err: unknown): boolean {
+  const mensagem = err instanceof Error ? err.message : typeof err === 'object' && err !== null && 'message' in err ? String((err as { message: unknown }).message) : '';
+  return /object not found|not found|404/i.test(mensagem);
+}

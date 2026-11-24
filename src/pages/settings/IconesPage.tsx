@@ -57,7 +57,10 @@ export function IconesPage() {
     if (!usos.some((u) => u.icone_pasta !== PASTA_EM_USO)) return;
     migrarUsos
       .mutateAsync(usos)
-      .then((total) => mostrarToast(`${total} ícone(s) em uso copiado(s) para a pasta Em uso.`))
+      .then(({ movidos, ausentes }) => {
+        if (movidos > 0) mostrarToast(`${movidos} ícone(s) em uso copiado(s) para a pasta Em uso.`);
+        if (ausentes.length > 0) mostrarToast(`Ícone em uso sem arquivo no bucket: ${ausentes.join(', ')}. Escolha outro ícone para esse lugar.`, 'erro');
+      })
       .catch((err) => mostrarToast(mensagemDeErro(err), 'erro'));
   }, [usosCarregados, usos, migrarUsos, mostrarToast]);
   const tamanhoFonte = aplicarFonte ? tamanho : TAMANHO_PADRAO;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { UsoIcone } from '../types';
-import { PASTA_EM_USO, arquivosEmUso, contarUsos, nomeCopiaEmUso, corCssDoUso, resolverUso, tamanhoDoUso, usosDoIcone } from './iconesUsos';
+import { PASTA_EM_USO, arquivoNaoEncontrado, arquivosEmUso, contarUsos, nomeCopiaEmUso, corCssDoUso, resolverUso, tamanhoDoUso, usosDoIcone } from './iconesUsos';
 import { ICONE_PLACEHOLDER } from './iconesFuncoes';
 
 function uso(parcial: Partial<UsoIcone>): UsoIcone {
@@ -69,5 +69,17 @@ describe('cópia em uso', () => {
     expect(nomeCopiaEmUso('acao', 'save.svg')).toBe('acao__save.svg');
     expect(nomeCopiaEmUso('', 'save.svg')).toBe('raiz__save.svg');
     expect(PASTA_EM_USO).toBe('em-uso');
+  });
+});
+
+describe('arquivoNaoEncontrado', () => {
+  it('reconhece o erro do Storage de arquivo inexistente', () => {
+    expect(arquivoNaoEncontrado({ message: 'Object not found' })).toBe(true);
+    expect(arquivoNaoEncontrado(new Error('Object not found'))).toBe(true);
+  });
+
+  it('não confunde com outros erros', () => {
+    expect(arquivoNaoEncontrado(new Error('permission denied'))).toBe(false);
+    expect(arquivoNaoEncontrado(null)).toBe(false);
   });
 });
