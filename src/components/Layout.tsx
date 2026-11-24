@@ -11,7 +11,7 @@ import { tarefaAtrasada } from '../lib/historicoTarefa';
 import { APP_NAME } from '../config';
 import { DialogosProvider, useDialogos } from './Dialogo';
 import { AbasEdicaoProvider, useAbasEdicaoOpcional } from './AbasEdicao';
-import { IconeLua, IconeMonitor, IconeSol } from './IconesProvisorios';
+import { IconeFuncao } from './IconeUso';
 import { NavAbas } from './NavAbas';
 import { useOffline } from './OfflineContext';
 import { PainelEdicaoAbas } from './PainelEdicaoAbas';
@@ -170,7 +170,7 @@ function LayoutInterno({ children }: { children: ReactNode }) {
           <IndicadorGatosVencidos />
           <IndicadorConexao />
           <button type="button" onClick={ciclarTema} className="tema-toggle" title={TEMA_INFO[tema].titulo} aria-label={TEMA_INFO[tema].titulo}>
-            {tema === 'light' ? <IconeSol /> : tema === 'dark' ? <IconeLua /> : <IconeMonitor />}
+            <IconeFuncao funcao={tema === 'light' ? 'tema_claro' : tema === 'dark' ? 'tema_escuro' : 'tema_sistema'} />
           </button>
           <button type="button" onClick={sair} className="logout-button">
             Sair
