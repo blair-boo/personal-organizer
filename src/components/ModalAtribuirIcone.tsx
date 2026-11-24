@@ -107,8 +107,10 @@ export function ModalAtribuirIcone({ icone, onFechar }: ModalAtribuirIconeProps)
       {isLoading && <p className="hierarquia-vazio">Carregando…</p>}
       {isError && <p className="testes-erro">Não foi possível carregar os lugares: {mensagemDeErro(error)}</p>}
       {!isLoading && !isError && semResultado && <p className="hierarquia-vazio">{termo ? 'Nenhum resultado.' : 'Nenhum lugar com ícone ainda.'}</p>}
-      {lista('Funções', funcoesVisiveis)}
-      {lista('Títulos (categorias e abas)', titulosVisiveis)}
+      <div className="modal-atribuir-conteudo">
+        {lista('Funções', funcoesVisiveis)}
+        {lista('Títulos (categorias e abas)', titulosVisiveis)}
+      </div>
     </ModalBase>
   );
 }

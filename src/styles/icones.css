@@ -108,11 +108,18 @@
 .modal-usos {
   width: 100%;
   max-width: 420px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
 }
 
+/* A lista rola sozinha; os botões de ação e a busca ficam sempre visíveis. */
 .modal-usos-lista {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   gap: 6px;
   margin: 0;
   padding: 0;
@@ -341,4 +348,10 @@
   gap: 8px;
   width: 100%;
   text-align: left;
+}
+
+.modal-atribuir-conteudo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
