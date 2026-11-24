@@ -18,6 +18,7 @@ const CONSULTAS_OFFLINE = new Set([
   'tarefas_manutencao',
   'tarefas_manutencao_historico',
   'tarefas_historico_pessoas',
+  'tarefas_adiamentos',
   'documentos_casal_membros',
   'gatos',
   'gato_vacinas',
@@ -30,6 +31,7 @@ const CONSULTAS_OFFLINE = new Set([
   'storage_itens',
   'storage_obs',
   'storage_anexos',
+  'storage_caixa_anexos',
   'documentos',
   'documentos_pessoas',
   'documentos_proximos_vencimentos',
@@ -48,7 +50,7 @@ const CONSULTAS_OFFLINE = new Set([
  */
 export const VALIDADE_OFFLINE_MS = 24 * 24 * 60 * 60 * 1000;
 /** Mudou o formato de alguma consulta guardada? Aumente: o que estava guardado é descartado. */
-export const VERSAO_DO_CACHE = 'v5';
+export const VERSAO_DO_CACHE = 'v6';
 
 const CHAVE_IDB = 'po-react-query-offline';
 

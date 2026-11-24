@@ -19,8 +19,8 @@ import {
 
 const base = (): EstadoStorage => ({
   caixas: [
-    { id: 'c1', numero: 1, nome: 'Cozinha', ordem: 1 },
-    { id: 'c2', numero: 2, nome: 'Ferramentas', ordem: 2 },
+    { id: 'c1', numero: 1, nome: 'Cozinha', ordem: 1, tag_id: null },
+    { id: 'c2', numero: 2, nome: 'Ferramentas', ordem: 2, tag_id: null },
   ],
   itens: [
     { id: 'i1', storage_id: 'c1', nome: 'Panela', quantidade: 2, tag_id: null, ordem: 1 },
@@ -32,6 +32,44 @@ const base = (): EstadoStorage => ({
     { id: 'a1', item_id: 'i1', nome: 'Foto', arquivo_url: 'storage/i1/foto.png', nome_arquivo: 'foto.png' },
     { id: 'a2', item_id: 'i3', nome: 'Foto 2', arquivo_url: 'storage/i3/foto.png', nome_arquivo: 'foto.png' },
   ],
+  anexosCaixa: [{ id: 'k1', storage_id: 'c2', nome: 'Manual', arquivo_url: 'storage/caixas/c2/manual.pdf', nome_arquivo: 'manual.pdf' }],
+});
+
+describe('tag e anexos da caixa', () => {
+  it('guarda a tag principal e inclui e remove anexos da caixa inteira', () => {
+    const r = aplicarSalvarCaixa(base(), {
+      id: 'c2',
+      nome: 'Ferramentas',
+      tag_id: 't9',
+      novo: false,
+      ordemNova: 9,
+      itens: [],
+      itensRemovidos: [],
+      anexosCaixaNovos: [{ id: 'k2', nome: 'Foto da caixa', arquivo_url: 'storage/caixas/c2/foto.png', nome_arquivo: 'foto.png' }],
+      anexosCaixaRemovidos: [base().anexosCaixa[0]],
+    });
+    expect(r.caixas.find((c) => c.id === 'c2')?.tag_id).toBe('t9');
+    expect(r.anexosCaixa.map((a) => a.id)).toEqual(['k2']);
+  });
+
+  it('sem tag_id na operação (fila antiga) a tag da caixa não muda', () => {
+    const comTag = { ...base(), caixas: base().caixas.map((c) => (c.id === 'c1' ? { ...c, tag_id: 't1' } : c)) };
+    const r = aplicarSalvarCaixa(comTag, { id: 'c1', nome: 'Cozinha', novo: false, ordemNova: 1, itens: [], itensRemovidos: [] });
+    expect(r.caixas.find((c) => c.id === 'c1')?.tag_id).toBe('t1');
+  });
+
+  it('a edição em lote troca a tag dos itens e a exclusão da caixa leva os anexos dela', () => {
+    const r = aplicarEdicaoStorage(base(), {
+      caixas: [],
+      itens: [],
+      renomeacoes: [],
+      caixasExcluidas: ['c2'],
+      itensExcluidos: [],
+      tagsItens: [{ id: 'i1', tag_id: 't3' }, { id: 'i2', tag_id: null }],
+    });
+    expect(r.itens.find((i) => i.id === 'i1')?.tag_id).toBe('t3');
+    expect(r.anexosCaixa).toEqual([]);
+  });
 });
 
 describe('aplicarSalvarCaixa', () => {
@@ -55,7 +93,7 @@ describe('aplicarSalvarCaixa', () => {
       ],
       itensRemovidos: [],
     });
-    expect(r.caixas.at(-1)).toEqual({ id: 'c3', numero: 3, nome: 'Banheiro', ordem: 3 });
+    expect(r.caixas.at(-1)).toEqual({ id: 'c3', numero: 3, nome: 'Banheiro', ordem: 3, tag_id: null });
     expect(r.itens.find((i) => i.id === 'i4')).toMatchObject({ storage_id: 'c3', nome: 'Toalha', quantidade: 3, tag_id: 't1', ordem: 1 });
     expect(r.obs.filter((o) => o.item_id === 'i4').map((o) => o.texto)).toEqual(['Azul']);
     expect(r.anexos.find((a) => a.id === 'a9')?.item_id).toBe('i4');
@@ -118,6 +156,17 @@ const manutencao = (): EstadoManutencao => ({
   tarefas: [{ id: 't1', nome: 'Forno', frequencia_dias: 30, ultima_execucao: null, proxima_a_partir_de: null, adiada_ate: null, responsavel_tipo: 'nenhum', responsavel_pessoa_id: null, responsavel_casal_id: null, dias_semana: [], instrucoes: null, ativo: true }],
   historico: [],
   historicoPessoas: [],
+  adiamentos: [],
+});
+
+const adiamento = (dados: { adiadaAte: string | null; id?: string; tipo?: 'adiada' | 'pulada' | 'cancelada'; observacao?: string | null; pessoaId?: string | null }) => ({
+  id: 'a1',
+  tarefaId: 't1',
+  tipo: 'adiada' as const,
+  dataAnterior: null,
+  pessoaId: null,
+  observacao: null,
+  ...dados,
 });
 
 describe('histórico de execuções', () => {
@@ -165,16 +214,25 @@ describe('histórico de execuções', () => {
   });
 
   it('adiar guarda a data e fazer a tarefa encerra o adiamento', () => {
-    const adiada = aplicarDefinirAdiamento(manutencao(), { tarefaId: 't1', adiadaAte: '2026-12-01' });
+    const adiada = aplicarDefinirAdiamento(manutencao(), adiamento({ adiadaAte: '2026-12-01' }));
     expect(adiada.tarefas[0].adiada_ate).toBe('2026-12-01');
     const feita = aplicarInserirExecucao(adiada, { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-20', dataPrevista: null, base: 'execucao', pessoaIds: [] });
     expect(feita.tarefas[0].adiada_ate).toBeNull();
-    expect(aplicarDefinirAdiamento(adiada, { tarefaId: 't1', adiadaAte: null }).tarefas[0].adiada_ate).toBeNull();
+    expect(aplicarDefinirAdiamento(adiada, adiamento({ id: 'a2', adiadaAte: null, tipo: 'cancelada' })).tarefas[0].adiada_ate).toBeNull();
+  });
+
+  it('adiar registra quem adiou, a observação e o tipo no histórico de adiamentos', () => {
+    const r = aplicarDefinirAdiamento(manutencao(), adiamento({ adiadaAte: '2026-12-01', pessoaId: 'p1', observacao: 'Visita em casa' }), '2026-11-24T10:00:00.000Z');
+    expect(r.adiamentos).toEqual([
+      { id: 'a1', tarefa_id: 't1', tipo: 'adiada', data_anterior: null, adiada_para: '2026-12-01', pessoa_id: 'p1', observacao: 'Visita em casa', criado_em: '2026-11-24T10:00:00.000Z' },
+    ]);
+    const outro = aplicarDefinirAdiamento(r, adiamento({ id: 'a2', adiadaAte: '2026-12-05', tipo: 'pulada' }));
+    expect(outro.adiamentos.map((a) => a.id)).toEqual(['a2', 'a1']);
   });
 
   it('uma execução antiga incluída à mão não encerra o adiamento', () => {
     const base = aplicarInserirExecucao(manutencao(), { id: 'h1', tarefaId: 't1', dataExecucao: '2026-11-10', dataPrevista: null, base: 'execucao', pessoaIds: [] });
-    const adiada = aplicarDefinirAdiamento(base, { tarefaId: 't1', adiadaAte: '2026-12-20' });
+    const adiada = aplicarDefinirAdiamento(base, adiamento({ adiadaAte: '2026-12-20' }));
     const r = aplicarInserirExecucao(adiada, { id: 'h2', tarefaId: 't1', dataExecucao: '2026-10-01', dataPrevista: null, base: 'execucao', pessoaIds: [] });
     expect(r.tarefas[0].adiada_ate).toBe('2026-12-20');
   });

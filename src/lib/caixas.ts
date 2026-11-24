@@ -115,12 +115,45 @@ export function idsDeCaixasNaBusca(caixas: CaixaStorage[], itens: ItemStorage[],
   return encontradas;
 }
 
-/** Caixas que têm pelo menos um item com alguma das tags (vale qualquer uma). Sem tags escolhidas, todas. */
+/** Tag que vale para o item: a própria ou, sem ela, a tag principal da caixa. */
+export function tagEfetivaDoItem(item: Pick<ItemStorage, 'tag_id'>, caixa: Pick<CaixaStorage, 'tag_id'> | undefined): string | null {
+  return item.tag_id ?? caixa?.tag_id ?? null;
+}
+
+export interface TagsDaCaixa {
+  /** Tag principal escolhida na caixa. */
+  principal: string | null;
+  /** Tags próprias dos itens que são diferentes da principal, sem repetir. Calculadas na hora: tirou o item, a tag some. */
+  dosItens: string[];
+}
+
+export function tagsDaCaixa(caixa: Pick<CaixaStorage, 'tag_id'>, itens: Pick<ItemStorage, 'tag_id'>[]): TagsDaCaixa {
+  const principal = caixa.tag_id ?? null;
+  const dosItens: string[] = [];
+  for (const item of itens) {
+    if (item.tag_id && item.tag_id !== principal && !dosItens.includes(item.tag_id)) dosItens.push(item.tag_id);
+  }
+  return { principal, dosItens };
+}
+
+/** Caixas que têm alguma das tags (vale qualquer uma): a principal da caixa ou a própria de algum item. Sem tags escolhidas, todas. */
 export function idsDeCaixasComTags(caixas: CaixaStorage[], itens: ItemStorage[], tagIds: string[]): Set<string> {
   if (tagIds.length === 0) return new Set(caixas.map((c) => c.id));
   const encontradas = new Set<string>();
+  for (const caixa of caixas) {
+    if (caixa.tag_id && tagIds.includes(caixa.tag_id)) encontradas.add(caixa.id);
+  }
   for (const item of itens) {
     if (item.tag_id && tagIds.includes(item.tag_id)) encontradas.add(item.storage_id);
   }
   return encontradas;
+}
+
+/** Nome para a cópia de uma caixa: "Cozinha (cópia)"; copiar a cópia dá "(cópia 2)". */
+export function nomeDaCopia(nome: string, nomesExistentes: string[]): string {
+  const base = nome.replace(/ \(cópia(?: \d+)?\)$/, '');
+  const usados = new Set(nomesExistentes);
+  let candidato = `${base} (cópia)`;
+  for (let n = 2; usados.has(candidato); n++) candidato = `${base} (cópia ${n})`;
+  return candidato;
 }

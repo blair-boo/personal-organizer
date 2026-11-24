@@ -1,4 +1,4 @@
-import type { AnexoStorage, BaseProximaExecucao, TagItem } from '../../types';
+import type { AnexoCaixaStorage, AnexoStorage, BaseProximaExecucao, TagItem, TipoAdiamento } from '../../types';
 
 /** Dados de cada tipo de alteração que pode esperar internet na fila. Só tipos: nada daqui fala com o servidor. */
 
@@ -27,6 +27,8 @@ export interface SalvarCaixaDados {
   /** Número da caixa nova (o código da etiqueta). */
   numero?: number;
   nome: string;
+  /** Tag principal da caixa; ausente (operação antiga da fila) deixa como está. */
+  tag_id?: string | null;
   novo: boolean;
   /** Posição da caixa nova (a última + 1). Ignorada ao editar. */
   ordemNova: number;
@@ -34,6 +36,10 @@ export interface SalvarCaixaDados {
   itens: ItemParaSalvar[];
   /** Itens existentes que saíram da caixa (são excluídos, com seus arquivos). */
   itensRemovidos: string[];
+  /** Anexos novos da caixa inteira. */
+  anexosCaixaNovos?: AnexoNovoDados[];
+  /** Anexos da caixa inteira que saíram. */
+  anexosCaixaRemovidos?: AnexoCaixaStorage[];
 }
 
 export interface EdicaoStorageDados {
@@ -42,6 +48,8 @@ export interface EdicaoStorageDados {
   renomeacoes: { id: string; nome: string }[];
   caixasExcluidas: string[];
   itensExcluidos: string[];
+  /** Nova tag de itens (null = seguir a tag da caixa). */
+  tagsItens?: { id: string; tag_id: string | null }[];
 }
 
 export interface InserirExecucaoDados {
@@ -73,9 +81,17 @@ export interface ExcluirExecucaoDados {
 }
 
 export interface DefinirAdiamentoDados {
+  /** Id do registro no histórico de adiamentos, gerado no aparelho. */
+  id: string;
   tarefaId: string;
   /** Data para onde a tarefa foi adiada (ou pulada); null cancela o adiamento. */
   adiadaAte: string | null;
+  tipo: TipoAdiamento;
+  /** Próxima execução prevista antes da mudança. */
+  dataAnterior: string | null;
+  /** Quem adiou (a pessoa ligada ao login); null se o login não está ligado a ninguém. */
+  pessoaId: string | null;
+  observacao: string | null;
 }
 
 // --- Operações genéricas (Itens, Projetos, Tarefas, Gatos e Documentos) ---------------

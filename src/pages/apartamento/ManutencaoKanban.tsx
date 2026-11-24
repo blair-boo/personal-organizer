@@ -4,12 +4,22 @@ import { CSS } from '@dnd-kit/utilities';
 import { IconeFuncao } from '../../components/IconeUso';
 import { IconeBandeira } from '../../components/IconesProvisorios';
 import { TagsChips } from '../../components/TagsChips';
+import { LIMITE_AVISO_ADIAMENTOS } from '../../lib/adiamentos';
 import { formatarData } from '../../lib/datas';
 import { ROTULOS_DIA, resumoDosDias } from '../../lib/diasSemana';
 import { rotuloPeriodo } from '../../lib/filtrosManutencao';
 import { proximaExecucao } from '../../lib/manutencao';
 import { colunaDoResponsavel, textoDoResponsavel } from '../../lib/responsaveis';
 import type { HistoricoTarefa, PessoaDocumentos, TagItem, TarefaManutencao } from '../../types';
+
+/** O que o cartão mostra sobre o adiamento da tarefa. */
+export interface InfoAdiamento {
+  /** Quem adiou (nome), se o registro tem. */
+  quem: string | null;
+  observacao: string | null;
+  /** Quantas vezes foi adiada ou pulada desde a última execução. */
+  vezes: number;
+}
 
 export type AgrupamentoKanban = 'comodo' | 'periodo' | 'dia' | 'pessoa';
 
@@ -85,13 +95,34 @@ interface CartaoProps {
   atraso: HistoricoTarefa | null;
   /** Texto do responsável (vazio se não há). */
   responsavel: string;
+  /** Adiamento vigente e contagem de adiamentos; null se a tarefa nunca foi adiada. */
+  adiamento: InfoAdiamento | null;
+  /** Histórico recolhido no pé do cartão. */
+  historico: ReactNode;
   onFeita: (tarefa: TarefaManutencao) => void;
   onAdiar: (tarefa: TarefaManutencao) => void;
   onEditar: (tarefa: TarefaManutencao) => void;
-  onHistorico: (tarefa: TarefaManutencao) => void;
 }
 
-function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, responsavel, onFeita, onAdiar, onEditar, onHistorico }: CartaoProps) {
+/** "Adiada até dd/mm" com quem adiou e a observação, mais o aviso de adiamentos repetidos. */
+export function SeloAdiamento({ tarefa, adiamento }: { tarefa: TarefaManutencao; adiamento: InfoAdiamento | null }) {
+  const repetida = adiamento !== null && adiamento.vezes >= LIMITE_AVISO_ADIAMENTOS;
+  if (!tarefa.adiada_ate && !repetida) return null;
+  return (
+    <>
+      {tarefa.adiada_ate && (
+        <span className="tag-chip" title={adiamento?.observacao ?? undefined}>
+          Adiada até {formatarData(tarefa.adiada_ate)}
+          {adiamento?.quem ? ` por ${adiamento.quem}` : ''}
+        </span>
+      )}
+      {tarefa.adiada_ate && adiamento?.observacao && <span className="conta-detalhe">Observação: {adiamento.observacao}</span>}
+      {repetida && <span className="manutencao-aviso-adiamentos">Adiada {adiamento.vezes} vezes desde a última vez que foi feita.</span>}
+    </>
+  );
+}
+
+function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, responsavel, adiamento, historico, onFeita, onAdiar, onEditar }: CartaoProps) {
   const [aberto, setAberto] = useState(false);
   const arrastavel = useDraggable({ id: `${tarefa.id}${SEPARADOR}${colunaChave}` });
   const style = { transform: CSS.Translate.toString(arrastavel.transform) };
@@ -121,7 +152,7 @@ function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, responsavel
       <span className="conta-detalhe">
         {agrupamento !== 'periodo' ? `${rotuloPeriodo(tarefa.frequencia_dias)} · ` : ''}próxima em {formatarData(proximaExecucao(tarefa))}
       </span>
-      {tarefa.adiada_ate && <span className="tag-chip">Adiada até {formatarData(tarefa.adiada_ate)}</span>}
+      <SeloAdiamento tarefa={tarefa} adiamento={adiamento} />
       {atraso?.data_prevista && (
         <span className="manutencao-flag-atraso" title={`Feita com atraso em ${formatarData(atraso.data_execucao)}`}>
           <IconeBandeira /> Feita com atraso (devia ser {formatarData(atraso.data_prevista)})
@@ -130,19 +161,17 @@ function Cartao({ tarefa, colunaChave, agrupamento, comodos, atraso, responsavel
       {agrupamento !== 'pessoa' && responsavel && <span className="tag-chip">{responsavel}</span>}
       {agrupamento !== 'comodo' && <TagsChips tags={comodos} />}
       <div className="hierarquia-item-acoes">
-        <button type="button" onClick={() => onFeita(tarefa)}>
-          Feita hoje
-        </button>
         <button type="button" onClick={() => onAdiar(tarefa)} title={`Adiar ${tarefa.nome}`} aria-label={`Adiar ${tarefa.nome}`}>
           Adiar
         </button>
-        <button type="button" onClick={() => onHistorico(tarefa)} title={`Histórico de ${tarefa.nome}`} aria-label={`Histórico de ${tarefa.nome}`}>
-          Histórico
+        <button type="button" onClick={() => onFeita(tarefa)}>
+          Feita hoje
         </button>
         <button type="button" className="btn-icone" onClick={() => onEditar(tarefa)} title={`Editar ${tarefa.nome}`} aria-label={`Editar ${tarefa.nome}`}>
           <IconeFuncao funcao="editar" />
         </button>
       </div>
+      {historico}
     </article>
   );
 }
@@ -171,16 +200,19 @@ interface KanbanProps {
   nomePorPessoa: Map<string, string>;
   /** Há casal cadastrado: Qualquer um e Juntos só funcionam com ele. */
   temCasal: boolean;
+  /** Adiamento vigente de cada tarefa adiada (e quantas vezes foi adiada). */
+  adiamentoPorTarefa: Map<string, InfoAdiamento>;
+  /** Histórico recolhido de cada tarefa, no pé do cartão. */
+  renderHistorico: (tarefa: TarefaManutencao) => ReactNode;
   onFeita: (tarefa: TarefaManutencao) => void;
   onAdiar: (tarefa: TarefaManutencao) => void;
   onEditar: (tarefa: TarefaManutencao) => void;
-  onHistorico: (tarefa: TarefaManutencao) => void;
   /** Soltou um cartão em outra coluna. */
   onMover: (tarefa: TarefaManutencao, colunaOrigem: string, colunaDestino: string) => void;
 }
 
 /** Quadro de tarefas por cômodo ou por período (diária, semanal, mensal...). Arrastar o cartão para outra coluna muda o cômodo ou o período. */
-export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamento, atrasoPorTarefa, pessoas, membrosDosCasais, nomePorPessoa, temCasal, onFeita, onAdiar, onEditar, onHistorico, onMover }: KanbanProps) {
+export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamento, atrasoPorTarefa, pessoas, membrosDosCasais, nomePorPessoa, temCasal, adiamentoPorTarefa, renderHistorico, onFeita, onAdiar, onEditar, onMover }: KanbanProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const colunas =
     agrupamento === 'comodo'
@@ -216,10 +248,11 @@ export function ManutencaoKanban({ tarefas, comodos, comodosPorTarefa, agrupamen
                 comodos={comodosPorTarefa.get(tarefa.id)}
                 atraso={atrasoPorTarefa.get(tarefa.id) ?? null}
                 responsavel={textoDoResponsavel(tarefa, membrosDosCasais, nomePorPessoa)}
+                adiamento={adiamentoPorTarefa.get(tarefa.id) ?? null}
+                historico={renderHistorico(tarefa)}
                 onFeita={onFeita}
                 onAdiar={onAdiar}
                 onEditar={onEditar}
-                onHistorico={onHistorico}
               />
             ))}
           </ColunaKanban>

@@ -53,6 +53,7 @@ const BUCKET_POR_CONSULTA: Record<string, string> = {
   projeto_anexos: 'projetos-anexos',
   documento_anexos: 'confidencial',
   storage_anexos: 'confidencial',
+  storage_caixa_anexos: 'confidencial',
   gato_exames: 'confidencial',
   gatos: 'confidencial',
 };

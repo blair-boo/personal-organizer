@@ -45,7 +45,7 @@ export const ABAS_PADRAO: Record<GrupoAbas, AbaPadrao[]> = {
   apartamento: [
     { chave: 'apartamento:itens', rotulo: 'Itens' },
     { chave: 'apartamento:projetos', rotulo: 'Projetos' },
-    { chave: 'apartamento:manutencao', rotulo: 'Manutenção' },
+    { chave: 'apartamento:tarefas', rotulo: 'Tarefas' },
   ],
   documentos: [
     { chave: 'documentos:pessoais', rotulo: 'Pessoais' },

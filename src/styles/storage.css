@@ -198,3 +198,55 @@
   max-height: 40vh;
   overflow-y: auto;
 }
+
+/* Caixa: ícone, tag herdada, contagem, anexos da caixa e seleção em lote */
+.icone-caixa {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.storage-icone-caixa-botao {
+  flex: 0 0 auto;
+}
+
+.storage-form-tag-principal {
+  flex: 1;
+  min-width: 0;
+}
+
+.storage-item-tag-herdada {
+  font-style: italic;
+  opacity: 0.55;
+}
+
+.storage-item-destaque .storage-item-nome {
+  text-decoration: underline;
+}
+
+.storage-contagem {
+  margin-left: 8px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.storage-anexos-caixa {
+  margin-bottom: 8px;
+}
+
+.storage-anexos-caixa-titulo {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.storage-lote-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+}

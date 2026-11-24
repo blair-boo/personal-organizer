@@ -84,6 +84,12 @@ export function caminhoFotoGato(gatoId: string, arquivo: File): string {
   return `gatos/${gatoId}/foto-${Date.now()}.${extensaoDe(arquivo.name)}`;
 }
 
+/** Caminho de um anexo da caixa inteira (bucket confidencial): storage/caixas/{caixaId}/{slug}-{timestamp}.{ext}. */
+export function caminhoAnexoCaixaStorage(caixaId: string, nomeAnexo: string, arquivo: File): string {
+  const slug = slugify(nomeAnexo) || 'anexo';
+  return `storage/caixas/${caixaId}/${slug}-${Date.now()}.${extensaoDe(arquivo.name)}`;
+}
+
 /** Caminho de um anexo de item de caixa (bucket confidencial), seguindo a convenção storage/{itemId}/{slug}-{timestamp}.{ext}. */
 export function caminhoAnexoStorage(itemId: string, nomeAnexo: string, arquivo: File): string {
   const slug = slugify(nomeAnexo) || 'anexo';

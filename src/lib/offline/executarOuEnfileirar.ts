@@ -4,7 +4,7 @@ import { executarOperacao } from './executores';
 import { contarFila, enfileirar, pedirEnvioDaFila, type TipoOperacao } from './fila';
 import { guardarArquivo } from './arquivos';
 import type { AtualizarExecucaoDados, AtualizarLinhaDados, ChaveDeConsulta, CriarCasalDados, CriarDocumentoCompletoDados, ExcluirGatoDados, SubstituirConjuntoDados, DefinirAdiamentoDados, DefinirClassificacoesDados, DefinirFotoDados, DefinirPessoasExecucaoDados, ExcluirAnexoDados, ExcluirLinhasDados, IncluirAnexoDados, InserirLinhaDados, LinhaGenerica, EdicaoStorageDados, ExcluirExecucaoDados, InserirExecucaoDados, SalvarCaixaDados } from './operacoes';
-import type { AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TagItem, TarefaManutencao } from '../../types';
+import type { AdiamentoTarefa, AnexoCaixaStorage, AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TagItem, TarefaManutencao } from '../../types';
 
 function porOrdem<T extends { ordem: number; nome: string }>(lista: T[]): T[] {
   return [...lista].sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -16,11 +16,13 @@ function atualizarStorage(qc: QueryClient, aplicar: (e: EstadoStorage) => Estado
     itens: qc.getQueryData<ItemStorage[]>(['storage_itens']) ?? [],
     obs: qc.getQueryData<ObsStorage[]>(['storage_obs']) ?? [],
     anexos: qc.getQueryData<AnexoStorage[]>(['storage_anexos']) ?? [],
+    anexosCaixa: qc.getQueryData<AnexoCaixaStorage[]>(['storage_caixa_anexos']) ?? [],
   });
   qc.setQueryData(['storage'], porOrdem(novo.caixas));
   qc.setQueryData(['storage_itens'], porOrdem(novo.itens));
   qc.setQueryData(['storage_obs'], novo.obs);
   qc.setQueryData(['storage_anexos'], novo.anexos);
+  qc.setQueryData(['storage_caixa_anexos'], novo.anexosCaixa);
 }
 
 function atualizarManutencao(qc: QueryClient, aplicar: (e: EstadoManutencao) => EstadoManutencao) {
@@ -28,10 +30,12 @@ function atualizarManutencao(qc: QueryClient, aplicar: (e: EstadoManutencao) => 
     tarefas: qc.getQueryData<TarefaManutencao[]>(['tarefas_manutencao']) ?? [],
     historico: qc.getQueryData<HistoricoTarefa[]>(['tarefas_manutencao_historico']) ?? [],
     historicoPessoas: qc.getQueryData<HistoricoPessoa[]>(['tarefas_historico_pessoas']) ?? [],
+    adiamentos: qc.getQueryData<AdiamentoTarefa[]>(['tarefas_adiamentos']) ?? [],
   });
   qc.setQueryData(['tarefas_manutencao'], novo.tarefas);
   qc.setQueryData(['tarefas_manutencao_historico'], novo.historico);
   qc.setQueryData(['tarefas_historico_pessoas'], novo.historicoPessoas);
+  qc.setQueryData(['tarefas_adiamentos'], novo.adiamentos);
 }
 
 function atualizarLista(qc: QueryClient, chave: ChaveDeConsulta, aplicar: (lista: LinhaGenerica[]) => LinhaGenerica[]) {

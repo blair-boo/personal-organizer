@@ -1,29 +1,60 @@
-import { useState } from 'react';
-import { ModalBase } from '../../components/ModalBase';
+import { useId, useState } from 'react';
 import { IconeFuncao } from '../../components/IconeUso';
 import { IconeBandeira } from '../../components/IconesProvisorios';
+import { IconePessoa } from '../../components/IconePessoa';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
 import { formatarData } from '../../lib/datas';
+import { ROTULOS_TIPO_ADIAMENTO } from '../../lib/adiamentos';
 import { entradaAtrasada, ROTULOS_BASE } from '../../lib/historicoTarefa';
 import { useAtualizarExecucaoTarefa, useDefinirPessoasExecucao, useExcluirExecucaoTarefa, useIncluirExecucaoTarefa } from '../../hooks/useTarefasHistorico';
-import type { BaseProximaExecucao, HistoricoTarefa, PessoaDocumentos, TarefaManutencao } from '../../types';
+import type { AdiamentoTarefa, BaseProximaExecucao, HistoricoTarefa, PessoaDocumentos, TarefaManutencao } from '../../types';
 
-interface HistoricoTarefaModalProps {
+interface HistoricoTarefaSecaoProps {
   tarefa: TarefaManutencao;
   /** Execuções desta tarefa, da mais recente para a mais antiga. */
   entradas: HistoricoTarefa[];
+  /** Adiamentos desta tarefa, do mais recente para o mais antigo. */
+  adiamentos: AdiamentoTarefa[];
   /** Pessoas individuais, para marcar quem fez. */
   pessoas: PessoaDocumentos[];
   /** Execução -> ids de quem fez. */
   pessoasPorEntrada: Map<string, string[]>;
+  nomePorPessoa: Map<string, string>;
   hoje: string;
-  onFechar: () => void;
 }
 
-/** Datas em que a tarefa foi feita: trocar a data, incluir outra à mão, excluir, e escolher de onde conta a próxima nas feitas com atraso. */
-export function HistoricoTarefaModal({ tarefa, entradas, pessoas, pessoasPorEntrada, hoje, onFechar }: HistoricoTarefaModalProps) {
+/**
+ * Histórico da tarefa, recolhido no pé do cartão e aberto para baixo ao clicar: datas em que foi feita
+ * (trocar a data, incluir outra à mão, excluir, quem fez, de onde conta a próxima nas feitas com atraso)
+ * e os adiamentos (quem adiou, para quando e a observação).
+ */
+export function HistoricoTarefaSecao({ tarefa, entradas, adiamentos, pessoas, pessoasPorEntrada, nomePorPessoa, hoje }: HistoricoTarefaSecaoProps) {
+  const [aberto, setAberto] = useState(false);
+  const idConteudo = useId();
+  const total = entradas.length + adiamentos.length;
+
+  return (
+    <div className="manutencao-historico">
+      <button
+        type="button"
+        className={`manutencao-historico-botao${aberto ? ' manutencao-historico-botao-aberto' : ''}`}
+        aria-expanded={aberto}
+        aria-controls={idConteudo}
+        onClick={() => setAberto((a) => !a)}
+        title={aberto ? `Recolher o histórico de ${tarefa.nome}` : `Mostrar o histórico de ${tarefa.nome}`}
+      >
+        Histórico{total > 0 ? ` (${total})` : ''}
+      </button>
+      <div id={idConteudo} hidden={!aberto}>
+        {aberto && <ConteudoHistorico tarefa={tarefa} entradas={entradas} adiamentos={adiamentos} pessoas={pessoas} pessoasPorEntrada={pessoasPorEntrada} nomePorPessoa={nomePorPessoa} hoje={hoje} />}
+      </div>
+    </div>
+  );
+}
+
+function ConteudoHistorico({ tarefa, entradas, adiamentos, pessoas, pessoasPorEntrada, nomePorPessoa, hoje }: HistoricoTarefaSecaoProps) {
   const atualizar = useAtualizarExecucaoTarefa();
   const excluir = useExcluirExecucaoTarefa();
   const incluir = useIncluirExecucaoTarefa();
@@ -53,9 +84,8 @@ export function HistoricoTarefaModal({ tarefa, entradas, pessoas, pessoasPorEntr
   }
 
   return (
-    <ModalBase aberto rotulo={`Histórico de ${tarefa.nome}`} onFechar={onFechar} classe="modal-edicao">
-      <h3 className="modal-titulo">Histórico: {tarefa.nome}</h3>
-
+    <div className="manutencao-historico-conteudo">
+      <h4 className="manutencao-historico-subtitulo">Execuções</h4>
       <ul className="lista-documentos">
         {entradas.map((entrada) => {
           const atrasada = entradaAtrasada(entrada);
@@ -102,6 +132,7 @@ export function HistoricoTarefaModal({ tarefa, entradas, pessoas, pessoasPorEntr
                           )
                         }
                       >
+                        <IconePessoa pessoa={p} tamanho={14} />
                         {p.nome}
                       </button>
                     );
@@ -145,11 +176,24 @@ export function HistoricoTarefaModal({ tarefa, entradas, pessoas, pessoasPorEntr
         </button>
       </div>
 
-      <div className="modal-acoes">
-        <button type="button" onClick={onFechar}>
-          Fechar
-        </button>
-      </div>
-    </ModalBase>
+      <h4 className="manutencao-historico-subtitulo">Adiamentos</h4>
+      <ul className="lista-documentos">
+        {adiamentos.map((a) => {
+          const quem = a.pessoa_id ? nomePorPessoa.get(a.pessoa_id) : undefined;
+          const quando = formatarData(a.criado_em.slice(0, 10));
+          return (
+            <li key={a.id} className="manutencao-historico-linha">
+              <span>
+                {ROTULOS_TIPO_ADIAMENTO[a.tipo]}
+                {a.adiada_para ? ` para ${formatarData(a.adiada_para)}` : ''}
+                {quem ? ` por ${quem}` : ''} em {quando}.
+              </span>
+              {a.observacao && <span className="conta-detalhe">Observação: {a.observacao}</span>}
+            </li>
+          );
+        })}
+        {adiamentos.length === 0 && <li className="hierarquia-vazio">Nenhum adiamento registrado.</li>}
+      </ul>
+    </div>
   );
 }

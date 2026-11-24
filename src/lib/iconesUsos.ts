@@ -1,5 +1,5 @@
 import type { UsoIcone } from '../types';
-import { FUNCOES_ICONE, ICONE_PLACEHOLDER } from './iconesFuncoes';
+import { FUNCOES_ICONE, ICONE_CAIXA_PADRAO, ICONE_PLACEHOLDER } from './iconesFuncoes';
 
 /** Pasta do bucket onde ficam as cópias dos ícones em uso: apagar ou renomear a pasta de origem não afeta quem já usa o ícone. */
 export const PASTA_EM_USO = 'em-uso';
@@ -35,7 +35,7 @@ export function corCssDoUso(uso: Pick<UsoIcone, 'mascara' | 'cor_origem' | 'cor_
 
 /** Caminhos (pasta/arquivo) usados em alguma tela, mais os padrões de função e o placeholder: saem das seções livres. */
 export function arquivosEmUso(usos: UsoIcone[]): Set<string> {
-  const emUso = new Set<string>([ICONE_PLACEHOLDER]);
+  const emUso = new Set<string>([ICONE_PLACEHOLDER, ICONE_CAIXA_PADRAO]);
   for (const f of FUNCOES_ICONE) if (f.arquivoPadrao) emUso.add(f.arquivoPadrao);
   for (const u of usos) emUso.add(caminhoDoUso(u));
   return emUso;

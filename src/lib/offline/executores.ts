@@ -33,6 +33,14 @@ import type {
 
 export const BUCKET_STORAGE = 'confidencial';
 
+/** Apaga do bucket os arquivos dos anexos dessas caixas (as linhas saem junto com a caixa, por cascade). */
+async function removerArquivosDasCaixas(caixaIds: string[]): Promise<void> {
+  if (caixaIds.length === 0) return;
+  const { data, error } = await supabase.from('storage_caixa_anexos').select('arquivo_url').in('storage_id', caixaIds);
+  if (error) throw error;
+  await removerArquivos(BUCKET_STORAGE, (data as { arquivo_url: string }[]).map((a) => a.arquivo_url));
+}
+
 /** Apaga do bucket os arquivos de todos os anexos desses itens (as linhas saem junto com o item, por cascade). */
 async function removerArquivosDosItens(itemIds: string[]): Promise<void> {
   if (itemIds.length === 0) return;
@@ -46,12 +54,31 @@ async function removerArquivosDosItens(itemIds: string[]): Promise<void> {
  * pra bater com os arquivos enviados durante a criação), os itens, as
  * observações e os anexos. Foto tirada sem internet sobe antes de entrar no banco.
  */
-export async function executarSalvarCaixa({ id, numero, nome, novo, ordemNova, itens, itensRemovidos }: SalvarCaixaDados): Promise<void> {
+export async function executarSalvarCaixa({ id, numero, nome, tag_id, novo, ordemNova, itens, itensRemovidos, anexosCaixaNovos = [], anexosCaixaRemovidos = [] }: SalvarCaixaDados): Promise<void> {
+  const tag = tag_id !== undefined ? { tag_id } : {};
   if (novo) {
-    const { error } = await supabase.from('storage').upsert({ id, ...(numero !== undefined ? { numero } : {}), nome, ordem: ordemNova });
+    const { error } = await supabase.from('storage').upsert({ id, ...(numero !== undefined ? { numero } : {}), nome, ordem: ordemNova, ...tag });
     if (error) throw error;
   } else {
-    const { error } = await supabase.from('storage').update({ nome }).eq('id', id);
+    const { error } = await supabase.from('storage').update({ nome, ...tag }).eq('id', id);
+    if (error) throw error;
+  }
+
+  // Anexos da caixa inteira: os removidos saem do banco e do bucket, os novos sobem e entram.
+  if (anexosCaixaRemovidos.length > 0) {
+    const { error } = await supabase.from('storage_caixa_anexos').delete().in('id', anexosCaixaRemovidos.map((a) => a.id));
+    if (error) throw error;
+    await removerArquivos(BUCKET_STORAGE, anexosCaixaRemovidos.map((a) => a.arquivo_url));
+  }
+  for (const anexo of anexosCaixaNovos) {
+    if (!anexo.arquivoLocal) continue;
+    const arquivo = anexo.arquivoLocal instanceof File ? anexo.arquivoLocal : new File([anexo.arquivoLocal], anexo.nome_arquivo, { type: anexo.arquivoLocal.type });
+    await enviarArquivo(BUCKET_STORAGE, anexo.arquivo_url, arquivo);
+  }
+  if (anexosCaixaNovos.length > 0) {
+    const { error } = await supabase
+      .from('storage_caixa_anexos')
+      .upsert(anexosCaixaNovos.map((a) => ({ id: a.id, storage_id: id, nome: a.nome, arquivo_url: a.arquivo_url, nome_arquivo: a.nome_arquivo })));
     if (error) throw error;
   }
 
@@ -104,7 +131,7 @@ export async function executarSalvarCaixa({ id, numero, nome, novo, ordemNova, i
 }
 
 /** Aplica de uma vez o que ficou pendente no modo de edição: ordem, mudança de caixa, nomes e exclusões. */
-export async function executarEdicaoStorage({ caixas, itens, renomeacoes, caixasExcluidas, itensExcluidos }: EdicaoStorageDados): Promise<void> {
+export async function executarEdicaoStorage({ caixas, itens, renomeacoes, caixasExcluidas, itensExcluidos, tagsItens = [] }: EdicaoStorageDados): Promise<void> {
   const excluir = new Set(caixasExcluidas);
   const exclusaoItens = new Set(itensExcluidos);
 
@@ -112,6 +139,11 @@ export async function executarEdicaoStorage({ caixas, itens, renomeacoes, caixas
   for (const { id, storage_id, ordem } of itens) {
     if (exclusaoItens.has(id)) continue;
     const { error } = await supabase.from('storage_itens').update({ storage_id, ordem }).eq('id', id);
+    if (error) throw error;
+  }
+  for (const { id, tag_id } of tagsItens) {
+    if (exclusaoItens.has(id)) continue;
+    const { error } = await supabase.from('storage_itens').update({ tag_id }).eq('id', id);
     if (error) throw error;
   }
   for (const { id, nome } of renomeacoes) {
@@ -134,6 +166,7 @@ export async function executarEdicaoStorage({ caixas, itens, renomeacoes, caixas
     const { data, error: erroItens } = await supabase.from('storage_itens').select('id').in('storage_id', caixasExcluidas);
     if (erroItens) throw erroItens;
     await removerArquivosDosItens((data as { id: string }[]).map((i) => i.id));
+    await removerArquivosDasCaixas(caixasExcluidas);
     const { error } = await supabase.from('storage').delete().in('id', caixasExcluidas);
     if (error) throw error;
   }
@@ -155,9 +188,14 @@ async function recalcularTarefa(tarefaId: string, encerrarAdiamentoSeFeitaEm?: s
 }
 
 /** Adia a tarefa para uma data (ou cancela o adiamento com null). */
-export async function executarDefinirAdiamento({ tarefaId, adiadaAte }: DefinirAdiamentoDados): Promise<void> {
+export async function executarDefinirAdiamento({ id, tarefaId, adiadaAte, tipo, dataAnterior, pessoaId, observacao }: DefinirAdiamentoDados): Promise<void> {
   const { error } = await supabase.from('tarefas_manutencao').update({ adiada_ate: adiadaAte }).eq('id', tarefaId);
   if (error) throw error;
+  // upsert pelo id: reenviar a fila não duplica o registro.
+  const { error: erroRegistro } = await supabase
+    .from('tarefas_adiamentos')
+    .upsert({ id, tarefa_id: tarefaId, tipo, data_anterior: dataAnterior, adiada_para: adiadaAte, pessoa_id: pessoaId, observacao });
+  if (erroRegistro) throw erroRegistro;
 }
 
 /** Troca quem fez uma execução (o conjunto inteiro, como nas observações). */

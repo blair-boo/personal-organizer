@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { ModalBase } from '../../components/ModalBase';
 import { IconeFuncao } from '../../components/IconeUso';
+import { IconeCaixa } from '../../components/IconeCaixa';
+import { ModalIcone } from '../../components/ModalIcone';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
-import { caminhoAnexoStorage, enviarArquivo, removerArquivo, removerArquivos } from '../../lib/storage';
+import { caminhoAnexoCaixaStorage, caminhoAnexoStorage, enviarArquivo, removerArquivo, removerArquivos } from '../../lib/storage';
+import { resolverUso } from '../../lib/iconesUsos';
 import { guardarArquivo } from '../../lib/offline/arquivos';
 import { BUCKET_STORAGE, useSalvarCaixa, type ItemParaSalvar } from '../../hooks/useStorageCaixas';
-import type { AnexoStorage, CaixaStorage, TagItem } from '../../types';
+import { useIconesUsos, useRemoverUsoIcone, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
+import { useOnline } from '../../hooks/useOnline';
+import { useTemaEfetivo } from '../../hooks/useTema';
+import type { AnexoCaixaStorage, AnexoStorage, CaixaStorage, TagItem, UsoIcone } from '../../types';
 import type { DadosStorage } from './CaixaConteudo';
 
 interface RascunhoAnexo {
@@ -66,10 +72,11 @@ function itensIniciais(caixa: CaixaStorage | null, dados: DadosStorage): Rascunh
 }
 
 /** O que identifica "mexeu em algo", pra perguntar antes de descartar. */
-function assinatura(nome: string, itens: RascunhoItem[], removidos: string[]): string {
+function assinatura(nome: string, itens: RascunhoItem[], removidos: string[], extras: unknown[] = []): string {
   return JSON.stringify([
     nome,
     removidos,
+    extras,
     itens.map((i) => [i.id, i.nome, i.quantidade, i.tagId, i.obs.map((o) => o.texto), i.anexos.map((a) => a.chave), i.anexosRemovidos.length]),
   ]);
 }
@@ -77,6 +84,14 @@ function assinatura(nome: string, itens: RascunhoItem[], removidos: string[]): s
 function anexosNovosDe(itens: RascunhoItem[]): string[] {
   return itens.flatMap((i) => i.anexos.filter((a) => !a.existente && !a.arquivoLocal).map((a) => a.caminho));
 }
+
+function anexosDaCaixaIniciais(caixa: CaixaStorage | null, dados: DadosStorage): RascunhoAnexo[] {
+  if (!caixa) return [];
+  return (dados.anexosPorCaixa.get(caixa.id) ?? []).map((a) => ({ chave: a.id, id: a.id, nome: a.nome, caminho: a.arquivo_url, nomeArquivo: a.nome_arquivo, existente: true }));
+}
+
+/** O que fazer com o ícone da caixa ao salvar: manter, trocar pelo escolhido ou voltar ao padrão. */
+type MudancaDeIcone = { acao: 'manter' } | { acao: 'definir'; uso: UsoIcone } | { acao: 'remover' };
 
 interface CaixaModalProps {
   /** null = caixa nova. */
@@ -102,18 +117,34 @@ export function CaixaModal({ caixa, dados, tags, ordemNova, numeroNovo, onFechar
   // O id nasce no navegador pra os anexos enviados durante a criação já terem a pasta certa.
   const [caixaId] = useState(() => caixa?.id ?? crypto.randomUUID());
   const [nome, setNome] = useState(caixa?.nome ?? '');
+  const [tagId, setTagId] = useState(caixa?.tag_id ?? '');
+  const [anexosCaixa, setAnexosCaixa] = useState<RascunhoAnexo[]>(() => anexosDaCaixaIniciais(caixa, dados));
+  const [anexosCaixaRemovidos, setAnexosCaixaRemovidos] = useState<AnexoStorage[]>([]);
+  const [anexosCaixaAbertos, setAnexosCaixaAbertos] = useState(false);
+  const [mudancaIcone, setMudancaIcone] = useState<MudancaDeIcone>({ acao: 'manter' });
+  const [escolhendoIcone, setEscolhendoIcone] = useState(false);
+  const online = useOnline();
+  const { data: usosIcones = [] } = useIconesUsos();
+  const temaEfetivo = useTemaEfetivo();
+  const salvarUso = useSalvarUsoIcone();
+  const removerUso = useRemoverUsoIcone();
   const [itens, setItens] = useState<RascunhoItem[]>(() => itensIniciais(caixa, dados));
   const [removidos, setRemovidos] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
-  const [assinaturaInicial] = useState(() => assinatura(caixa?.nome ?? '', itensIniciais(caixa, dados), []));
+  const [assinaturaInicial] = useState(() => assinatura(caixa?.nome ?? '', itensIniciais(caixa, dados), [], [caixa?.tag_id ?? '', anexosDaCaixaIniciais(caixa, dados).map((a) => a.chave), 0, 'manter']));
   // Os anexos enviados e ainda não salvos precisam ser apagados ao fechar; o ref guarda sempre a lista atual.
   const itensRef = useRef(itens);
   useEffect(() => {
     itensRef.current = itens;
   }, [itens]);
+  const anexosCaixaRef = useRef(anexosCaixa);
+  useEffect(() => {
+    anexosCaixaRef.current = anexosCaixa;
+  }, [anexosCaixa]);
 
   const editando = caixa !== null;
-  const mexeu = assinatura(nome, itens, removidos) !== assinaturaInicial;
+  const mexeu = assinatura(nome, itens, removidos, [tagId, anexosCaixa.map((a) => a.chave), anexosCaixaRemovidos.length, mudancaIcone.acao]) !== assinaturaInicial;
+  const nomeDaTagPrincipal = tags.find((t) => t.id === tagId)?.nome;
 
   function atualizarItem(id: string, patch: Partial<RascunhoItem>) {
     setItens((atual) => atual.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -152,7 +183,7 @@ export function CaixaModal({ caixa, dados, tags, ordemNova, numeroNovo, onFechar
       if (!ok) return;
     }
     // Anexo enviado e não salvo não pode ficar no bucket.
-    const caminhos = anexosNovosDe(itensRef.current);
+    const caminhos = [...anexosNovosDe(itensRef.current), ...anexosCaixaRef.current.filter((a) => !a.existente && !a.arquivoLocal).map((a) => a.caminho)];
     if (caminhos.length > 0) {
       try {
         await removerArquivos(BUCKET_STORAGE, caminhos);
@@ -194,12 +225,23 @@ export function CaixaModal({ caixa, dados, tags, ordemNova, numeroNovo, onFechar
         id: caixaId,
         ...(editando ? {} : { numero: numeroNovo }),
         nome: nome.trim(),
+        tag_id: tagId || null,
         novo: !editando,
         ordemNova,
         itens: itensParaSalvar,
         itensRemovidos: [...removidos, ...vazios.filter((i) => i.existente).map((i) => i.id)],
+        anexosCaixaNovos: anexosCaixa.filter((a) => !a.existente).map((a) => ({ id: a.chave, nome: a.nome, arquivo_url: a.caminho, nome_arquivo: a.nomeArquivo, arquivoLocal: a.arquivoLocal })),
+        anexosCaixaRemovidos: anexosCaixaRemovidos.map((a): AnexoCaixaStorage => ({ id: a.id, storage_id: caixaId, nome: a.nome, arquivo_url: a.arquivo_url, nome_arquivo: a.nome_arquivo })),
       });
-      mostrarToast(resultado === 'enfileirada' ? 'Caixa salva no aparelho. Será enviada quando houver internet.' : 'Caixa salva.');
+      let avisoIcone = false;
+      try {
+        if (mudancaIcone.acao === 'definir') await salvarUso.mutateAsync(mudancaIcone.uso);
+        else if (mudancaIcone.acao === 'remover') await removerUso.mutateAsync({ alvoTipo: 'caixa', alvoId: caixaId });
+      } catch (err) {
+        avisoIcone = true;
+        mostrarToast(`A caixa foi salva, mas o ícone não: ${mensagemDeErro(err)}`, 'erro');
+      }
+      if (!avisoIcone) mostrarToast(resultado === 'enfileirada' ? 'Caixa salva no aparelho. Será enviada quando houver internet.' : 'Caixa salva.');
       onSalvo(caixaId);
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
@@ -215,6 +257,73 @@ export function CaixaModal({ caixa, dados, tags, ordemNova, numeroNovo, onFechar
         Nome da caixa
         <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} data-autofocus />
       </label>
+      <div className="storage-form-item-linha">
+        <button
+          type="button"
+          className="btn-icone storage-icone-caixa-botao"
+          onClick={() => setEscolhendoIcone(true)}
+          disabled={!online}
+          title={online ? 'Escolher o ícone da caixa' : 'Escolher o ícone precisa de internet'}
+          aria-label={online ? 'Escolher o ícone da caixa' : 'Escolher o ícone precisa de internet'}
+        >
+          <IconeCaixa caixaId={caixaId} tamanho={24} uso={mudancaIcone.acao === 'definir' ? mudancaIcone.uso : mudancaIcone.acao === 'remover' ? null : undefined} />
+        </button>
+        <label className="storage-form-tag-principal">
+          Tag principal da caixa
+          <select value={tagId} onChange={(e) => setTagId(e.target.value)}>
+            <option value="">Sem tag</option>
+            {tags.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nome}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <p className="hierarquia-vazio">Os itens sem tag própria seguem a tag principal da caixa.</p>
+      {escolhendoIcone && (
+        <ModalIcone
+          aberto
+          rotuloAlvo={nome.trim() || 'a caixa'}
+          alvoTipo="caixa"
+          alvoId={caixaId}
+          inicial={mudancaIcone.acao === 'definir' ? mudancaIcone.uso : mudancaIcone.acao === 'remover' ? null : resolverUso(usosIcones, 'caixa', caixaId, temaEfetivo)}
+          tamanhoBase={18}
+          permiteRemover
+          onConfirmar={(uso) => {
+            setMudancaIcone({ acao: 'definir', uso });
+            setEscolhendoIcone(false);
+          }}
+          onRemover={() => {
+            setMudancaIcone({ acao: 'remover' });
+            setEscolhendoIcone(false);
+          }}
+          onFechar={() => setEscolhendoIcone(false)}
+        />
+      )}
+
+      <div className="storage-form-itens">
+        <button
+          type="button"
+          className="arquivo-link"
+          aria-expanded={anexosCaixaAbertos}
+          onClick={() => setAnexosCaixaAbertos((a) => !a)}
+          title="Anexos da caixa inteira"
+          aria-label="Anexos da caixa inteira"
+        >
+          Anexos da caixa ({anexosCaixa.length})
+        </button>
+        {anexosCaixaAbertos && (
+          <AnexosDoItem
+            item={{ id: caixaId, anexos: anexosCaixa, anexosRemovidos: anexosCaixaRemovidos }}
+            caminhoDe={(nomeAnexo, arquivo) => caminhoAnexoCaixaStorage(caixaId, nomeAnexo, arquivo)}
+            onChange={(patch) => {
+              if (patch.anexos) setAnexosCaixa(patch.anexos);
+              if (patch.anexosRemovidos) setAnexosCaixaRemovidos(patch.anexosRemovidos);
+            }}
+          />
+        )}
+      </div>
 
       <div className="storage-form-itens">
         <h4>Itens</h4>
@@ -223,6 +332,7 @@ export function CaixaModal({ caixa, dados, tags, ordemNova, numeroNovo, onFechar
             key={item.id}
             item={item}
             tags={tags}
+            tagDaCaixa={nomeDaTagPrincipal}
             onChange={(patch) => atualizarItem(item.id, patch)}
             onRemover={() => removerItem(item)}
           />
@@ -248,11 +358,14 @@ export function CaixaModal({ caixa, dados, tags, ordemNova, numeroNovo, onFechar
 function LinhaItem({
   item,
   tags,
+  tagDaCaixa,
   onChange,
   onRemover,
 }: {
   item: RascunhoItem;
   tags: TagItem[];
+  /** Nome da tag principal da caixa (os itens sem tag própria seguem ela). */
+  tagDaCaixa: string | undefined;
   onChange: (patch: Partial<RascunhoItem>) => void;
   onRemover: () => void;
 }) {
@@ -282,7 +395,7 @@ function LinhaItem({
       </div>
       <div className="storage-form-item-linha">
         <select value={item.tagId} onChange={(e) => onChange({ tagId: e.target.value })} aria-label={`Tag de ${rotulo}`}>
-          <option value="">Sem tag</option>
+          <option value="">{tagDaCaixa ? `Segue a caixa (${tagDaCaixa})` : 'Sem tag'}</option>
           {tags.map((t) => (
             <option key={t.id} value={t.id}>
               {t.nome}
@@ -331,13 +444,21 @@ function LinhaItem({
         </div>
       ))}
 
-      {item.anexosAbertos && <AnexosDoItem item={item} onChange={onChange} />}
+      {item.anexosAbertos && <AnexosDoItem item={item} onChange={onChange} caminhoDe={(nomeAnexo, arquivo) => caminhoAnexoStorage(item.id, nomeAnexo, arquivo)} />}
     </div>
   );
 }
 
-/** Bloco de anexos (Padrão B) de um item: o arquivo vai pro bucket na hora, mas só entra no banco ao salvar a caixa. */
-function AnexosDoItem({ item, onChange }: { item: RascunhoItem; onChange: (patch: Partial<RascunhoItem>) => void }) {
+/** Bloco de anexos (Padrão B) de um item ou da caixa inteira: o arquivo vai pro bucket na hora, mas só entra no banco ao salvar a caixa. */
+function AnexosDoItem({
+  item,
+  onChange,
+  caminhoDe,
+}: {
+  item: Pick<RascunhoItem, 'id' | 'anexos' | 'anexosRemovidos'>;
+  onChange: (patch: Partial<Pick<RascunhoItem, 'anexos' | 'anexosRemovidos'>>) => void;
+  caminhoDe: (nomeAnexo: string, arquivo: File) => string;
+}) {
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
   const [arquivo, setArquivo] = useState<File | null>(null);
@@ -348,7 +469,7 @@ function AnexosDoItem({ item, onChange }: { item: RascunhoItem; onChange: (patch
     if (!arquivo || !nome.trim()) return;
     setEnviando(true);
     try {
-      const caminho = caminhoAnexoStorage(item.id, nome.trim(), arquivo);
+      const caminho = caminhoDe(nome.trim(), arquivo);
       const chave = crypto.randomUUID();
       if (navigator.onLine) {
         await enviarArquivo(BUCKET_STORAGE, caminho, arquivo);

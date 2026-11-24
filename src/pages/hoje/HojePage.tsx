@@ -69,7 +69,7 @@ export function HojePage() {
                 </ul>
               )}
               {g.atrasadas.length > 0 && g.chave !== 'sem' && (
-                <Link to={`/apartamento/manutencao?filtro=atrasadas&pessoa=${g.chave}`}>
+                <Link to={`/apartamento/tarefas?filtro=atrasadas&pessoa=${g.chave}`}>
                   Ver {textoQuantidade(g.atrasadas.length, 'atrasada', 'atrasadas')} de {g.nome}
                 </Link>
               )}
@@ -77,7 +77,7 @@ export function HojePage() {
           ))
         )}
         <p>
-          <Link to="/apartamento/manutencao">Abrir Manutenção</Link>
+          <Link to="/apartamento/tarefas">Abrir Tarefas</Link>
         </p>
       </section>
 

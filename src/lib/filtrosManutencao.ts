@@ -20,6 +20,77 @@ export interface FiltrosManutencao {
   status: StatusTarefa[];
 }
 
+export type TipoFiltro = 'comodo' | 'frequencia' | 'responsavel' | 'status' | 'dia';
+
+/** Tipos de filtro na ordem em que os botões aparecem. */
+export const TIPOS_FILTRO: { tipo: TipoFiltro; rotulo: string }[] = [
+  { tipo: 'comodo', rotulo: 'Cômodo' },
+  { tipo: 'frequencia', rotulo: 'Frequência' },
+  { tipo: 'responsavel', rotulo: 'Responsável' },
+  { tipo: 'status', rotulo: 'Status' },
+  { tipo: 'dia', rotulo: 'Dia da semana' },
+];
+
+/** Quantas opções estão ligadas em cada tipo de filtro (aparece ao lado do nome do botão). */
+export function contarFiltrosDoTipo(f: FiltrosManutencao, tipo: TipoFiltro): number {
+  switch (tipo) {
+    case 'comodo':
+      return f.comodoIds.length;
+    case 'frequencia':
+      return f.periodos.length;
+    case 'responsavel':
+      return f.responsaveis.length;
+    case 'status':
+      return f.status.length;
+    case 'dia':
+      return f.dias.length;
+  }
+}
+
+export interface FiltrosSalvos {
+  filtros: FiltrosManutencao;
+  tiposAbertos: TipoFiltro[];
+}
+
+const CHAVE_FILTROS_SALVOS = 'po-tarefas-filtros';
+const TIPOS_VALIDOS = new Set<string>(TIPOS_FILTRO.map((t) => t.tipo));
+
+/** Lê o que ficou salvo no aparelho; qualquer problema (sem acesso, formato antigo) volta ao padrão. */
+export function lerFiltrosSalvos(): FiltrosSalvos {
+  const vazio: FiltrosSalvos = { filtros: FILTROS_VAZIOS, tiposAbertos: [] };
+  try {
+    const bruto = localStorage.getItem(CHAVE_FILTROS_SALVOS);
+    if (!bruto) return vazio;
+    const dado = JSON.parse(bruto) as Partial<{ filtros: Partial<FiltrosManutencao>; tiposAbertos: unknown }>;
+    const lista = <T,>(v: unknown, ok: (x: unknown) => x is T): T[] => (Array.isArray(v) ? v.filter(ok) : []);
+    const texto = (x: unknown): x is string => typeof x === 'string';
+    const numero = (x: unknown): x is number => typeof x === 'number';
+    const status = (x: unknown): x is StatusTarefa => x === 'feita' || x === 'nao_feita' || x === 'atrasada';
+    return {
+      // A busca por texto não é guardada: voltar com a lista filtrada por uma palavra antiga confunde.
+      filtros: {
+        busca: '',
+        comodoIds: lista(dado.filtros?.comodoIds, texto),
+        periodos: lista(dado.filtros?.periodos, numero),
+        responsaveis: lista(dado.filtros?.responsaveis, texto),
+        dias: lista(dado.filtros?.dias, numero),
+        status: lista(dado.filtros?.status, status),
+      },
+      tiposAbertos: lista(dado.tiposAbertos, (x): x is TipoFiltro => texto(x) && TIPOS_VALIDOS.has(x)),
+    };
+  } catch {
+    return vazio;
+  }
+}
+
+export function guardarFiltros(salvos: FiltrosSalvos): void {
+  try {
+    localStorage.setItem(CHAVE_FILTROS_SALVOS, JSON.stringify({ filtros: { ...salvos.filtros, busca: '' }, tiposAbertos: salvos.tiposAbertos }));
+  } catch {
+    // Sem acesso ao armazenamento do navegador: os filtros só não ficam salvos.
+  }
+}
+
 export const FILTROS_VAZIOS: FiltrosManutencao = { busca: '', comodoIds: [], periodos: [], dias: [], responsaveis: [], status: [] };
 
 export function haFiltroAtivo(f: FiltrosManutencao): boolean {
