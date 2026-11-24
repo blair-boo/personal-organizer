@@ -177,3 +177,9 @@
 .lista-parcelamentos .conta-detalhe {
   display: block;
 }
+
+/* Barra com o botão de voltar no topo de Parcelamentos e Resumo Geral. */
+.barra-voltar {
+  display: flex;
+  margin-bottom: 8px;
+}

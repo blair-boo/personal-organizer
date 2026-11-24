@@ -39,6 +39,13 @@ export function competenciaParaSigla(competencia: string): string {
   return `${ano.slice(2)}-${mes}`;
 }
 
+/** Último dia da competência ("AAAA-MM"), como "AAAA-MM-DD": 28 a 31 conforme o mês, nunca uma data que não existe. */
+export function ultimoDiaDaCompetencia(competencia: string): string {
+  const [ano, mes] = competencia.split('-').map(Number);
+  const ultimo = new Date(ano, mes, 0).getDate();
+  return `${competencia}-${String(ultimo).padStart(2, '0')}`;
+}
+
 /** Data (dia 1) correspondente à competência, pra gravar em colunas `date` do Postgres. */
 export function competenciaParaData(competencia: string): string {
   return `${competencia}-01`;

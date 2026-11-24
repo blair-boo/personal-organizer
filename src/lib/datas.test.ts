@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { somarMeses, formatarCompetenciaExtenso, competenciaParaSigla, formatarMoeda } from './datas';
+import { somarMeses, formatarCompetenciaExtenso, competenciaParaSigla, formatarMoeda, ultimoDiaDaCompetencia } from './datas';
 
 describe('somarMeses', () => {
   it('avança dentro do mesmo ano', () => {
@@ -30,5 +30,17 @@ describe('competenciaParaSigla', () => {
 describe('formatarMoeda', () => {
   it('formata em real brasileiro', () => {
     expect(formatarMoeda(1234.5)).toContain('1.234,50');
+  });
+});
+
+describe('ultimoDiaDaCompetencia', () => {
+  it('respeita meses de 30 e 31 dias', () => {
+    expect(ultimoDiaDaCompetencia('2026-11')).toBe('2026-11-30');
+    expect(ultimoDiaDaCompetencia('2026-12')).toBe('2026-12-31');
+  });
+
+  it('respeita fevereiro, inclusive em ano bissexto', () => {
+    expect(ultimoDiaDaCompetencia('2026-02')).toBe('2026-02-28');
+    expect(ultimoDiaDaCompetencia('2028-02')).toBe('2028-02-29');
   });
 });
