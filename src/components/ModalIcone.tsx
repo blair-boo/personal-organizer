@@ -3,10 +3,11 @@ import { ModalBase } from './ModalBase';
 import { useToast } from './Toast';
 import { IconeDoUso, IconeFuncao } from './IconeUso';
 import { IconeSupabase } from './IconeSupabase';
-import { useAdicionarIcones, useIconesTodasPastas } from '../hooks/useIcones';
+import { useAdicionarIcones, useCopiarParaEmUso, useIconesTodasPastas } from '../hooks/useIcones';
 import { useCoresUsuario } from '../hooks/useCoresUsuario';
 import { APP_CORES } from '../lib/coresApp';
 import { mensagemDeErro } from '../lib/erros';
+import { PASTA_EM_USO } from '../lib/iconesUsos';
 import { caminhoIcone } from '../lib/storage';
 import type { AlvoIcone, CorOrigemIcone, TemaIcone, UsoIcone } from '../types';
 
@@ -46,6 +47,8 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
   const { cores: minhasCores } = useCoresUsuario();
   const [pastaDestino, setPastaDestino] = useState('');
   const adicionar = useAdicionarIcones(pastaDestino);
+  const copiarEmUso = useCopiarParaEmUso();
+  const [pastaVista, setPastaVista] = useState(inicial?.icone_pasta ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [origem, setOrigem] = useState<'existentes' | 'novo'>('existentes');
@@ -84,6 +87,7 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
     try {
       await adicionar.mutateAsync([arquivo]);
       setEscolhido({ pasta: pastaDestino, arquivo: arquivo.name });
+      setPastaVista(pastaDestino);
       setOrigem('existentes');
       mostrarToast('Ícone adicionado.');
     } catch (err) {
@@ -91,9 +95,20 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
     }
   }
 
-  function aplicar() {
+  /** Copia o ícone escolhido para `em-uso` e só então confirma, com o uso apontando para a cópia. */
+  async function aplicar() {
     if (!usoRascunho) return;
-    onConfirmar(usoRascunho);
+    try {
+      const copia = await copiarEmUso.mutateAsync({ pasta: usoRascunho.icone_pasta, arquivo: usoRascunho.icone_arquivo });
+      onConfirmar({ ...usoRascunho, icone_pasta: copia.pasta, icone_arquivo: copia.arquivo });
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  function rotuloPasta(pasta: string): string {
+    if (pasta === '') return 'Sem pasta';
+    return pasta === PASTA_EM_USO ? 'Em uso' : pasta;
   }
 
   const erro = erroBruto ? mensagemDeErro(erroBruto) : null;
@@ -118,8 +133,18 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
             {carregando && <p className="hierarquia-vazio">Carregando…</p>}
             {erro && <p className="testes-erro">Não foi possível carregar os ícones: {erro}</p>}
             {!carregando && !erro && (
+              <div className="modal-icone-linha" role="group" aria-label="Pasta dos ícones">
+                {pastas.map(({ pasta }) => (
+                  <button key={pasta} type="button" className={pastaVista === pasta ? 'ativa' : ''} aria-pressed={pastaVista === pasta} onClick={() => setPastaVista(pasta)}>
+                    {rotuloPasta(pasta)}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!carregando && !erro && (
               <div className="modal-icone-grade" role="listbox" aria-label="Ícones existentes">
-                {pastas.flatMap(({ pasta, icones }) =>
+                {(pastas.find((p) => p.pasta === pastaVista)?.icones.length ?? 0) === 0 && <p className="hierarquia-vazio">Nenhum ícone nesta pasta.</p>}
+                {pastas.filter((p) => p.pasta === pastaVista).flatMap(({ pasta, icones }) =>
                   icones.map((icone) => {
                     const selecionado = escolhido?.pasta === pasta && escolhido.arquivo === icone.nome;
                     return (
@@ -149,7 +174,7 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
           <div className="modal-icone-novo">
             <fieldset className="modal-icone-fieldset">
               <legend>Salvar em</legend>
-              {pastas.map(({ pasta }) => (
+              {pastas.filter(({ pasta }) => pasta !== PASTA_EM_USO).map(({ pasta }) => (
                 <label key={pasta} className="modal-icone-radio">
                   <input type="radio" name="pasta-destino" checked={pastaDestino === pasta} onChange={() => setPastaDestino(pasta)} />
                   {pasta || 'Sem pasta'}
@@ -254,8 +279,8 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
             <IconeFuncao funcao="excluir" />
           </button>
         )}
-        <button type="button" className="btn-icone icone-uso-botao" onClick={aplicar} disabled={!usoRascunho} title="Aplicar ícone" aria-label="Aplicar ícone">
-          <IconeFuncao funcao="salvar" />
+        <button type="button" className="btn-icone icone-uso-botao" onClick={() => void aplicar()} disabled={!usoRascunho || copiarEmUso.isPending} title="Confirmar ícone" aria-label="Confirmar ícone">
+          <IconeFuncao funcao="confirmar" />
         </button>
       </div>
     </ModalBase>

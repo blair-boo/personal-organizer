@@ -1,6 +1,14 @@
 import type { UsoIcone } from '../types';
 import { FUNCOES_ICONE, ICONE_PLACEHOLDER } from './iconesFuncoes';
 
+/** Pasta do bucket onde ficam as cópias dos ícones em uso: apagar ou renomear a pasta de origem não afeta quem já usa o ícone. */
+export const PASTA_EM_USO = 'em-uso';
+
+/** Nome da cópia em `em-uso`: leva a pasta de origem no nome para ícones iguais de pastas diferentes não se sobrescreverem. */
+export function nomeCopiaEmUso(pasta: string, arquivo: string): string {
+  return `${pasta || 'raiz'}__${arquivo}`;
+}
+
 export type TemaEfetivo = 'claro' | 'escuro';
 
 /** Uso válido para o tema atual: o específico do tema, senão o de 'ambos'. */

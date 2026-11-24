@@ -82,6 +82,10 @@ com `currentColor`) ou `<IconePng arquivo="PNG/nome.png" />` (ilustração color
   do bucket: cada pasta do bucket `icones` é uma subseção (arquivos soltos ficam em
   "Sem pasta") e a máscara é um liga/desliga da galeria. Conferir a aba
   antes de dar o trabalho como pronto e citar em qual seção o ícone ficou.
+- Ao escolher um ícone no `ModalIcone`, o arquivo é copiado para a pasta `em-uso` do
+  bucket (`copiarParaEmUso` em `src/hooks/useIcones.ts`) e o uso (`icones_usos`) aponta
+  para a cópia, para que apagar ou renomear a pasta de origem não afete quem já usa o
+  ícone. Nunca gravar um uso apontando direto para a pasta de origem.
 - Quando o arquivo for enviado ao bucket, trocar o uso pelo ícone real, remover
   o substituto de `IconesProvisorios.tsx` e apagar a linha da tabela no backlog.
 

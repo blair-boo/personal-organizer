@@ -313,3 +313,9 @@
 .painel-abas-nome-invalido {
   border-color: var(--danger);
 }
+
+/* Marca de ícone em uso na galeria. */
+.testes-icone-em-uso {
+  opacity: 0.6;
+  font-size: 11px;
+}
