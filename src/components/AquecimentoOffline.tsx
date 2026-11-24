@@ -15,7 +15,7 @@ import { useTodosItemTags } from '../hooks/useItemTags';
 import { useItens } from '../hooks/useItens';
 import { useProjetoAnexos } from '../hooks/useProjetoAnexos';
 import { useProjetos } from '../hooks/useProjetos';
-import { useStorageAnexos } from '../hooks/useStorageAnexos';
+import { useStorageAnexos, useStorageCaixaAnexos } from '../hooks/useStorageAnexos';
 import { useStorageCaixas } from '../hooks/useStorageCaixas';
 import { useStorageItens } from '../hooks/useStorageItens';
 import { useStorageObs } from '../hooks/useStorageObs';
@@ -89,6 +89,7 @@ export function AquecimentoOffline({ onTerminou }: { onTerminou: () => void }) {
   useStorageItens();
   useStorageObs();
   useStorageAnexos();
+  useStorageCaixaAnexos();
   useTagsItens();
   useTodosItemTags();
   useHistoricoTarefas();

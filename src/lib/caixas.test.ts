@@ -4,6 +4,9 @@ import {
   codigoDaCaixa,
   criarLayout,
   idsDeCaixasComTags,
+  nomeDaCopia,
+  tagEfetivaDoItem,
+  tagsDaCaixa,
   idsDeCaixasNaBusca,
   layoutIgual,
   moverCaixa,
@@ -14,9 +17,9 @@ import {
 import type { CaixaStorage, ItemStorage } from '../types';
 
 const caixas: CaixaStorage[] = [
-  { id: 'c1', numero: 1, nome: 'Cozinha', ordem: 1 },
-  { id: 'c2', numero: 14, nome: 'Ferramentas', ordem: 2 },
-  { id: 'c3', numero: 3, nome: 'Vazia', ordem: 3 },
+  { id: 'c1', numero: 1, nome: 'Cozinha', ordem: 1, tag_id: null },
+  { id: 'c2', numero: 14, nome: 'Ferramentas', ordem: 2, tag_id: null },
+  { id: 'c3', numero: 3, nome: 'Vazia', ordem: 3, tag_id: null },
 ];
 const itens: ItemStorage[] = [
   { id: 'i1', storage_id: 'c1', nome: 'Panela', quantidade: 2, tag_id: null, ordem: 2 },
@@ -72,7 +75,7 @@ describe('moverItem', () => {
     expect(moverItem(layout, 'i1', 'c1', 'i2').itens.c1).toEqual(['i1', 'i2']);
     expect(moverItem(layout, 'i2', 'c1', 'i1').itens.c1).toEqual(['i1', 'i2']);
     const tres = criarLayout(
-      [{ id: 'c', numero: 1, nome: 'C', ordem: 1 }],
+      [{ id: 'c', numero: 1, nome: 'C', ordem: 1, tag_id: null }],
       ['a', 'b', 'c'].map((id, i) => ({ id, storage_id: 'c', nome: id, quantidade: null, tag_id: null, ordem: i + 1 }))
     );
     expect(moverItem(tres, 'a', 'c', 'c').itens.c).toEqual(['b', 'c', 'a']);
@@ -136,7 +139,7 @@ describe('idsDeCaixasNaBusca', () => {
   it('acha pelo nome da caixa, sem acento nem maiúscula', () => {
     expect([...idsDeCaixasNaBusca(caixas, itens, 'cozinha')]).toEqual(['c1']);
     expect([...idsDeCaixasNaBusca(caixas, itens, 'FERRAMENTAS')]).toEqual(['c2']);
-    expect([...idsDeCaixasNaBusca([{ id: 'c9', numero: 9, nome: 'Decoração', ordem: 1 }], [], 'decoracao')]).toEqual(['c9']);
+    expect([...idsDeCaixasNaBusca([{ id: 'c9', numero: 9, nome: 'Decoração', ordem: 1, tag_id: null }], [], 'decoracao')]).toEqual(['c9']);
   });
 
   it('acha pelo nome de um item e pelo código', () => {
@@ -164,5 +167,41 @@ describe('idsDeCaixasComTags', () => {
     expect([...idsDeCaixasComTags(caixas, comTags, ['t1'])]).toEqual(['c1']);
     expect([...idsDeCaixasComTags(caixas, comTags, ['t1', 't2'])].sort()).toEqual(['c1', 'c2']);
     expect(idsDeCaixasComTags(caixas, comTags, ['t9']).size).toBe(0);
+  });
+});
+
+describe('tag principal da caixa', () => {
+  it('o item segue a tag da caixa quando não tem a própria', () => {
+    expect(tagEfetivaDoItem({ tag_id: null }, { tag_id: 'a' })).toBe('a');
+    expect(tagEfetivaDoItem({ tag_id: 'b' }, { tag_id: 'a' })).toBe('b');
+    expect(tagEfetivaDoItem({ tag_id: null }, { tag_id: null })).toBeNull();
+    expect(tagEfetivaDoItem({ tag_id: null }, undefined)).toBeNull();
+  });
+
+  it('a caixa fica com a principal e as tags diferentes dos itens, sem repetir', () => {
+    const itensDaCaixa = [{ tag_id: 'a' }, { tag_id: 'b' }, { tag_id: 'b' }, { tag_id: null }, { tag_id: 'c' }];
+    expect(tagsDaCaixa({ tag_id: 'a' }, itensDaCaixa)).toEqual({ principal: 'a', dosItens: ['b', 'c'] });
+    expect(tagsDaCaixa({ tag_id: null }, [{ tag_id: null }])).toEqual({ principal: null, dosItens: [] });
+  });
+
+  it('o filtro acha a caixa pela principal ou pela tag própria de um item', () => {
+    const cs: CaixaStorage[] = [
+      { id: 'x', numero: 1, nome: 'X', ordem: 1, tag_id: 'a' },
+      { id: 'y', numero: 2, nome: 'Y', ordem: 2, tag_id: null },
+      { id: 'z', numero: 3, nome: 'Z', ordem: 3, tag_id: null },
+    ];
+    const is: ItemStorage[] = [{ id: 'i', storage_id: 'y', nome: 'Item', quantidade: null, tag_id: 'b', ordem: 1 }];
+    expect([...idsDeCaixasComTags(cs, is, ['a'])]).toEqual(['x']);
+    expect([...idsDeCaixasComTags(cs, is, ['b'])]).toEqual(['y']);
+    expect([...idsDeCaixasComTags(cs, is, ['a', 'b'])].sort()).toEqual(['x', 'y']);
+    expect(idsDeCaixasComTags(cs, is, []).size).toBe(3);
+  });
+});
+
+describe('nomeDaCopia', () => {
+  it('acrescenta (cópia) e numera as seguintes', () => {
+    expect(nomeDaCopia('Cozinha', ['Cozinha'])).toBe('Cozinha (cópia)');
+    expect(nomeDaCopia('Cozinha', ['Cozinha', 'Cozinha (cópia)'])).toBe('Cozinha (cópia 2)');
+    expect(nomeDaCopia('Cozinha (cópia)', ['Cozinha', 'Cozinha (cópia)'])).toBe('Cozinha (cópia 2)');
   });
 });

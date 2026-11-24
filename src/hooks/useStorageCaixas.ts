@@ -8,7 +8,7 @@ import type { CaixaStorage } from '../types';
 export { BUCKET_STORAGE };
 export type { AnexoNovoDados, ItemParaSalvar, SalvarCaixaDados, EdicaoStorageDados } from '../lib/offline/operacoes';
 
-const CHAVES_STORAGE = ['storage', 'storage_itens', 'storage_obs', 'storage_anexos'];
+const CHAVES_STORAGE = ['storage', 'storage_itens', 'storage_obs', 'storage_anexos', 'storage_caixa_anexos'];
 
 function invalidarStorage(qc: QueryClient) {
   return Promise.all(CHAVES_STORAGE.map((chave) => qc.invalidateQueries({ queryKey: [chave] })));

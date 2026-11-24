@@ -15,6 +15,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { ModalBase } from '../../components/ModalBase';
 import { IconeFuncao } from '../../components/IconeUso';
 import { IconeCamera, IconeQr } from '../../components/IconesProvisorios';
+import { IconeCaixa } from '../../components/IconeCaixa';
+import { TagsChips } from '../../components/TagsChips';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
@@ -27,15 +29,20 @@ import {
   layoutIgual,
   moverCaixa,
   moverItem,
+  nomeDaCopia,
   ordensParaSalvar,
+  tagsDaCaixa,
   type LayoutCaixas,
 } from '../../lib/caixas';
-import { useAplicarEdicaoStorage, useStorageCaixas } from '../../hooks/useStorageCaixas';
+import { useAplicarEdicaoStorage, useSalvarCaixa, useStorageCaixas } from '../../hooks/useStorageCaixas';
+import { useIconesUsos, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
+import { useTemaEfetivo } from '../../hooks/useTema';
+import { resolverUso } from '../../lib/iconesUsos';
 import { useStorageItens } from '../../hooks/useStorageItens';
 import { useStorageObs } from '../../hooks/useStorageObs';
-import { useStorageAnexos } from '../../hooks/useStorageAnexos';
+import { useStorageAnexos, useStorageCaixaAnexos } from '../../hooks/useStorageAnexos';
 import { useTagsItens } from '../../hooks/useTagsItens';
-import type { AnexoStorage, CaixaStorage, ItemStorage, ObsStorage } from '../../types';
+import type { AnexoCaixaStorage, AnexoStorage, CaixaStorage, ItemStorage, ObsStorage, TagItem } from '../../types';
 import { CaixaConteudo, type DadosStorage } from './CaixaConteudo';
 import { CaixaModal } from './CaixaModal';
 import { EtiquetaModal } from './EtiquetaModal';
@@ -64,17 +71,40 @@ function agrupar<T>(lista: T[], chave: (x: T) => string): Map<string, T[]> {
   return mapa;
 }
 
-function ItemArrastavel({ item, pendente, onMarcarExclusao, onDesfazerExclusao }: { item: ItemStorage; pendente: boolean; onMarcarExclusao: () => void; onDesfazerExclusao: () => void }) {
+function ItemArrastavel({
+  item,
+  pendente,
+  selecionado,
+  tagNome,
+  tagHerdada,
+  onAlternarSelecao,
+  onMarcarExclusao,
+  onDesfazerExclusao,
+}: {
+  item: ItemStorage;
+  pendente: boolean;
+  selecionado: boolean;
+  /** Tag que vale para o item (a própria, a pendente de aplicar ou a da caixa). */
+  tagNome: string | undefined;
+  tagHerdada: boolean;
+  onAlternarSelecao: () => void;
+  onMarcarExclusao: () => void;
+  onDesfazerExclusao: () => void;
+}) {
   const sortable = useSortable({ id: PREFIXO_ITEM + item.id });
   const style = { transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition };
   return (
     <li ref={sortable.setNodeRef} style={style} className={`documentos-item storage-item-edicao${pendente ? ' documentos-item-pendente' : ''}`}>
+      {!pendente && (
+        <input type="checkbox" checked={selecionado} onChange={onAlternarSelecao} aria-label={`Selecionar ${item.nome}`} title={`Selecionar ${item.nome}`} />
+      )}
       {!pendente && (
         <button type="button" className="btn-icone documentos-arrastar" aria-label={`Arrastar ${item.nome}`} title={`Arrastar ${item.nome}`} {...sortable.attributes} {...sortable.listeners}>
           <IconeFuncao funcao="mover" />
         </button>
       )}
       <span className="documentos-titulo-botao storage-item-titulo">{item.nome}</span>
+      {tagNome && <span className={tagHerdada ? 'storage-item-tag storage-item-tag-herdada' : 'storage-item-tag'}>{tagNome}</span>}
       {pendente ? (
         <button type="button" className="documentos-btn-desfazer" onClick={onDesfazerExclusao} title={`Desfazer exclusão de ${item.nome}`}>
           Desfazer
@@ -106,6 +136,10 @@ interface CaixaArrastavelProps {
   rascunho: string;
   itens: ItemStorage[];
   itensPendentes: Set<string>;
+  selecionados: Set<string>;
+  /** Tag (nome) que vale para cada item, já considerando o que está pendente. */
+  tagDoItem: (item: ItemStorage) => { nome: string | undefined; herdada: boolean };
+  onAlternarSelecao: (id: string) => void;
   onRascunhoChange: (v: string) => void;
   onIniciarRenomear: () => void;
   onConfirmarEdicao: () => void;
@@ -152,7 +186,7 @@ function CaixaEdicao(props: CaixaArrastavelProps) {
             </button>
           )}
           <span className="documentos-titulo-botao">
-            {nomeExibido} <span className="storage-codigo">{codigoDaCaixa(caixa.numero)}</span>
+            <IconeCaixa caixaId={caixa.id} /> {nomeExibido} <span className="storage-codigo">{codigoDaCaixa(caixa.numero)}</span>
           </span>
           {!pendente && (
             <button type="button" className="btn-icone" onClick={props.onIniciarRenomear} title={`Renomear ${nomeExibido}`} aria-label={`Renomear ${nomeExibido}`}>
@@ -178,6 +212,10 @@ function CaixaEdicao(props: CaixaArrastavelProps) {
                 key={item.id}
                 item={item}
                 pendente={itensPendentes.has(item.id)}
+                selecionado={props.selecionados.has(item.id)}
+                tagNome={props.tagDoItem(item).nome}
+                tagHerdada={props.tagDoItem(item).herdada}
+                onAlternarSelecao={() => props.onAlternarSelecao(item.id)}
                 onMarcarExclusao={() => props.onMarcarExclusaoItem(item.id)}
                 onDesfazerExclusao={() => props.onDesfazerExclusaoItem(item.id)}
               />
@@ -190,13 +228,30 @@ function CaixaEdicao(props: CaixaArrastavelProps) {
   );
 }
 
+function textoDeItens(quantidade: number): string {
+  return quantidade === 1 ? '1 item' : `${quantidade} itens`;
+}
+
+/** Tags da caixa: a principal e, ao lado, as tags próprias dos itens que são diferentes dela. */
+function ChipsDaCaixa({ caixa, dados }: { caixa: CaixaStorage; dados: DadosStorage }) {
+  const { principal, dosItens } = tagsDaCaixa(caixa, dados.itensPorCaixa.get(caixa.id) ?? []);
+  const tags = [principal, ...dosItens].map((id) => (id ? dados.tagPorId.get(id) : undefined)).filter((t): t is TagItem => !!t);
+  if (tags.length === 0) return null;
+  return <TagsChips tags={tags} />;
+}
+
 export function StoragePage() {
   const caixasQ = useStorageCaixas();
   const itensQ = useStorageItens();
   const obsQ = useStorageObs();
   const anexosQ = useStorageAnexos();
+  const anexosCaixaQ = useStorageCaixaAnexos();
   const tagsQ = useTagsItens();
   const aplicarEdicao = useAplicarEdicaoStorage();
+  const salvarCaixa = useSalvarCaixa();
+  const { data: usosIcones = [] } = useIconesUsos();
+  const temaEfetivo = useTemaEfetivo();
+  const salvarUso = useSalvarUsoIcone();
   const { confirmar } = useDialogos();
   const { mostrarToast } = useToast();
 
@@ -210,6 +265,11 @@ export function StoragePage() {
   const [rascunhoNome, setRascunhoNome] = useState('');
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
   const [salvando, setSalvando] = useState(false);
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  /** Tags aplicadas em lote e ainda não salvas (null = seguir a tag da caixa). */
+  const [tagsPendentes, setTagsPendentes] = useState<Map<string, string | null>>(new Map());
+  const [destinoLote, setDestinoLote] = useState('');
+  const [tagLote, setTagLote] = useState('');
 
   const [leitorAberto, setLeitorAberto] = useState(false);
   const [caixaModal, setCaixaModal] = useState<{ caixa: CaixaStorage | null } | null>(null);
@@ -233,13 +293,15 @@ export function StoragePage() {
       obsPorItem: agrupar<ObsStorage>(obsQ.data ?? [], (o) => o.item_id),
       anexosPorItem: agrupar<AnexoStorage>(anexosQ.data ?? [], (a) => a.item_id),
       tagPorId: new Map((tagsQ.data ?? []).map((t) => [t.id, t])),
+      anexosPorCaixa: agrupar<AnexoCaixaStorage>(anexosCaixaQ.data ?? [], (a) => a.storage_id),
+      caixaPorId: new Map(caixas.map((c) => [c.id, c])),
     };
-  }, [caixas, itens, obsQ.data, anexosQ.data, tagsQ.data]);
+  }, [caixas, itens, obsQ.data, anexosQ.data, anexosCaixaQ.data, tagsQ.data]);
 
   const layoutBase = useMemo(() => criarLayout(caixas, itens), [caixas, itens]);
   const layout = layoutLocal ?? layoutBase;
   const haAlteracaoDeOrdem = layoutLocal !== null && !layoutIgual(layoutBase, layoutLocal);
-  const temPendencias = haAlteracaoDeOrdem || exclusoesCaixas.size > 0 || exclusoesItens.size > 0 || renomeacoes.size > 0;
+  const temPendencias = haAlteracaoDeOrdem || exclusoesCaixas.size > 0 || exclusoesItens.size > 0 || renomeacoes.size > 0 || tagsPendentes.size > 0;
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const caixaPorId = useMemo(() => new Map(caixas.map((c) => [c.id, c])), [caixas]);
@@ -249,8 +311,52 @@ export function StoragePage() {
   const idsComTags = useMemo(() => idsDeCaixasComTags(caixas, itens, tagIdsFiltro), [caixas, itens, tagIdsFiltro]);
   const caixasVisiveis = layout.caixas.map((id) => caixaPorId.get(id)).filter((c): c is CaixaStorage => !!c && idsNaBusca.has(c.id) && idsComTags.has(c.id));
 
-  const carregando = caixasQ.isLoading || itensQ.isLoading || obsQ.isLoading || anexosQ.isLoading || tagsQ.isLoading;
-  const erro = caixasQ.error ?? itensQ.error ?? obsQ.error ?? anexosQ.error ?? tagsQ.error;
+  const carregando = caixasQ.isLoading || itensQ.isLoading || obsQ.isLoading || anexosQ.isLoading || anexosCaixaQ.isLoading || tagsQ.isLoading;
+  const erro = caixasQ.error ?? itensQ.error ?? obsQ.error ?? anexosQ.error ?? anexosCaixaQ.error ?? tagsQ.error;
+
+  /** Tag que vale para o item no modo de edição: a pendente, a própria ou a da caixa onde ele está agora. */
+  function tagDoItem(item: ItemStorage): { nome: string | undefined; herdada: boolean } {
+    const caixaAtual = caixaPorId.get(caixaDoItem(layout, item.id) ?? item.storage_id);
+    const propria = tagsPendentes.has(item.id) ? (tagsPendentes.get(item.id) ?? null) : item.tag_id;
+    const efetiva = propria ?? caixaAtual?.tag_id ?? null;
+    return { nome: efetiva ? dados.tagPorId.get(efetiva)?.nome : undefined, herdada: propria === null && efetiva !== null };
+  }
+
+  function alternarSelecao(id: string) {
+    setSelecionados((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
+
+  function moverSelecionados() {
+    if (!destinoLote) return;
+    let novoLayout = layout;
+    for (const id of selecionados) {
+      if (!exclusoesItens.has(id)) novoLayout = moverItem(novoLayout, id, destinoLote);
+    }
+    setLayoutLocal(novoLayout);
+    setSelecionados(new Set());
+    setDestinoLote('');
+  }
+
+  function aplicarTagSelecionados() {
+    if (!tagLote) return;
+    const tag = tagLote === 'segue' ? null : tagLote;
+    setTagsPendentes((atual) => {
+      const mapa = new Map(atual);
+      for (const id of selecionados) {
+        const original = itemPorId.get(id)?.tag_id ?? null;
+        if (tag === original) mapa.delete(id);
+        else mapa.set(id, tag);
+      }
+      return mapa;
+    });
+    setSelecionados(new Set());
+    setTagLote('');
+  }
 
   function nomeAtual(caixa: CaixaStorage): string {
     return renomeacoes.get(caixa.id) ?? caixa.nome;
@@ -297,6 +403,10 @@ export function StoragePage() {
     setExclusoesCaixas(new Set());
     setExclusoesItens(new Set());
     setRenomeacoes(new Map());
+    setSelecionados(new Set());
+    setTagsPendentes(new Map());
+    setDestinoLote('');
+    setTagLote('');
     cancelarEdicaoNome();
   }
 
@@ -356,7 +466,7 @@ export function StoragePage() {
       if (exclusoesItens.size > 0) partes.push(`${exclusoesItens.size} item(ns)`);
       const ok = await confirmar({
         titulo: 'Confirmar exclusão?',
-        mensagem: `Serão excluídos: ${partes.join(' e ')}. As observações e os anexos também serão apagados. Essa ação não pode ser desfeita.`,
+        mensagem: `Serão excluídos: ${partes.join(' e ')}. As observações e os anexos (inclusive os anexos das caixas) também serão apagados. Essa ação não pode ser desfeita.`,
         confirmarRotulo: 'Excluir e salvar',
         perigoso: true,
       });
@@ -371,6 +481,7 @@ export function StoragePage() {
         renomeacoes: [...renomeacoes].map(([id, nome]) => ({ id, nome })),
         caixasExcluidas: [...exclusoesCaixas],
         itensExcluidos: [...exclusoesItens],
+        tagsItens: [...tagsPendentes].filter(([id]) => !exclusoesItens.has(id)).map(([id, tag_id]) => ({ id, tag_id })),
       });
       mostrarToast(resultado === 'enfileirada' ? 'Alterações salvas no aparelho. Serão enviadas quando houver internet.' : 'Alterações salvas.');
       sairModoEdicao();
@@ -378,6 +489,47 @@ export function StoragePage() {
       mostrarToast(mensagemDeErro(err), 'erro');
     } finally {
       setSalvando(false);
+    }
+  }
+
+  /** Duplica a caixa: mesmo nome com (cópia), mesma tag, ícone e itens com observações. Os anexos não são copiados. */
+  async function duplicarCaixa(caixa: CaixaStorage) {
+    const novoId = crypto.randomUUID();
+    const itensDela = dados.itensPorCaixa.get(caixa.id) ?? [];
+    try {
+      const resultado = await salvarCaixa.mutateAsync({
+        id: novoId,
+        numero: caixas.reduce((maior, c) => Math.max(maior, c.numero), 0) + 1,
+        nome: nomeDaCopia(caixa.nome, caixas.map((c) => c.nome)),
+        tag_id: caixa.tag_id,
+        novo: true,
+        ordemNova: caixas.reduce((maior, c) => Math.max(maior, c.ordem), 0) + 1,
+        itens: itensDela.map((item) => ({
+          id: crypto.randomUUID(),
+          nome: item.nome,
+          quantidade: item.quantidade,
+          tag_id: item.tag_id,
+          obs: (dados.obsPorItem.get(item.id) ?? []).map((o) => o.texto),
+          anexosNovos: [],
+          anexosRemovidos: [],
+        })),
+        itensRemovidos: [],
+      });
+      const uso = resolverUso(usosIcones, 'caixa', caixa.id, temaEfetivo);
+      let iconeCopiado = true;
+      if (uso) {
+        try {
+          const { id: _id, ...semId } = uso;
+          void _id;
+          await salvarUso.mutateAsync({ ...semId, alvo_id: novoId });
+        } catch {
+          iconeCopiado = false;
+        }
+      }
+      const aviso = iconeCopiado ? '' : ' O ícone não foi copiado (precisa de internet).';
+      mostrarToast(`${resultado === 'enfileirada' ? 'Caixa duplicada no aparelho. Será enviada quando houver internet.' : 'Caixa duplicada.'} Os anexos não são copiados.${aviso}`);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
     }
   }
 
@@ -468,6 +620,38 @@ export function StoragePage() {
       ) : caixasVisiveis.length === 0 ? (
         <p className="documentos-vazio">{q || tagIdsFiltro.length > 0 ? 'Nenhum resultado.' : 'Nenhuma caixa ainda.'}</p>
       ) : modoEdicao ? (
+        <>
+        {selecionados.size > 0 && (
+          <div className="storage-lote-barra" role="group" aria-label="Ações nos itens selecionados">
+            <span>{selecionados.size} item(ns) selecionado(s)</span>
+            <select value={destinoLote} onChange={(e) => setDestinoLote(e.target.value)} aria-label="Mover os selecionados para a caixa">
+              <option value="">Mover para…</option>
+              {caixas.filter((c) => !exclusoesCaixas.has(c.id)).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {nomeAtual(c)}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={moverSelecionados} disabled={!destinoLote}>
+              Mover
+            </button>
+            <select value={tagLote} onChange={(e) => setTagLote(e.target.value)} aria-label="Tag para os selecionados">
+              <option value="">Escolher tag…</option>
+              <option value="segue">Seguir a tag da caixa</option>
+              {(tagsQ.data ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nome}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={aplicarTagSelecionados} disabled={!tagLote}>
+              Aplicar tag
+            </button>
+            <button type="button" onClick={() => setSelecionados(new Set())}>
+              Limpar seleção
+            </button>
+          </div>
+        )}
         <DndContext sensors={sensors} collisionDetection={detectarColisao} onDragOver={aoArrastarSobre} onDragEnd={aoSoltar}>
           <SortableContext items={caixasVisiveis.map((c) => PREFIXO_CAIXA + c.id)} strategy={verticalListSortingStrategy}>
             <div className="documentos-lista-area">
@@ -482,6 +666,9 @@ export function StoragePage() {
                   rascunho={rascunhoNome}
                   itens={(layout.itens[caixa.id] ?? []).map((id) => itemPorId.get(id)).filter((i): i is ItemStorage => !!i)}
                   itensPendentes={exclusoesItens}
+                  selecionados={selecionados}
+                  tagDoItem={tagDoItem}
+                  onAlternarSelecao={alternarSelecao}
                   onRascunhoChange={setRascunhoNome}
                   onIniciarRenomear={() => {
                     setEdicaoAtivaId(caixa.id);
@@ -498,6 +685,7 @@ export function StoragePage() {
             </div>
           </SortableContext>
         </DndContext>
+        </>
       ) : (
         <div className="documentos-lista-area">
           {caixasVisiveis.map((caixa) => {
@@ -507,7 +695,12 @@ export function StoragePage() {
                 <div className="documentos-item">
                   <button type="button" className="documentos-titulo-botao" onClick={() => alternarExpandir(caixa.id)} aria-expanded={expandido}>
                     <span className="documentos-seta">{expandido ? '▾' : '▸'}</span>
-                    {caixa.nome} <span className="storage-codigo">{codigoDaCaixa(caixa.numero)}</span>
+                    <IconeCaixa caixaId={caixa.id} /> {caixa.nome} <span className="storage-codigo">{codigoDaCaixa(caixa.numero)}</span>
+                    <span className="storage-contagem">{textoDeItens((dados.itensPorCaixa.get(caixa.id) ?? []).length)}</span>
+                  </button>
+                  <ChipsDaCaixa caixa={caixa} dados={dados} />
+                  <button type="button" className="btn-icone" onClick={() => void duplicarCaixa(caixa)} title={`Duplicar ${caixa.nome}`} aria-label={`Duplicar ${caixa.nome}`}>
+                    <IconeFuncao funcao="copiar" />
                   </button>
                   <button type="button" className="btn-icone" onClick={() => setEtiquetaDe(caixa)} title={`Etiqueta de ${caixa.nome}`} aria-label={`Etiqueta de ${caixa.nome}`}>
                     <IconeQr />
@@ -518,7 +711,7 @@ export function StoragePage() {
                 </div>
                 {expandido && (
                   <div className="documentos-item-expandido">
-                    <CaixaConteudo caixaId={caixa.id} dados={dados} />
+                    <CaixaConteudo caixaId={caixa.id} dados={dados} busca={q} />
                   </div>
                 )}
               </div>
@@ -546,15 +739,16 @@ export function StoragePage() {
         />
       )}
 
-      {loteAberto && <EtiquetasLoteModal caixas={caixas} onFechar={() => setLoteAberto(false)} />}
+      {loteAberto && <EtiquetasLoteModal caixas={caixas} nomesDasTags={new Map((tagsQ.data ?? []).map((t) => [t.id, t.nome]))} onFechar={() => setLoteAberto(false)} />}
 
-      {etiquetaDe && <EtiquetaModal caixa={etiquetaDe} onFechar={() => setEtiquetaDe(null)} />}
+      {etiquetaDe && <EtiquetaModal caixa={etiquetaDe} tagNome={etiquetaDe.tag_id ? dados.tagPorId.get(etiquetaDe.tag_id)?.nome : undefined} onFechar={() => setEtiquetaDe(null)} />}
 
       {detalhe && (
         <ModalBase aberto rotulo={`Caixa ${detalhe.nome}`} onFechar={() => setDetalheId(null)} classe="modal-edicao modal-storage">
           <h3 className="modal-titulo">
-            {detalhe.nome} <span className="storage-codigo">{codigoDaCaixa(detalhe.numero)}</span>
+            <IconeCaixa caixaId={detalhe.id} tamanho={22} /> {detalhe.nome} <span className="storage-codigo">{codigoDaCaixa(detalhe.numero)}</span>
           </h3>
+          <ChipsDaCaixa caixa={detalhe} dados={dados} />
           <CaixaConteudo caixaId={detalhe.id} dados={dados} />
           <div className="modal-acoes">
             <button
@@ -574,6 +768,15 @@ export function StoragePage() {
               }}
             >
               Etiqueta
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDetalheId(null);
+                void duplicarCaixa(detalhe);
+              }}
+            >
+              Duplicar
             </button>
             <button type="button" onClick={() => setDetalheId(null)}>
               Fechar

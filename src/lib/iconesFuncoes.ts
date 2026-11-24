@@ -50,6 +50,9 @@ export const FUNCOES_ICONE: DefinicaoFuncao[] = [
 ];
 
 /** Ícone que ocupa o lugar de uma categoria ou aba sem ícone, só no modo de edição. Fica na raiz do bucket. */
+/** Ícone da caixa de Storage quando nenhum foi escolhido (bucket icones, pasta Simples). */
+export const ICONE_CAIXA_PADRAO = 'Simples/UI_Icon_Activity_AlchemySim_Dealer.png';
+
 export const ICONE_PLACEHOLDER = 'Component_Randomized Pinpoint.png';
 
 export function definicaoDaFuncao(chave: string): DefinicaoFuncao | undefined {

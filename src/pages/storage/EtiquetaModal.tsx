@@ -15,13 +15,14 @@ const ESCALA_PREVIA = 6;
 const ALTURA_ETIQUETA_MM = 14;
 
 /** Mostra a etiqueta (rMQR com o código da caixa, e o nome ao lado se quiser) e baixa o PNG pra imprimir. */
-export function EtiquetaModal({ caixa, onFechar }: { caixa: CaixaStorage; onFechar: () => void }) {
+export function EtiquetaModal({ caixa, tagNome, onFechar }: { caixa: CaixaStorage; /** Tag principal da caixa: sai junto do nome na etiqueta. */ tagNome?: string; onFechar: () => void }) {
   const { mostrarToast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [simbolo, setSimbolo] = useState<SimboloRmqr | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [incluirNome, setIncluirNome] = useState(true);
   const codigo = codigoDaCaixa(caixa.numero);
+  const nomeNaEtiqueta = tagNome ? `${caixa.nome} (${tagNome})` : caixa.nome;
 
   useEffect(() => {
     let ativo = true;
@@ -40,14 +41,14 @@ export function EtiquetaModal({ caixa, onFechar }: { caixa: CaixaStorage; onFech
   }, [codigo]);
 
   useEffect(() => {
-    if (simbolo && canvasRef.current) desenharEtiqueta(canvasRef.current, { codigo, nome: caixa.nome, simbolo }, ESCALA_PREVIA, incluirNome);
-  }, [simbolo, incluirNome, codigo, caixa.nome]);
+    if (simbolo && canvasRef.current) desenharEtiqueta(canvasRef.current, { codigo, nome: nomeNaEtiqueta, simbolo }, ESCALA_PREVIA, incluirNome);
+  }, [simbolo, incluirNome, codigo, nomeNaEtiqueta]);
 
   async function baixar() {
     if (!simbolo) return;
     try {
       const canvas = document.createElement('canvas');
-      desenharEtiqueta(canvas, { codigo, nome: caixa.nome, simbolo }, ESCALA_DOWNLOAD, incluirNome);
+      desenharEtiqueta(canvas, { codigo, nome: nomeNaEtiqueta, simbolo }, ESCALA_DOWNLOAD, incluirNome);
       baixarBlob(await canvasParaPng(canvas), `etiqueta-${slugify(codigo)}.png`);
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
@@ -66,7 +67,7 @@ export function EtiquetaModal({ caixa, onFechar }: { caixa: CaixaStorage; onFech
       <canvas ref={canvasRef} className="storage-etiqueta" aria-label={`Código ${codigo}`} hidden={!simbolo} />
       <label className="manutencao-opcao-base">
         <input type="checkbox" checked={incluirNome} onChange={(e) => setIncluirNome(e.target.checked)} />
-        Incluir o nome da caixa ao lado do código
+        Incluir o nome (e a tag principal) da caixa ao lado do código
       </label>
       {milimetrosPorModulo !== null && (
         <p className="hierarquia-vazio">

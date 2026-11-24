@@ -1,5 +1,6 @@
 import { useCategorias } from './useCategorias';
 import { useDocumentosPessoas } from './useDocumentos';
+import { useStorageCaixas } from './useStorageCaixas';
 import { ABAS_PADRAO } from '../lib/abas';
 import { definicaoDaFuncao } from '../lib/iconesFuncoes';
 import type { AlvoIcone } from '../types';
@@ -9,6 +10,7 @@ export function useRotulosAlvos(): (alvoTipo: AlvoIcone, alvoId: string) => stri
   const { data: despesas = [] } = useCategorias('despesa');
   const { data: receitas = [] } = useCategorias('receita');
   const { data: pessoas = [] } = useDocumentosPessoas();
+  const { data: caixas = [] } = useStorageCaixas();
   const nomeDaPessoa = new Map(pessoas.map((p) => [p.id, p.nome]));
   const categorias = [...despesas, ...receitas];
   const porId = new Map(categorias.map((c) => [c.id, c]));
@@ -18,6 +20,7 @@ export function useRotulosAlvos(): (alvoTipo: AlvoIcone, alvoId: string) => stri
     if (alvoTipo === 'funcao') return `Função: ${definicaoDaFuncao(alvoId)?.rotulo ?? alvoId}`;
     if (alvoTipo === 'aba') return `Aba: ${abas.get(alvoId) ?? alvoId}`;
     if (alvoTipo === 'pessoa') return `${pessoas.find((p) => p.id === alvoId)?.tipo === 'casal' ? 'Casal' : 'Pessoa'}: ${nomeDaPessoa.get(alvoId) ?? 'removida'}`;
+    if (alvoTipo === 'caixa') return `Caixa: ${caixas.find((c) => c.id === alvoId)?.nome ?? 'removida'}`;
     const cat = porId.get(alvoId);
     if (!cat) return 'Categoria removida';
     const pai = cat.parent_id ? porId.get(cat.parent_id) : null;

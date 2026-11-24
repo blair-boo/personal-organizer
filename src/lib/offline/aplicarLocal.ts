@@ -1,5 +1,5 @@
 import { resumoDoHistorico } from '../historicoTarefa';
-import type { AdiamentoTarefa, AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TagItem, TarefaManutencao } from '../../types';
+import type { AdiamentoTarefa, AnexoCaixaStorage, AnexoStorage, CaixaStorage, HistoricoPessoa, HistoricoTarefa, ItemStorage, ObsStorage, TagItem, TarefaManutencao } from '../../types';
 import type {
   AtualizarExecucaoDados,
   AtualizarLinhaDados,
@@ -29,14 +29,15 @@ export interface EstadoStorage {
   itens: ItemStorage[];
   obs: ObsStorage[];
   anexos: AnexoStorage[];
+  anexosCaixa: AnexoCaixaStorage[];
 }
 
 export function aplicarSalvarCaixa(estado: EstadoStorage, dados: SalvarCaixaDados): EstadoStorage {
   let caixas = estado.caixas;
   if (dados.novo) {
-    caixas = [...caixas, { id: dados.id, numero: dados.numero ?? 0, nome: dados.nome, ordem: dados.ordemNova }];
+    caixas = [...caixas, { id: dados.id, numero: dados.numero ?? 0, nome: dados.nome, ordem: dados.ordemNova, tag_id: dados.tag_id ?? null }];
   } else {
-    caixas = caixas.map((c) => (c.id === dados.id ? { ...c, nome: dados.nome } : c));
+    caixas = caixas.map((c) => (c.id === dados.id ? { ...c, nome: dados.nome, ...(dados.tag_id !== undefined ? { tag_id: dados.tag_id } : {}) } : c));
   }
 
   const removidos = new Set(dados.itensRemovidos);
@@ -67,7 +68,12 @@ export function aplicarSalvarCaixa(estado: EstadoStorage, dados: SalvarCaixaDado
       item.anexosNovos.map((a): AnexoStorage => ({ id: a.id, item_id: item.id, nome: a.nome, arquivo_url: a.arquivo_url, nome_arquivo: a.nome_arquivo }))
     ),
   ];
-  return { caixas, itens, obs, anexos };
+  const caixaRemovidos = new Set((dados.anexosCaixaRemovidos ?? []).map((a) => a.id));
+  const anexosCaixa = [
+    ...estado.anexosCaixa.filter((a) => !caixaRemovidos.has(a.id)),
+    ...(dados.anexosCaixaNovos ?? []).map((a): AnexoCaixaStorage => ({ id: a.id, storage_id: dados.id, nome: a.nome, arquivo_url: a.arquivo_url, nome_arquivo: a.nome_arquivo })),
+  ];
+  return { caixas, itens, obs, anexos, anexosCaixa };
 }
 
 export function aplicarEdicaoStorage(estado: EstadoStorage, dados: EdicaoStorageDados): EstadoStorage {
@@ -76,6 +82,7 @@ export function aplicarEdicaoStorage(estado: EstadoStorage, dados: EdicaoStorage
   const nomes = new Map(dados.renomeacoes.map((r) => [r.id, r.nome]));
   const ordensCaixa = new Map(dados.caixas.map((c) => [c.id, c.ordem]));
   const movidos = new Map(dados.itens.map((i) => [i.id, i]));
+  const tagsDosItens = new Map((dados.tagsItens ?? []).map((t) => [t.id, t.tag_id]));
 
   const caixas = estado.caixas
     .filter((c) => !caixasExcluidas.has(c.id))
@@ -84,7 +91,8 @@ export function aplicarEdicaoStorage(estado: EstadoStorage, dados: EdicaoStorage
   const itens = estado.itens
     .map((i) => {
       const movido = movidos.get(i.id);
-      return movido ? { ...i, storage_id: movido.storage_id, ordem: movido.ordem } : i;
+      const comTag = tagsDosItens.has(i.id) ? { ...i, tag_id: tagsDosItens.get(i.id) ?? null } : i;
+      return movido ? { ...comTag, storage_id: movido.storage_id, ordem: movido.ordem } : comTag;
     })
     .filter((i) => !itensExcluidos.has(i.id) && !caixasExcluidas.has(i.storage_id));
   const vivos = new Set(itens.map((i) => i.id));
@@ -93,6 +101,7 @@ export function aplicarEdicaoStorage(estado: EstadoStorage, dados: EdicaoStorage
     itens,
     obs: estado.obs.filter((o) => vivos.has(o.item_id)),
     anexos: estado.anexos.filter((a) => vivos.has(a.item_id)),
+    anexosCaixa: estado.anexosCaixa.filter((a) => !caixasExcluidas.has(a.storage_id)),
   };
 }
 

@@ -7,7 +7,7 @@ import type { CaixaStorage } from '../../types';
 import { baixarBlob, canvasParaPng, desenharFolha, type EtiquetaParaDesenhar } from './desenharEtiquetas';
 
 /** Escolhe várias caixas e baixa as etiquetas numa imagem só (grade de duas colunas), para imprimir de uma vez. */
-export function EtiquetasLoteModal({ caixas, onFechar }: { caixas: CaixaStorage[]; onFechar: () => void }) {
+export function EtiquetasLoteModal({ caixas, nomesDasTags, onFechar }: { caixas: CaixaStorage[]; /** Tag id -> nome, para a tag principal sair junto do nome. */ nomesDasTags: Map<string, string>; onFechar: () => void }) {
   const { mostrarToast } = useToast();
   const [marcadas, setMarcadas] = useState<Set<string>>(new Set());
   const [incluirNome, setIncluirNome] = useState(true);
@@ -31,7 +31,8 @@ export function EtiquetasLoteModal({ caixas, onFechar }: { caixas: CaixaStorage[
       const etiquetas: EtiquetaParaDesenhar[] = [];
       for (const caixa of caixas.filter((c) => marcadas.has(c.id))) {
         const codigo = codigoDaCaixa(caixa.numero);
-        etiquetas.push({ codigo, nome: caixa.nome, simbolo: await gerarSimboloRmqr(codigo) });
+        const tag = caixa.tag_id ? nomesDasTags.get(caixa.tag_id) : undefined;
+        etiquetas.push({ codigo, nome: tag ? `${caixa.nome} (${tag})` : caixa.nome, simbolo: await gerarSimboloRmqr(codigo) });
       }
       const canvas = document.createElement('canvas');
       desenharFolha(canvas, etiquetas, incluirNome);
@@ -68,7 +69,7 @@ export function EtiquetasLoteModal({ caixas, onFechar }: { caixas: CaixaStorage[
       )}
       <label className="manutencao-opcao-base">
         <input type="checkbox" checked={incluirNome} onChange={(e) => setIncluirNome(e.target.checked)} />
-        Incluir o nome da caixa ao lado do código
+        Incluir o nome (e a tag principal) da caixa ao lado do código
       </label>
       <div className="modal-acoes">
         <button type="button" onClick={baixar} disabled={marcadas.size === 0 || gerando}>
