@@ -140,6 +140,12 @@ Essas duas áreas abrem sem internet (README, seção "Uso offline"). O que isso
   (frase curta com a classe de vazio) e erro.
 - Todo botão de ícone leva `title` e `aria-label`.
 
+## Git
+
+O branch principal é **`main-po`** (não existe `main` nem `master`). PR, merge, rebase
+e comparações usam sempre `main-po` como base. O deploy no GitHub Pages roda a partir
+dele (`.github/workflows/deploy.yml`). Merge de PR neste repositório é por commit de merge.
+
 ## Antes de dizer que terminou
 
 Rodar `npm run lint`, `npm test` e `npm run build`. Se algum falhar, corrigir ou

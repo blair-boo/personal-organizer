@@ -157,7 +157,7 @@ Botão de exportar no topo de Itens, Projetos e Manutenção (Apartamento). Sepa
 
 ## Backup para o Cloudflare R2
 
-O workflow `.github/workflows/backup.yml` roda todo domingo (06:00 UTC, 03:00 em Brasília) e também sob demanda (Actions → Backup → Run workflow). O código está em `scripts/backup-supabase.mjs`. O agendamento só roda a partir da branch padrão do repositório.
+O workflow `.github/workflows/backup.yml` roda todo domingo (06:00 UTC, 03:00 em Brasília) e também sob demanda (Actions → Backup → Run workflow). O código está em `scripts/backup-supabase.mjs`. O agendamento só roda a partir da branch padrão do repositório (`main-po`).
 
 **Secrets necessários** (Settings → Secrets and variables → Actions):
 
