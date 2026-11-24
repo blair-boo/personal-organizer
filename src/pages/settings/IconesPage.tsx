@@ -317,7 +317,7 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
   const { mostrarToast } = useToast();
   const qc = useQueryClient();
   const [atualizando, setAtualizando] = useState(false);
-  const [aberta, setAberta] = useState(true);
+  const [aberta, setAberta] = useState(false);
   const [pastaPendenteExclusao, setPastaPendenteExclusao] = useState(false);
   // A pasta Em uso é do sistema: não pode ser excluída nem renomeada.
   const protegida = pasta === PASTA_EM_USO;
