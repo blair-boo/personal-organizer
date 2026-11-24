@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { urlIconeSupabase } from '../components/IconeSupabase';
 import { caminhoIcone, slugify } from '../lib/storage';
 import { mensagemDeErro } from '../lib/erros';
-import { PASTA_EM_USO, nomeCopiaEmUso } from '../lib/iconesUsos';
+import { PASTA_EM_USO, arquivoNaoEncontrado, nomeCopiaEmUso } from '../lib/iconesUsos';
 import { CHAVE_USOS } from './useIconesUsos';
 import type { IconeArquivo, PastaIcones, UsoIcone } from '../types';
 
@@ -188,21 +188,38 @@ export function useCopiarParaEmUso() {
   });
 }
 
-/** Leva para `em-uso` os usos que ainda apontam para outra pasta (copia o arquivo e atualiza o uso). Devolve quantos moveu. */
+export interface ResultadoMigracaoEmUso {
+  /** Quantos usos foram levados para `em-uso`. */
+  movidos: number;
+  /** Caminhos (pasta/arquivo) de usos cujo arquivo não existe mais no bucket; ficam como estão. */
+  ausentes: string[];
+}
+
+/** Leva para `em-uso` os usos que ainda apontam para outra pasta (copia o arquivo e atualiza o uso). Um arquivo que não existe mais não interrompe os demais: é devolvido em `ausentes`. */
 export function useMigrarUsosParaEmUso() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (usos: UsoIcone[]) => {
+    mutationFn: async (usos: UsoIcone[]): Promise<ResultadoMigracaoEmUso> => {
       const pendentes = usos.filter((u) => u.icone_pasta !== PASTA_EM_USO);
+      const ausentes: string[] = [];
+      let movidos = 0;
       for (const uso of pendentes) {
-        const copia = await copiarParaEmUso(uso.icone_pasta, uso.icone_arquivo);
+        let copia: { pasta: string; arquivo: string };
+        try {
+          copia = await copiarParaEmUso(uso.icone_pasta, uso.icone_arquivo);
+        } catch (err) {
+          if (!arquivoNaoEncontrado(err)) throw err;
+          ausentes.push(caminhoIcone(uso.icone_pasta, uso.icone_arquivo));
+          continue;
+        }
         const { error } = await supabase
           .from('icones_usos')
           .update({ icone_pasta: copia.pasta, icone_arquivo: copia.arquivo })
           .match({ alvo_tipo: uso.alvo_tipo, alvo_id: uso.alvo_id, tema: uso.tema });
         if (error) throw error;
+        movidos += 1;
       }
-      return pendentes.length;
+      return { movidos, ausentes };
     },
     onSettled: () => Promise.all([invalidarGaleria(qc), qc.invalidateQueries({ queryKey: CHAVE_USOS })]),
   });
