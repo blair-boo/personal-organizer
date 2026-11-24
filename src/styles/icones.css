@@ -108,6 +108,8 @@
 .modal-usos {
   width: 100%;
   max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .modal-usos-lista {
