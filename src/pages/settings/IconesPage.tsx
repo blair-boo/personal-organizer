@@ -7,6 +7,7 @@ import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { IconeChevron } from '../../components/IconesProvisorios';
 import { IconeDoUso, IconeFuncao } from '../../components/IconeUso';
+import { ModalAtribuirIcone } from '../../components/ModalAtribuirIcone';
 import { ModalIcone } from '../../components/ModalIcone';
 import { ModalUsosIcone } from '../../components/ModalUsosIcone';
 import { SeletorCor } from '../../components/SeletorCor';
@@ -320,6 +321,7 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
   const [pastaPendenteExclusao, setPastaPendenteExclusao] = useState(false);
   // A pasta Em uso é do sistema: não pode ser excluída nem renomeada.
   const protegida = pasta === PASTA_EM_USO;
+  const [iconeParaAtribuir, setIconeParaAtribuir] = useState<IconeArquivo | null>(null);
   const [nomePastaPendente, setNomePastaPendente] = useState<string | null>(null);
   const [editandoPasta, setEditandoPasta] = useState(false);
   const [rascunhoPasta, setRascunhoPasta] = useState('');
@@ -635,6 +637,7 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
         </div>
       </div>
 
+      {iconeParaAtribuir && <ModalAtribuirIcone icone={{ pasta, nome: iconeParaAtribuir.nome }} onFechar={() => setIconeParaAtribuir(null)} />}
       {aberta && (
         <>
       {isLoading && <p className="hierarquia-vazio">Carregando…</p>}
@@ -654,6 +657,7 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
                 tamanho={tamanho}
                 mascara={mascara}
                 emUso={emUso.has(caminhoIcone(pasta, icone.nome))}
+                onAtribuir={() => setIconeParaAtribuir(icone)}
                 modoEdicao={modoEdicao}
                 pendenteExclusao={exclusoesPendentes.has(icone.id)}
                 editando={edicaoAtivaId === icone.id}
@@ -680,6 +684,7 @@ function IconeItem({
   tamanho,
   mascara,
   emUso,
+  onAtribuir,
   modoEdicao,
   pendenteExclusao,
   editando,
@@ -695,6 +700,7 @@ function IconeItem({
   tamanho: number;
   mascara: boolean;
   emUso: boolean;
+  onAtribuir: () => void;
   modoEdicao: boolean;
   pendenteExclusao: boolean;
   editando: boolean;
@@ -721,7 +727,14 @@ function IconeItem({
   return (
     <div ref={sortable.setNodeRef} style={style} className={`testes-icone-item${pendenteExclusao ? ' testes-icone-item-pendente' : ''}`}>
       {/* Arraste só a partir da miniatura (não do nome): sem alça de 3 traços, como pedido. */}
-      <div className="testes-icone-arrastar" aria-label={`Arrastar ${icone.nome}`} {...sortable.attributes} {...sortable.listeners}>
+      <div
+        className="testes-icone-arrastar"
+        aria-label={modoEdicao ? `Arrastar ${icone.nome}` : `Atribuir ${icone.nome} a um lugar do app`}
+        title={modoEdicao ? undefined : 'Atribuir a um lugar do app'}
+        onClick={modoEdicao ? undefined : onAtribuir}
+        {...sortable.attributes}
+        {...sortable.listeners}
+      >
         {mascara ? (
           <span
             className="testes-icone-svg"
