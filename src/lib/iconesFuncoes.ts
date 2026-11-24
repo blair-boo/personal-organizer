@@ -12,7 +12,10 @@ export type FuncaoIcone =
   | 'atualizar'
   | 'selecionar'
   | 'exportar'
-  | 'editar_abas';
+  | 'editar_abas'
+  | 'tema_claro'
+  | 'tema_sistema'
+  | 'tema_escuro';
 
 export interface DefinicaoFuncao {
   chave: FuncaoIcone;
@@ -35,6 +38,9 @@ export const FUNCOES_ICONE: DefinicaoFuncao[] = [
   { chave: 'selecionar', rotulo: 'Selecionar', arquivoPadrao: null },
   { chave: 'exportar', rotulo: 'Exportar', arquivoPadrao: null },
   { chave: 'editar_abas', rotulo: 'Editar abas', arquivoPadrao: 'UI_Icon_UGCComponent_Effect.png' },
+  { chave: 'tema_claro', rotulo: 'Tema claro', arquivoPadrao: null },
+  { chave: 'tema_sistema', rotulo: 'Tema do sistema', arquivoPadrao: null },
+  { chave: 'tema_escuro', rotulo: 'Tema escuro', arquivoPadrao: null },
 ];
 
 /** Ícone que ocupa o lugar de uma categoria ou aba sem ícone, só no modo de edição. Fica na raiz do bucket. */
