@@ -4,6 +4,7 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useAbasDoGrupo, useAbasEdicao } from './AbasEdicao';
+import { BotaoSalvarModal } from './ModalBase';
 import { IconeFuncao, IconeUso } from './IconeUso';
 import { ModalIcone } from './ModalIcone';
 import { useIconesUsos } from '../hooks/useIconesUsos';
@@ -26,13 +27,26 @@ function grupoDaRota(caminho: string): GrupoAbas | null {
 export function PainelEdicaoAbas() {
   const { pathname } = useLocation();
   const grupoAtual = grupoDaRota(pathname);
+  const edicao = useAbasEdicao();
+  // Fica na tela, sem fundo escuro, para você poder trocar de aba e editar as de outras seções.
   return (
     <section className="painel-abas" aria-label="Edição de abas">
-      <p className="painel-abas-dica">
-        Edite nome, ícone e ordem. Navegue pelas abas para editar as de outras seções. Nome em branco só vale se houver ícone.
-      </p>
-      <GrupoEditavel grupo="principal" />
-      {grupoAtual && <GrupoEditavel grupo={grupoAtual} />}
+      <header className="modal-cabecalho">
+        <h3 className="modal-titulo">Editar abas</h3>
+        <button type="button" className="modal-fechar" onClick={() => void edicao.cancelar()} title="Fechar" aria-label="Fechar">
+          ×
+        </button>
+      </header>
+      <div className="modal-corpo">
+        <p className="painel-abas-dica">
+          Edite nome, ícone e ordem. Navegue pelas abas para editar as de outras seções. Nome em branco só vale se houver ícone.
+        </p>
+        <GrupoEditavel grupo="principal" />
+        {grupoAtual && <GrupoEditavel grupo={grupoAtual} />}
+      </div>
+      <footer className="modal-rodape">
+        <BotaoSalvarModal onClick={() => void edicao.salvar()} disabled={!edicao.temAlteracoes} salvando={edicao.salvando} rotulo="Salvar alterações das abas" />
+      </footer>
     </section>
   );
 }

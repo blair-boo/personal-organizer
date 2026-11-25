@@ -120,19 +120,13 @@ export function LeitorModal({ onFechar, onLido }: LeitorModalProps) {
   }
 
   return (
-    <ModalBase aberto rotulo="Ler código da caixa" onFechar={onFechar} classe="modal-edicao modal-storage">
-      <h3 className="modal-titulo">Ler código da caixa</h3>
+    <ModalBase aberto rotulo="Ler código da caixa" onFechar={onFechar} classe="modal-edicao modal-storage" titulo="Ler código da caixa" perguntarAoDescartar={false}>
       {!semCamera && <video ref={videoRef} className="storage-video" playsInline muted aria-label="Imagem da câmera" />}
       <p role="status">{status}</p>
       <label className="storage-arquivo-imagem">
         Ou escolha uma imagem da etiqueta
         <input type="file" accept="image/*" disabled={lendoImagem} onChange={(e) => void lerImagem(e.target.files?.[0])} />
       </label>
-      <div className="modal-acoes">
-        <button type="button" onClick={onFechar}>
-          Fechar
-        </button>
-      </div>
     </ModalBase>
   );
 }

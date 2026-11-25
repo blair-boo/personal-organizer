@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { IconeFuncao } from '../../components/IconeUso';
-import { ModalBase } from '../../components/ModalBase';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { CategoriaSelect } from '../../components/CategoriaSelect';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
@@ -36,13 +36,11 @@ function FormularioLancamento({
   competencia,
   editando,
   onSalvo,
-  onCancelar,
 }: {
   contaId: string;
   competencia: string;
   editando: Lancamento | null;
   onSalvo: () => void;
-  onCancelar: () => void;
 }) {
   const criar = useCriarLancamento(contaId, competencia);
   const atualizar = useAtualizarLancamento(contaId, competencia);
@@ -59,6 +57,7 @@ function FormularioLancamento({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (salvando) return;
     setSalvando(true);
     try {
       const payload: DadosLancamento = {
@@ -89,7 +88,7 @@ function FormularioLancamento({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form id="form-modal" onSubmit={handleSubmit}>
       <label>
         Data
         <input type="date" value={dados.data} onChange={(e) => setDados({ ...dados, data: e.target.value })} required data-autofocus />
@@ -122,14 +121,6 @@ function FormularioLancamento({
         Observação
         <input type="text" value={dados.observacao ?? ''} onChange={(e) => setDados({ ...dados, observacao: e.target.value || null })} />
       </label>
-      <div className="modal-acoes">
-        <button type="submit" disabled={salvando}>
-          {salvando ? 'Salvando…' : 'Salvar'}
-        </button>
-        <button type="button" onClick={onCancelar}>
-          Cancelar
-        </button>
-      </div>
     </form>
   );
 }
@@ -257,14 +248,18 @@ export function ExtratoContaView({ competencia, tiposConta }: { competencia: str
           rotulo={editando ? 'Editar lançamento' : 'Novo lançamento'}
           onFechar={() => setModalLancamentoAberto(false)}
           classe="modal-edicao"
-        >
-          <h3 className="modal-titulo">{editando ? 'Editar lançamento' : 'Novo lançamento'}</h3>
+      titulo={editando ? 'Editar lançamento' : 'Novo lançamento'}
+      rodape={
+        <>
+          <BotaoSalvarModal form="form-modal" />
+        </>
+      }
+    >
           <FormularioLancamento
             contaId={contaAtual.id}
             competencia={competencia}
             editando={editando}
             onSalvo={() => setModalLancamentoAberto(false)}
-            onCancelar={() => setModalLancamentoAberto(false)}
           />
         </ModalBase>
       )}

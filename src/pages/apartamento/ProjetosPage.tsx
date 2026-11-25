@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { BotaoExportarCsv } from '../../components/BotaoExportarCsv';
 import { IconeFuncao } from '../../components/IconeUso';
-import { ModalBase } from '../../components/ModalBase';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { ArquivoLink } from '../../components/ArquivoLink';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
@@ -99,17 +99,16 @@ function SecaoAnexos({ projeto }: { projeto: Projeto }) {
 function FormularioProjeto({
   inicial,
   onSalvar,
-  onCancelar,
 }: {
   inicial: DadosProjeto;
   onSalvar: (dados: DadosProjeto) => Promise<void>;
-  onCancelar: () => void;
 }) {
   const [dados, setDados] = useState<DadosProjeto>(inicial);
   const [salvando, setSalvando] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (salvando) return;
     setSalvando(true);
     try {
       await onSalvar(dados);
@@ -119,7 +118,7 @@ function FormularioProjeto({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form id="form-modal" onSubmit={handleSubmit}>
       <label>
         Nome
         <input type="text" value={dados.nome} onChange={(e) => setDados({ ...dados, nome: e.target.value })} data-autofocus required />
@@ -146,14 +145,6 @@ function FormularioProjeto({
         Conclusão
         <input type="date" value={dados.data_conclusao ?? ''} onChange={(e) => setDados({ ...dados, data_conclusao: e.target.value || null })} />
       </label>
-      <div className="modal-acoes">
-        <button type="submit" disabled={salvando}>
-          {salvando ? 'Salvando…' : 'Salvar'}
-        </button>
-        <button type="button" onClick={onCancelar}>
-          Cancelar
-        </button>
-      </div>
     </form>
   );
 }
@@ -247,8 +238,11 @@ export function ProjetosPage() {
           {projetos?.length === 0 && <p className="hierarquia-vazio">Nenhum projeto cadastrado ainda.</p>}
         </ul>
       )}
-      <ModalBase aberto={modalAberto} rotulo={editando ? editando.nome : 'Novo projeto'} onFechar={() => setModalAberto(false)} classe="modal-edicao">
-        <h3 className="modal-titulo">{editando ? 'Editar projeto' : 'Novo projeto'}</h3>
+      <ModalBase aberto={modalAberto} rotulo={editando ? editando.nome : 'Novo projeto'} onFechar={() => setModalAberto(false)} classe="modal-edicao" titulo={editando ? 'Editar projeto' : 'Novo projeto'} rodape={
+        <>
+          <BotaoSalvarModal form="form-modal" />
+        </>
+      }>
         <FormularioProjeto
           inicial={
             editando
@@ -262,7 +256,6 @@ export function ProjetosPage() {
               : PROJETO_VAZIO
           }
           onSalvar={salvar}
-          onCancelar={() => setModalAberto(false)}
         />
         {editando && (
           <>

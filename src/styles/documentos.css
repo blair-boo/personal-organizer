@@ -195,6 +195,21 @@
   font-size: 13px;
 }
 
+/* No modo de edição, o dado expandido é um botão: tocar abre o documento para editar. */
+.documentos-campo-editavel {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px dashed var(--accent-border);
+  border-radius: 0;
+  color: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .documentos-anexo-acoes {
   display: flex;
   align-items: center;

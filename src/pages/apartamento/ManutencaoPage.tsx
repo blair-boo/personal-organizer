@@ -4,7 +4,7 @@ import { BotaoExportarCsv } from '../../components/BotaoExportarCsv';
 import { IconeFuncao } from '../../components/IconeUso';
 import { IconePessoa } from '../../components/IconePessoa';
 import { IconeBandeira, IconeKanban, IconeLista } from '../../components/IconesProvisorios';
-import { ModalBase } from '../../components/ModalBase';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { CalendarioMensal } from '../../components/CalendarioMensal';
 import { TagMultiSelect } from '../../components/TagMultiSelect';
 import { TagsChips } from '../../components/TagsChips';
@@ -60,14 +60,12 @@ function FormularioTarefa({
   todasClassificacoes,
   pessoas,
   onSalvar,
-  onCancelar,
 }: {
   inicial: DadosTarefaManutencao;
   pessoas: PessoaDocumentos[];
   classificacoesIniciais: string[];
   todasClassificacoes: { id: string; nome: string }[];
   onSalvar: (dados: DadosTarefaManutencao, classificacaoIds: string[]) => Promise<void>;
-  onCancelar: () => void;
 }) {
   const [dados, setDados] = useState<DadosTarefaManutencao>(inicial);
   const [classificacaoIds, setClassificacaoIds] = useState<string[]>(classificacoesIniciais);
@@ -75,6 +73,7 @@ function FormularioTarefa({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (salvando) return;
     setSalvando(true);
     try {
       const dadosFinais = { ...dados, dias_semana: aceitaDiaDaSemana(dados.frequencia_dias) ? dados.dias_semana : [], instrucoes: dados.instrucoes?.trim() || null };
@@ -85,7 +84,7 @@ function FormularioTarefa({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form id="form-modal" onSubmit={handleSubmit}>
       <label>
         Nome
         <input type="text" value={dados.nome} onChange={(e) => setDados({ ...dados, nome: e.target.value })} data-autofocus required />
@@ -164,14 +163,6 @@ function FormularioTarefa({
         <input type="checkbox" checked={dados.ativo} onChange={(e) => setDados({ ...dados, ativo: e.target.checked })} />
         Ativa
       </label>
-      <div className="modal-acoes">
-        <button type="submit" disabled={salvando}>
-          {salvando ? 'Salvando…' : 'Salvar'}
-        </button>
-        <button type="button" onClick={onCancelar}>
-          Cancelar
-        </button>
-      </div>
     </form>
   );
 }
@@ -758,15 +749,17 @@ export function ManutencaoPage() {
         />
       )}
 
-      <ModalBase aberto={modalAberto} rotulo={editando ? 'Editar tarefa' : 'Nova tarefa'} onFechar={() => setModalAberto(false)} classe="modal-edicao">
-        <h3 className="modal-titulo">{editando ? 'Editar tarefa' : 'Nova tarefa'}</h3>
+      <ModalBase aberto={modalAberto} rotulo={editando ? 'Editar tarefa' : 'Nova tarefa'} onFechar={() => setModalAberto(false)} classe="modal-edicao" titulo={editando ? 'Editar tarefa' : 'Nova tarefa'} rodape={
+        <>
+          <BotaoSalvarModal form="form-modal" />
+        </>
+      }>
         <FormularioTarefa
           inicial={editando ? dadosDaTarefa(editando) : TAREFA_VAZIA}
           classificacoesIniciais={editando ? (tarefaClassificacoes?.get(editando.id) ?? []).map((c) => c.id) : []}
           todasClassificacoes={tags ?? []}
           pessoas={listaPessoas}
           onSalvar={salvar}
-          onCancelar={() => setModalAberto(false)}
         />
       </ModalBase>
     </div>

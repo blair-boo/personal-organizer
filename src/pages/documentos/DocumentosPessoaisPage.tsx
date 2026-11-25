@@ -3,7 +3,7 @@ import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type D
 import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { CriarCasalModal } from './CriarCasalModal';
-import { ModalBase } from '../../components/ModalBase';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { ArquivoLink, BotaoBaixarArquivo } from '../../components/ArquivoLink';
 import { IconeFuncao } from '../../components/IconeUso';
 import { IconePessoa } from '../../components/IconePessoa';
@@ -297,13 +297,22 @@ function FormularioCamposFixos({
   );
 }
 
-function LinhaExibicao({ rotulo, valor }: { rotulo: string; valor: string }) {
+function LinhaExibicao({ rotulo, valor, onEditar }: { rotulo: string; valor: string; onEditar?: () => void }) {
   const { mostrarToast } = useToast();
+  const texto = (
+    <>
+      <strong>{rotulo}:</strong> {valor}
+    </>
+  );
   return (
     <div className="documentos-campo-exibicao-linha">
-      <span>
-        <strong>{rotulo}:</strong> {valor}
-      </span>
+      {onEditar ? (
+        <button type="button" className="documentos-campo-editavel" onClick={onEditar} title={`Editar ${rotulo}`} aria-label={`Editar ${rotulo}: ${valor}`}>
+          {texto}
+        </button>
+      ) : (
+        <span>{texto}</span>
+      )}
       <button type="button" className="btn-icone" onClick={() => copiarConteudo(valor, mostrarToast, rotulo)} title={`Copiar ${rotulo}`} aria-label={`Copiar ${rotulo}`}>
         <IconeFuncao funcao="salvar" />
       </button>
@@ -321,7 +330,7 @@ function textoVencimento(d: Documento): string | null {
   return null;
 }
 
-function ExibicaoDocumentoPessoal({ documento }: { documento: Documento }) {
+function ExibicaoDocumentoPessoal({ documento, onEditar }: { documento: Documento; onEditar?: () => void }) {
   const { data: anexos, isLoading: carregandoAnexos } = useDocumentoAnexos(documento.id);
   const { data: locais, isLoading: carregandoLocais } = useDocumentoLocaisRenovacao(documento.id);
   const vencimentoTexto = textoVencimento(documento);
@@ -334,27 +343,33 @@ function ExibicaoDocumentoPessoal({ documento }: { documento: Documento }) {
   return (
     <div className="documentos-item-expandido">
       {semNadaPreenchido ? (
-        <p className="hierarquia-vazio">Nenhuma informação preenchida ainda.</p>
+        onEditar ? (
+          <button type="button" className="documentos-campo-editavel hierarquia-vazio" onClick={onEditar}>
+            Nenhuma informação preenchida ainda. Toque para preencher.
+          </button>
+        ) : (
+          <p className="hierarquia-vazio">Nenhuma informação preenchida ainda.</p>
+        )
       ) : (
         <div className="documentos-campos-exibicao">
-          {documento.numero && <LinhaExibicao rotulo="Número" valor={documento.numero} />}
-          {isCNH && documento.numero_espelho && <LinhaExibicao rotulo="Número do espelho" valor={documento.numero_espelho} />}
-          {documento.emissao && <LinhaExibicao rotulo="Emissão" valor={formatarData(documento.emissao)} />}
-          {vencimentoTexto && <LinhaExibicao rotulo="Vencimento" valor={vencimentoTexto} />}
+          {documento.numero && <LinhaExibicao onEditar={onEditar} rotulo="Número" valor={documento.numero} />}
+          {isCNH && documento.numero_espelho && <LinhaExibicao onEditar={onEditar} rotulo="Número do espelho" valor={documento.numero_espelho} />}
+          {documento.emissao && <LinhaExibicao onEditar={onEditar} rotulo="Emissão" valor={formatarData(documento.emissao)} />}
+          {vencimentoTexto && <LinhaExibicao onEditar={onEditar} rotulo="Vencimento" valor={vencimentoTexto} />}
           {(documento.vencimento_tipo === 'data' || documento.vencimento_tipo === 'prazo') && (
-            <LinhaExibicao rotulo="Aviso de vencimento" valor={documento.aviso_vencimento ? `Sim, ${documento.aviso_dias ?? '?'} dia(s) antes` : 'Não'} />
+            <LinhaExibicao onEditar={onEditar} rotulo="Aviso de vencimento" valor={documento.aviso_vencimento ? `Sim, ${documento.aviso_dias ?? '?'} dia(s) antes` : 'Não'} />
           )}
           {documento.renovar_tipo && (documento.renovar_tipo === 'online' || documento.renovar_tipo === 'ambos') && documento.renovar_site_nome && (
-            <LinhaExibicao rotulo="Site para renovar" valor={documento.renovar_site_nome} />
+            <LinhaExibicao onEditar={onEditar} rotulo="Site para renovar" valor={documento.renovar_site_nome} />
           )}
           {documento.renovar_tipo && (documento.renovar_tipo === 'online' || documento.renovar_tipo === 'ambos') && documento.renovar_site_link && (
-            <LinhaExibicao rotulo="Link para renovar" valor={documento.renovar_site_link} />
+            <LinhaExibicao onEditar={onEditar} rotulo="Link para renovar" valor={documento.renovar_site_link} />
           )}
           {(locais ?? []).map((l) => (
             <div key={l.id} className="documentos-local-exibicao">
-              {l.local && <LinhaExibicao rotulo="Local" valor={l.local} />}
-              {l.endereco && <LinhaExibicao rotulo="Endereço" valor={l.endereco} />}
-              {l.telefone && <LinhaExibicao rotulo="Telefone" valor={l.telefone} />}
+              {l.local && <LinhaExibicao onEditar={onEditar} rotulo="Local" valor={l.local} />}
+              {l.endereco && <LinhaExibicao onEditar={onEditar} rotulo="Endereço" valor={l.endereco} />}
+              {l.telefone && <LinhaExibicao onEditar={onEditar} rotulo="Telefone" valor={l.telefone} />}
             </div>
           ))}
         </div>
@@ -459,7 +474,6 @@ function ItemDocumentoLinha({
   pendente,
   editando,
   rascunho,
-  onAbrirEdicao,
   onExpandir,
   expandido,
   onIniciarRenomear,
@@ -477,7 +491,6 @@ function ItemDocumentoLinha({
   pendente: boolean;
   editando: boolean;
   rascunho: string;
-  onAbrirEdicao: () => void;
   onExpandir: () => void;
   expandido: boolean;
   onIniciarRenomear: () => void;
@@ -521,7 +534,7 @@ function ItemDocumentoLinha({
           <IconeFuncao funcao="editar" />
         </button>
       )}
-      <button type="button" className="documentos-titulo-botao" onClick={() => (modoEdicao ? undefined : onExpandir())} disabled={pendente || modoEdicao}>
+      <button type="button" className="documentos-titulo-botao" onClick={onExpandir} disabled={pendente}>
         <span className="documentos-seta">{expandido ? '▾' : '▸'}</span>
         {incompleto && <span className="documentos-marcador-vazio" title="Ainda sem preenchimento" aria-hidden="true" />}
         {tituloExibido}
@@ -529,11 +542,6 @@ function ItemDocumentoLinha({
       {modoEdicao && !pendente && (
         <button type="button" className="btn-icone" onClick={onIniciarRenomear} title="Renomear" aria-label={`Renomear ${tituloExibido}`}>
           <IconeFuncao funcao="salvar" />
-        </button>
-      )}
-      {!modoEdicao && (
-        <button type="button" onClick={onAbrirEdicao} disabled={pendente}>
-          Editar
         </button>
       )}
       {modoEdicao &&
@@ -550,7 +558,25 @@ function ItemDocumentoLinha({
   );
 }
 
-function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pessoaNome: string }) {
+interface EdicaoPessoasProps {
+  /** Há renomeações ou exclusões de pessoas esperando o salvar. */
+  pessoasPendentes: boolean;
+  /** Pergunta antes de excluir pessoas; false cancela o salvamento inteiro. */
+  confirmarPessoas: () => Promise<boolean>;
+  aplicarPessoas: () => Promise<void>;
+  descartarPessoas: () => void;
+}
+
+function ListaDocumentosPessoa({
+  pessoaId,
+  pessoaNome,
+  modoEdicao,
+  onModoEdicao,
+  pessoasPendentes,
+  confirmarPessoas,
+  aplicarPessoas,
+  descartarPessoas,
+}: { pessoaId: string; pessoaNome: string; modoEdicao: boolean; onModoEdicao: (ativo: boolean) => void } & EdicaoPessoasProps) {
   const { data: usosIcones = [] } = useIconesUsos();
   const temaEfetivo = useTemaEfetivo();
   const salvarUso = useSalvarUsoIcone();
@@ -566,7 +592,6 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
   const { mostrarToast } = useToast();
 
   const [busca, setBusca] = useState('');
-  const [modoEdicao, setModoEdicao] = useState(false);
   const [edicaoAtivaId, setEdicaoAtivaId] = useState<string | null>(null);
   const [rascunhoNome, setRascunhoNome] = useState('');
   const [ordemLocal, setOrdemLocal] = useState<Documento[] | null>(null);
@@ -651,18 +676,27 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
   }
 
   function entrarModoEdicao() {
-    setModoEdicao(true);
+    onModoEdicao(true);
   }
-  function sairModoEdicao() {
-    setModoEdicao(false);
+  /** Sai do modo de edição e descarta tudo o que estava pendente (documentos e pessoas). */
+  function limparEdicao() {
+    onModoEdicao(false);
     setOrdemLocal(null);
     setExclusoesPendentes(new Set());
     setRenomeacoesPendentes(new Map());
     cancelarEdicaoNome();
+    descartarPessoas();
+  }
+  async function pedirSairModoEdicao() {
+    if (temPendencias || pessoasPendentes) {
+      const ok = await confirmar({ titulo: 'Descartar as alterações?', mensagem: 'O que você alterou não será salvo.', confirmarRotulo: 'Descartar', perigoso: true });
+      if (!ok) return;
+    }
+    limparEdicao();
   }
 
   async function salvarAlteracoesLista() {
-    if (!temPendencias) return;
+    if (!temPendencias && !pessoasPendentes) return;
     if (exclusoesPendentes.size > 0) {
       const ok = await confirmar({
         titulo: `Excluir ${exclusoesPendentes.size} documento(s)?`,
@@ -672,6 +706,7 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
       });
       if (!ok) return;
     }
+    if (!(await confirmarPessoas())) return;
     setSalvando(true);
     try {
       if (ordemLocal) {
@@ -684,8 +719,9 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
       for (const id of exclusoesPendentes) {
         await excluir.mutateAsync(id);
       }
+      await aplicarPessoas();
       mostrarToast('Alterações salvas.');
-      sairModoEdicao();
+      limparEdicao();
     } catch (err) {
       mostrarToast(mensagemDeErro(err), 'erro');
     } finally {
@@ -846,8 +882,8 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
         <button
           type="button"
           className={`btn-icone${modoEdicao ? ' documentos-modo-ativo' : ''}`}
-          onClick={() => (modoEdicao ? sairModoEdicao() : entrarModoEdicao())}
-          title={modoEdicao ? 'Sair do modo de edição' : 'Editar (arrastar/excluir)'}
+          onClick={() => (modoEdicao ? void pedirSairModoEdicao() : entrarModoEdicao())}
+          title={modoEdicao ? 'Sair do modo de edição' : 'Editar (pessoas, ordem, nomes e dados dos documentos)'}
           aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição'}
         >
           <IconeFuncao funcao="editar" />
@@ -856,7 +892,7 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
           type="button"
           className="btn-icone"
           onClick={salvarAlteracoesLista}
-          disabled={!modoEdicao || !temPendencias || salvando}
+          disabled={!modoEdicao || !(temPendencias || pessoasPendentes) || salvando}
           title="Salvar alterações"
           aria-label="Salvar alterações"
         >
@@ -913,7 +949,6 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
                       pendente={pendente}
                       editando={edicaoAtivaId === d.id}
                       rascunho={rascunhoNome}
-                      onAbrirEdicao={() => abrirEdicao(d)}
                       onExpandir={() => alternarExpandir(d.id)}
                       expandido={expandido}
                       onIniciarRenomear={() => iniciarEdicaoNome(d)}
@@ -923,7 +958,7 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
                       onMarcarExclusao={() => marcarExclusao(d)}
                       onDesfazerExclusao={() => desfazerExclusao(d)}
                     />
-                    {expandido && !modoEdicao && <ExibicaoDocumentoPessoal documento={d} />}
+                    {expandido && <ExibicaoDocumentoPessoal documento={d} onEditar={modoEdicao && !pendente ? () => abrirEdicao(d) : undefined} />}
                   </div>
                 );
               })}
@@ -932,19 +967,18 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
         </DndContext>
       )}
 
-      <ModalBase aberto={modalAberto} rotulo={documentoEditando ? documentoEditando.titulo : 'Novo documento'} onFechar={documentoEditando ? fecharEdicao : fecharModalNovo} classe="modal-edicao">
-        <h3 className="modal-titulo">{documentoEditando ? documentoEditando.titulo : 'Novo documento'}</h3>
+      <ModalBase aberto={modalAberto} rotulo={documentoEditando ? documentoEditando.titulo : 'Novo documento'} onFechar={documentoEditando ? fecharEdicao : fecharModalNovo} classe="modal-edicao" perguntarAoDescartar={!!documentoEditando} titulo={documentoEditando ? documentoEditando.titulo : 'Novo documento'} rodape={
+        <>
+          {documentoEditando ? (
+            <BotaoSalvarModal onClick={() => void salvarEdicao()} salvando={salvandoModal} />
+          ) : (
+            <BotaoSalvarModal onClick={() => void salvarNovo()} disabled={!novoTitulo.trim()} salvando={salvandoModal} />
+          )}
+        </>
+      }>
         {documentoEditando ? (
           <>
             <FormularioCamposFixos estado={estadoForm} onChange={setEstadoForm} isCNH={isCNHEditando} locais={locaisForm} onLocaisChange={setLocaisForm} />
-            <div className="modal-acoes">
-              <button type="button" onClick={salvarEdicao} disabled={salvandoModal}>
-                {salvandoModal ? 'Salvando…' : 'Salvar'}
-              </button>
-              <button type="button" onClick={fecharEdicao}>
-                Cancelar
-              </button>
-            </div>
             <SecaoAnexosDocumentoPessoal documentoId={documentoEditando.id} />
           </>
         ) : (
@@ -955,14 +989,6 @@ function ListaDocumentosPessoa({ pessoaId, pessoaNome }: { pessoaId: string; pes
             </label>
             <FormularioCamposFixos estado={estadoForm} onChange={setEstadoForm} isCNH={isCNHNovo} locais={locaisForm} onLocaisChange={setLocaisForm} />
             <SecaoAnexosPendentesPessoal documentoId={novoId} anexos={novosAnexos} onChange={setNovosAnexos} />
-            <div className="modal-acoes">
-              <button type="button" onClick={salvarNovo} disabled={!novoTitulo.trim() || salvandoModal}>
-                {salvandoModal ? 'Salvando…' : 'Salvar'}
-              </button>
-              <button type="button" onClick={fecharModalNovo}>
-                Cancelar
-              </button>
-            </div>
           </>
         )}
       </ModalBase>
@@ -1070,42 +1096,48 @@ function ResumoVencimentos({ onSelecionarPessoa }: { onSelecionarPessoa: (pessoa
 function AbasPessoas({
   pessoas,
   pessoaAtualId,
+  modoEdicao,
+  renomeacoes,
+  exclusoes,
   onSelecionar,
   onCriar,
   onCriarCasal,
+  onRenomear,
+  onMarcarExclusao,
+  onDesfazerExclusao,
 }: {
   pessoas: PessoaDocumentos[];
   pessoaAtualId: string | null;
+  modoEdicao: boolean;
+  renomeacoes: Map<string, string>;
+  exclusoes: Set<string>;
   onSelecionar: (id: string) => void;
   onCriar: () => void;
   onCriarCasal: () => void;
+  onRenomear: (p: PessoaDocumentos, nome: string) => void;
+  onMarcarExclusao: (p: PessoaDocumentos) => void;
+  onDesfazerExclusao: (p: PessoaDocumentos) => void;
 }) {
-  const [modoEdicao, setModoEdicao] = useState(false);
-  const [menuMaisAberto, setMenuMaisAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [rascunho, setRascunho] = useState('');
-  const renomear = useRenomearPessoaDocumentos();
-  const excluir = useExcluirPessoaDocumentos();
-  const { confirmar } = useDialogos();
-  const { mostrarToast } = useToast();
+  const [menuMaisAberto, setMenuMaisAberto] = useState(false);
 
+  function nomeExibido(p: PessoaDocumentos): string {
+    return renomeacoes.get(p.id) ?? p.nome;
+  }
   function iniciarRenomear(p: PessoaDocumentos) {
     setEditandoId(p.id);
-    setRascunho(p.nome);
+    setRascunho(nomeExibido(p));
   }
   function cancelarRenomear() {
     setEditandoId(null);
     setRascunho('');
   }
-  async function confirmarRenomear(p: PessoaDocumentos) {
+  function confirmarRenomear(p: PessoaDocumentos) {
     const novo = rascunho.trim();
     cancelarRenomear();
-    if (!novo || novo === p.nome) return;
-    try {
-      await renomear.mutateAsync({ id: p.id, nome: novo });
-    } catch (err) {
-      mostrarToast(mensagemDeErro(err), 'erro');
-    }
+    if (!novo || novo === nomeExibido(p)) return;
+    onRenomear(p, novo);
   }
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>, p: PessoaDocumentos) {
     if (e.key === 'Enter') {
@@ -1116,44 +1148,35 @@ function AbasPessoas({
       cancelarRenomear();
     }
   }
-  async function handleExcluir(p: PessoaDocumentos) {
-    const ok = await confirmar({
-      titulo: `Excluir ${p.nome}?`,
-      mensagem: `Isso apaga também todos os documentos e anexos de ${p.nome}. Essa ação não pode ser desfeita.`,
-      confirmarRotulo: 'Excluir',
-      perigoso: true,
-    });
-    if (!ok) return;
-    try {
-      await excluir.mutateAsync(p.id);
-      mostrarToast('Pessoa excluída.');
-    } catch (err) {
-      mostrarToast(mensagemDeErro(err), 'erro');
-    }
-  }
 
   return (
     <nav className="app-nav documentos-abas-pessoa">
       {pessoas.map((p) =>
         modoEdicao ? (
-          <span key={p.id} className="documentos-pessoa-editando">
+          <span key={p.id} className={`documentos-pessoa-editando${exclusoes.has(p.id) ? ' documentos-item-pendente' : ''}${renomeacoes.has(p.id) ? ' documentos-item-renomeado' : ''}`}>
             {editandoId === p.id ? (
               <input
                 value={rascunho}
                 onChange={(e) => setRascunho(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, p)}
                 autoFocus
-                aria-label={`Renomear ${p.nome}`}
+                aria-label={`Renomear ${nomeExibido(p)}`}
               />
             ) : (
-              <button type="button" onClick={() => iniciarRenomear(p)}>
+              <button type="button" onClick={() => iniciarRenomear(p)} disabled={exclusoes.has(p.id)} title={`Renomear ${nomeExibido(p)}`}>
                 <IconePessoa pessoa={p} />
-                {p.nome}
+                {nomeExibido(p)}
               </button>
             )}
-            <button type="button" className="btn-icone btn-icone-perigo" onClick={() => handleExcluir(p)} title={`Excluir ${p.nome}`} aria-label={`Excluir ${p.nome}`}>
-              <IconeFuncao funcao="excluir" />
-            </button>
+            {exclusoes.has(p.id) ? (
+              <button type="button" className="documentos-btn-desfazer" onClick={() => onDesfazerExclusao(p)} title={`Desfazer exclusão de ${p.nome}`}>
+                Desfazer
+              </button>
+            ) : (
+              <button type="button" className="btn-icone btn-icone-perigo" onClick={() => onMarcarExclusao(p)} title={`Excluir ${nomeExibido(p)}`} aria-label={`Excluir ${nomeExibido(p)}`}>
+                <IconeFuncao funcao="excluir" />
+              </button>
+            )}
           </span>
         ) : (
           <button key={p.id} type="button" className={`documentos-aba-pessoa${pessoaAtualId === p.id ? ' active' : ''}`} onClick={() => onSelecionar(p.id)}>
@@ -1162,52 +1185,45 @@ function AbasPessoas({
           </button>
         )
       )}
-      <div className="documentos-mais">
-        <button
-          type="button"
-          onClick={() => setMenuMaisAberto((v) => !v)}
-          disabled={modoEdicao}
-          aria-haspopup="menu"
-          aria-expanded={menuMaisAberto}
-          title="Adicionar pessoa ou casal"
-          aria-label="Adicionar pessoa ou casal"
-        >
-          +
-        </button>
-        {menuMaisAberto && (
-          <div className="documentos-mais-menu" role="menu">
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setMenuMaisAberto(false);
-                onCriar();
-              }}
-            >
-              Pessoa
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setMenuMaisAberto(false);
-                onCriarCasal();
-              }}
-            >
-              Casal
-            </button>
-          </div>
-        )}
-      </div>
-      <button
-        type="button"
-        className={`btn-icone${modoEdicao ? ' documentos-modo-ativo' : ''}`}
-        onClick={() => setModoEdicao((v) => !v)}
-        title={modoEdicao ? 'Sair do modo de edição' : 'Editar pessoas (renomear/excluir)'}
-        aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição de pessoas'}
-      >
-        <IconeFuncao funcao="editar" />
-      </button>
+      {modoEdicao && (
+        <div className="documentos-mais">
+          <button
+            type="button"
+            className="btn-icone"
+            onClick={() => setMenuMaisAberto((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={menuMaisAberto}
+            title="Adicionar pessoa ou casal"
+            aria-label="Adicionar pessoa ou casal"
+          >
+            <IconeFuncao funcao="adicionar" />
+          </button>
+          {menuMaisAberto && (
+            <div className="documentos-mais-menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuMaisAberto(false);
+                  onCriar();
+                }}
+              >
+                Pessoa
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuMaisAberto(false);
+                  onCriarCasal();
+                }}
+              >
+                Casal
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   );
 }
@@ -1215,10 +1231,15 @@ function AbasPessoas({
 export function DocumentosPessoaisPage() {
   const { data: pessoas, isLoading } = useDocumentosPessoas();
   const criarPessoa = useCriarPessoaDocumentos();
-  const { pedirTexto } = useDialogos();
+  const renomearPessoa = useRenomearPessoaDocumentos();
+  const excluirPessoa = useExcluirPessoaDocumentos();
+  const { pedirTexto, confirmar } = useDialogos();
   const { mostrarToast } = useToast();
   const [pessoaAtualId, setPessoaAtualId] = useState<string | null>(null);
   const [criandoCasal, setCriandoCasal] = useState(false);
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [renomeacoes, setRenomeacoes] = useState<Map<string, string>>(new Map());
+  const [exclusoes, setExclusoes] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!pessoas || pessoas.length === 0) return;
@@ -1238,6 +1259,47 @@ export function DocumentosPessoaisPage() {
     }
   }
 
+  function renomearPendente(p: PessoaDocumentos, nome: string) {
+    setRenomeacoes((atual) => {
+      const novo = new Map(atual);
+      if (nome === p.nome) novo.delete(p.id);
+      else novo.set(p.id, nome);
+      return novo;
+    });
+  }
+  function marcarExclusaoPessoa(p: PessoaDocumentos) {
+    setExclusoes((atual) => new Set(atual).add(p.id));
+  }
+  function desfazerExclusaoPessoa(p: PessoaDocumentos) {
+    setExclusoes((atual) => {
+      const novo = new Set(atual);
+      novo.delete(p.id);
+      return novo;
+    });
+  }
+  async function confirmarPessoas(): Promise<boolean> {
+    if (exclusoes.size === 0) return true;
+    return confirmar({
+      titulo: `Excluir ${exclusoes.size} pessoa(s)?`,
+      mensagem: 'Isso apaga também todos os documentos e anexos dessas pessoas. Essa ação não pode ser desfeita.',
+      confirmarRotulo: 'Excluir e salvar',
+      perigoso: true,
+    });
+  }
+  async function aplicarPessoas() {
+    for (const [id, nome] of renomeacoes) {
+      if (exclusoes.has(id)) continue;
+      await renomearPessoa.mutateAsync({ id, nome });
+    }
+    for (const id of exclusoes) {
+      await excluirPessoa.mutateAsync(id);
+    }
+  }
+  function descartarPessoas() {
+    setRenomeacoes(new Map());
+    setExclusoes(new Set());
+  }
+
   const pessoaAtual = pessoas?.find((p) => p.id === pessoaAtualId) ?? null;
 
   return (
@@ -1246,9 +1308,33 @@ export function DocumentosPessoaisPage() {
       {isLoading ? (
         <p>Carregando…</p>
       ) : (
-        <AbasPessoas pessoas={pessoas ?? []} pessoaAtualId={pessoaAtualId} onSelecionar={setPessoaAtualId} onCriar={adicionarPessoa} onCriarCasal={() => setCriandoCasal(true)} />
+        <AbasPessoas
+          pessoas={pessoas ?? []}
+          pessoaAtualId={pessoaAtualId}
+          modoEdicao={modoEdicao}
+          renomeacoes={renomeacoes}
+          exclusoes={exclusoes}
+          onSelecionar={setPessoaAtualId}
+          onCriar={adicionarPessoa}
+          onCriarCasal={() => setCriandoCasal(true)}
+          onRenomear={renomearPendente}
+          onMarcarExclusao={marcarExclusaoPessoa}
+          onDesfazerExclusao={desfazerExclusaoPessoa}
+        />
       )}
-      {pessoaAtual && <ListaDocumentosPessoa key={pessoaAtual.id} pessoaId={pessoaAtual.id} pessoaNome={pessoaAtual.nome} />}
+      {pessoaAtual && (
+        <ListaDocumentosPessoa
+          key={pessoaAtual.id}
+          pessoaId={pessoaAtual.id}
+          pessoaNome={pessoaAtual.nome}
+          modoEdicao={modoEdicao}
+          onModoEdicao={setModoEdicao}
+          pessoasPendentes={renomeacoes.size > 0 || exclusoes.size > 0}
+          confirmarPessoas={confirmarPessoas}
+          aplicarPessoas={aplicarPessoas}
+          descartarPessoas={descartarPessoas}
+        />
+      )}
       {criandoCasal && (
         <CriarCasalModal
           pessoas={pessoas ?? []}

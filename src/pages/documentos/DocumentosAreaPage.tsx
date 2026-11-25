@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ModalBase } from '../../components/ModalBase';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { ArquivoLink, BotaoBaixarArquivo } from '../../components/ArquivoLink';
 import { IconeFuncao } from '../../components/IconeUso';
 import { useDialogos } from '../../components/Dialogo';
@@ -101,16 +101,28 @@ function EditorCampos({ campos, onChange }: { campos: LinhaCampo[]; onChange: (c
   );
 }
 
-function ExibicaoCampos({ campos }: { campos: DocumentoCampo[] }) {
+function ExibicaoCampos({ campos, onEditar }: { campos: DocumentoCampo[]; onEditar?: () => void }) {
   const { mostrarToast } = useToast();
-  if (campos.length === 0) return null;
+  if (campos.length === 0) {
+    return onEditar ? (
+      <button type="button" className="documentos-campo-editavel hierarquia-vazio" onClick={onEditar}>
+        Nenhum campo ainda. Toque para preencher.
+      </button>
+    ) : null;
+  }
   return (
     <div className="documentos-campos-exibicao">
       {campos.map((campo) => (
         <div key={campo.id} className="documentos-campo-exibicao-linha">
-          <span>
-            <strong>{campo.nome}:</strong> {campo.conteudo || '—'}
-          </span>
+          {onEditar ? (
+            <button type="button" className="documentos-campo-editavel" onClick={onEditar} title={`Editar ${campo.nome}`} aria-label={`Editar ${campo.nome}: ${campo.conteudo || 'vazio'}`}>
+              <strong>{campo.nome}:</strong> {campo.conteudo || '—'}
+            </button>
+          ) : (
+            <span>
+              <strong>{campo.nome}:</strong> {campo.conteudo || '—'}
+            </span>
+          )}
           {campo.copiavel && campo.conteudo && (
             <button
               type="button"
@@ -321,7 +333,6 @@ function ItemDocumentoLinha({
   pendente,
   editando,
   rascunho,
-  onAbrirEdicao,
   onExpandir,
   expandido,
   onIniciarRenomear,
@@ -338,7 +349,6 @@ function ItemDocumentoLinha({
   pendente: boolean;
   editando: boolean;
   rascunho: string;
-  onAbrirEdicao: () => void;
   onExpandir: () => void;
   expandido: boolean;
   onIniciarRenomear: () => void;
@@ -382,18 +392,13 @@ function ItemDocumentoLinha({
           <IconeFuncao funcao="editar" />
         </button>
       )}
-      <button type="button" className="documentos-titulo-botao" onClick={() => (modoEdicao ? undefined : onExpandir())} disabled={pendente || modoEdicao}>
+      <button type="button" className="documentos-titulo-botao" onClick={onExpandir} disabled={pendente}>
         <span className="documentos-seta">{expandido ? '▾' : '▸'}</span>
         {tituloExibido}
       </button>
       {modoEdicao && !pendente && (
         <button type="button" className="btn-icone" onClick={onIniciarRenomear} title="Renomear" aria-label={`Renomear ${tituloExibido}`}>
           <IconeFuncao funcao="salvar" />
-        </button>
-      )}
-      {!modoEdicao && (
-        <button type="button" onClick={onAbrirEdicao} disabled={pendente}>
-          Editar
         </button>
       )}
       {modoEdicao &&
@@ -410,13 +415,13 @@ function ItemDocumentoLinha({
   );
 }
 
-function ItemDocumentoExpandido({ documento }: { documento: Documento }) {
+function ItemDocumentoExpandido({ documento, onEditar }: { documento: Documento; onEditar?: () => void }) {
   const { data: campos, isLoading: carregandoCampos } = useDocumentoCampos(documento.id);
   const { data: anexos, isLoading: carregandoAnexos } = useDocumentoAnexos(documento.id);
   if (carregandoCampos || carregandoAnexos) return <p>Carregando…</p>;
   return (
     <div className="documentos-item-expandido">
-      <ExibicaoCampos campos={campos ?? []} />
+      <ExibicaoCampos campos={campos ?? []} onEditar={onEditar} />
       <ExibicaoAnexos anexos={anexos ?? []} />
     </div>
   );
@@ -527,6 +532,14 @@ export function DocumentosAreaPage({ area, gatoId }: { area: AreaDocumento; gato
     setExclusoesPendentes(new Set());
     setRenomeacoesPendentes(new Map());
     cancelarEdicaoNome();
+  }
+
+  async function pedirSairModoEdicao() {
+    if (temPendencias) {
+      const ok = await confirmar({ titulo: 'Descartar as alterações?', mensagem: 'O que você alterou não será salvo.', confirmarRotulo: 'Descartar', perigoso: true });
+      if (!ok) return;
+    }
+    sairModoEdicao();
   }
 
   async function salvarAlteracoesLista() {
@@ -683,8 +696,8 @@ export function DocumentosAreaPage({ area, gatoId }: { area: AreaDocumento; gato
         <button
           type="button"
           className={`btn-icone${modoEdicao ? ' documentos-modo-ativo' : ''}`}
-          onClick={() => (modoEdicao ? sairModoEdicao() : entrarModoEdicao())}
-          title={modoEdicao ? 'Sair do modo de edição' : 'Editar (arrastar/excluir)'}
+          onClick={() => (modoEdicao ? void pedirSairModoEdicao() : entrarModoEdicao())}
+          title={modoEdicao ? 'Sair do modo de edição' : 'Editar (ordem, nomes e dados dos documentos)'}
           aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição'}
         >
           <IconeFuncao funcao="editar" />
@@ -722,7 +735,6 @@ export function DocumentosAreaPage({ area, gatoId }: { area: AreaDocumento; gato
                       pendente={pendente}
                       editando={edicaoAtivaId === d.id}
                       rascunho={rascunhoNome}
-                      onAbrirEdicao={() => abrirEdicao(d)}
                       onExpandir={() => alternarExpandir(d.id)}
                       expandido={expandido}
                       onIniciarRenomear={() => iniciarEdicaoNome(d)}
@@ -732,7 +744,7 @@ export function DocumentosAreaPage({ area, gatoId }: { area: AreaDocumento; gato
                       onMarcarExclusao={() => marcarExclusao(d)}
                       onDesfazerExclusao={() => desfazerExclusao(d)}
                     />
-                    {expandido && !modoEdicao && <ItemDocumentoExpandido documento={d} />}
+                    {expandido && <ItemDocumentoExpandido documento={d} onEditar={modoEdicao && !pendente ? () => abrirEdicao(d) : undefined} />}
                   </div>
                 );
               })}
@@ -741,8 +753,15 @@ export function DocumentosAreaPage({ area, gatoId }: { area: AreaDocumento; gato
         </DndContext>
       )}
 
-      <ModalBase aberto={modalAberto} rotulo={documentoEditando ? documentoEditando.titulo : 'Novo documento'} onFechar={documentoEditando ? fecharEdicao : fecharModal} classe="modal-edicao">
-        <h3 className="modal-titulo">{documentoEditando ? 'Editar documento' : 'Novo documento'}</h3>
+      <ModalBase aberto={modalAberto} rotulo={documentoEditando ? documentoEditando.titulo : 'Novo documento'} onFechar={documentoEditando ? fecharEdicao : fecharModal} classe="modal-edicao" perguntarAoDescartar={!!documentoEditando} titulo={documentoEditando ? 'Editar documento' : 'Novo documento'} rodape={
+        <>
+          {documentoEditando ? (
+            <BotaoSalvarModal onClick={() => void salvarEdicao()} disabled={!tituloEdicao.trim()} salvando={salvandoModal} />
+          ) : (
+            <BotaoSalvarModal onClick={() => void salvarNovo()} disabled={!novoTitulo.trim()} salvando={salvandoModal} />
+          )}
+        </>
+      }>
         {documentoEditando ? (
           <>
             <label>
@@ -750,14 +769,6 @@ export function DocumentosAreaPage({ area, gatoId }: { area: AreaDocumento; gato
               <input type="text" value={tituloEdicao} onChange={(e) => setTituloEdicao(e.target.value)} data-autofocus />
             </label>
             <EditorCampos campos={camposEdicao} onChange={setCamposEdicao} />
-            <div className="modal-acoes">
-              <button type="button" onClick={salvarEdicao} disabled={!tituloEdicao.trim() || salvandoModal}>
-                {salvandoModal ? 'Salvando…' : 'Salvar'}
-              </button>
-              <button type="button" onClick={fecharEdicao}>
-                Cancelar
-              </button>
-            </div>
             <SecaoAnexosDocumento documentoId={documentoEditando.id} />
           </>
         ) : (
@@ -768,14 +779,6 @@ export function DocumentosAreaPage({ area, gatoId }: { area: AreaDocumento; gato
             </label>
             <EditorCampos campos={novosCampos} onChange={setNovosCampos} />
             <SecaoAnexosPendentes documentoId={novoId} anexos={novosAnexos} onChange={setNovosAnexos} />
-            <div className="modal-acoes">
-              <button type="button" onClick={salvarNovo} disabled={!novoTitulo.trim() || salvandoModal}>
-                {salvandoModal ? 'Salvando…' : 'Salvar'}
-              </button>
-              <button type="button" onClick={fecharModal}>
-                Cancelar
-              </button>
-            </div>
           </>
         )}
       </ModalBase>

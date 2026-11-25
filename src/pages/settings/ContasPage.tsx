@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { IconeFuncao } from '../../components/IconeUso';
-import { ModalBase } from '../../components/ModalBase';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
@@ -35,12 +35,10 @@ function FormularioConta({
   inicial,
   contasBancarias,
   onSalvar,
-  onCancelar,
 }: {
   inicial: DadosConta;
   contasBancarias: Conta[];
   onSalvar: (dados: DadosConta) => Promise<void>;
-  onCancelar: () => void;
 }) {
   const [dados, setDados] = useState<DadosConta>(inicial);
   const [salvando, setSalvando] = useState(false);
@@ -49,6 +47,7 @@ function FormularioConta({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (salvando) return;
     setSalvando(true);
     try {
       await onSalvar(dados);
@@ -70,7 +69,7 @@ function FormularioConta({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form id="form-modal" onSubmit={handleSubmit}>
       <label>
         Tipo
         <select value={dados.tipo} onChange={(e) => mudarTipo(e.target.value as TipoConta)}>
@@ -200,14 +199,6 @@ function FormularioConta({
         </select>
       </label>
 
-      <div className="modal-acoes">
-        <button type="submit" disabled={salvando}>
-          {salvando ? 'Salvando…' : 'Salvar'}
-        </button>
-        <button type="button" onClick={onCancelar}>
-          Cancelar
-        </button>
-      </div>
     </form>
   );
 }
@@ -324,8 +315,11 @@ export function ContasPage() {
           </details>
         </>
       )}
-      <ModalBase aberto={modalAberto} rotulo={editando ? 'Editar conta' : 'Nova conta'} onFechar={() => setModalAberto(false)} classe="modal-edicao">
-        <h3 className="modal-titulo">{editando ? 'Editar conta' : 'Nova conta'}</h3>
+      <ModalBase aberto={modalAberto} rotulo={editando ? 'Editar conta' : 'Nova conta'} onFechar={() => setModalAberto(false)} classe="modal-edicao" titulo={editando ? 'Editar conta' : 'Nova conta'} rodape={
+        <>
+          <BotaoSalvarModal form="form-modal" />
+        </>
+      }>
         <FormularioConta
           inicial={
             editando
@@ -347,7 +341,6 @@ export function ContasPage() {
           }
           contasBancarias={contasBancarias}
           onSalvar={salvar}
-          onCancelar={() => setModalAberto(false)}
         />
       </ModalBase>
     </div>

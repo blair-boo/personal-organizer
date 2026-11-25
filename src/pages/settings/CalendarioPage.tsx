@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { ModalBase } from '../../components/ModalBase';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { IconeFuncao } from '../../components/IconeUso';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
@@ -27,13 +27,11 @@ function FormularioFeed({
   inicial,
   pessoas,
   onSalvar,
-  onCancelar,
   salvando,
 }: {
   inicial: { nome: string; pessoaIds: string[]; incluirGatos: boolean; incluirTarefas: boolean };
   pessoas: PessoaDocumentos[];
   onSalvar: (dados: { nome: string; pessoaIds: string[]; incluirGatos: boolean; incluirTarefas: boolean }) => void;
-  onCancelar: () => void;
   salvando: boolean;
 }) {
   const [nome, setNome] = useState(inicial.nome);
@@ -53,12 +51,12 @@ function FormularioFeed({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!nome.trim() || (!todas && selecionadas.size === 0 && !incluirGatos && !incluirTarefas)) return;
+    if (salvando || !nome.trim() || (!todas && selecionadas.size === 0 && !incluirGatos && !incluirTarefas)) return;
     onSalvar({ nome: nome.trim(), pessoaIds: todas ? [] : [...selecionadas], incluirGatos, incluirTarefas });
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form id="form-modal" onSubmit={handleSubmit}>
       <label>
         Nome
         <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} data-autofocus required />
@@ -86,14 +84,6 @@ function FormularioFeed({
         <input type="checkbox" checked={incluirTarefas} onChange={(e) => setIncluirTarefas(e.target.checked)} />
         Incluir as próximas tarefas (menos as diárias e semanais)
       </label>
-      <div className="modal-acoes">
-        <button type="submit" disabled={salvando || !nome.trim() || (!todas && selecionadas.size === 0 && !incluirGatos && !incluirTarefas)}>
-          {salvando ? 'Salvando…' : 'Salvar'}
-        </button>
-        <button type="button" onClick={onCancelar}>
-          Cancelar
-        </button>
-      </div>
     </form>
   );
 }
@@ -232,8 +222,13 @@ export function CalendarioPage() {
         rotulo={feedEditando ? feedEditando.nome : 'Novo link'}
         onFechar={() => setModalAberto(false)}
         classe="modal-edicao"
-      >
-        <h3 className="modal-titulo">{feedEditando ? 'Editar link' : 'Novo link'}</h3>
+      titulo={feedEditando ? 'Editar link' : 'Novo link'}
+      rodape={
+        <>
+          <BotaoSalvarModal form="form-modal" salvando={salvando} />
+        </>
+      }
+    >
         <FormularioFeed
           key={feedEditando?.id ?? 'novo'}
           inicial={
@@ -243,7 +238,6 @@ export function CalendarioPage() {
           }
           pessoas={pessoas ?? []}
           onSalvar={salvar}
-          onCancelar={() => setModalAberto(false)}
           salvando={salvando}
         />
       </ModalBase>

@@ -46,8 +46,13 @@ export function EtiquetasLoteModal({ caixas, nomesDasTags, onFechar }: { caixas:
   }
 
   return (
-    <ModalBase aberto rotulo="Etiquetas em lote" onFechar={onFechar} classe="modal-edicao modal-storage">
-      <h3 className="modal-titulo">Etiquetas em lote</h3>
+    <ModalBase aberto rotulo="Etiquetas em lote" onFechar={onFechar} classe="modal-edicao modal-storage" titulo="Etiquetas em lote" perguntarAoDescartar={false} rodape={
+        <>
+          <button type="button" onClick={baixar} disabled={marcadas.size === 0 || gerando}>
+            {gerando ? 'Gerando…' : `Baixar folha (PNG)${marcadas.size > 0 ? ` com ${marcadas.size}` : ''}`}
+          </button>
+        </>
+      }>
       {caixas.length === 0 ? (
         <p className="documentos-vazio">Nenhuma caixa ainda.</p>
       ) : (
@@ -71,14 +76,6 @@ export function EtiquetasLoteModal({ caixas, nomesDasTags, onFechar }: { caixas:
         <input type="checkbox" checked={incluirNome} onChange={(e) => setIncluirNome(e.target.checked)} />
         Incluir o nome (e a tag principal) da caixa ao lado do código
       </label>
-      <div className="modal-acoes">
-        <button type="button" onClick={baixar} disabled={marcadas.size === 0 || gerando}>
-          {gerando ? 'Gerando…' : `Baixar folha (PNG)${marcadas.size > 0 ? ` com ${marcadas.size}` : ''}`}
-        </button>
-        <button type="button" onClick={onFechar}>
-          Fechar
-        </button>
-      </div>
     </ModalBase>
   );
 }

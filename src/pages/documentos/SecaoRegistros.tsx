@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { ModalBase } from '../../components/ModalBase';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { IconeFuncao } from '../../components/IconeUso';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
@@ -133,9 +133,12 @@ function FormularioRegistro({
   }
 
   return (
-    <ModalBase aberto rotulo={titulo} onFechar={onFechar} classe="modal-edicao">
-      <h3 className="modal-titulo">{titulo}</h3>
-      <form onSubmit={aoEnviar}>
+    <ModalBase aberto rotulo={titulo} onFechar={onFechar} classe="modal-edicao" titulo={titulo} rodape={
+        <>
+          <BotaoSalvarModal form="form-modal" disabled={faltando} salvando={salvando} />
+        </>
+      }>
+      <form id="form-modal" onSubmit={aoEnviar}>
         {campos.map((c, i) => (
           <label key={c.chave}>
             {c.rotulo}
@@ -159,14 +162,6 @@ function FormularioRegistro({
             <input type="file" accept="application/pdf,image/*" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
           </label>
         )}
-        <div className="modal-acoes">
-          <button type="submit" disabled={faltando || salvando}>
-            {salvando ? 'Salvando…' : 'Salvar'}
-          </button>
-          <button type="button" onClick={onFechar}>
-            Cancelar
-          </button>
-        </div>
       </form>
     </ModalBase>
   );

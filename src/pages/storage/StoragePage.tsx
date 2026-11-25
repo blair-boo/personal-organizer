@@ -78,6 +78,7 @@ function ItemArrastavel({
   tagNome,
   tagHerdada,
   onAlternarSelecao,
+  onEditar,
   onMarcarExclusao,
   onDesfazerExclusao,
 }: {
@@ -88,6 +89,8 @@ function ItemArrastavel({
   tagNome: string | undefined;
   tagHerdada: boolean;
   onAlternarSelecao: () => void;
+  /** Abre o editor completo da caixa deste item (nome, tags, anexos, observações). */
+  onEditar: () => void;
   onMarcarExclusao: () => void;
   onDesfazerExclusao: () => void;
 }) {
@@ -103,7 +106,9 @@ function ItemArrastavel({
           <IconeFuncao funcao="mover" />
         </button>
       )}
-      <span className="documentos-titulo-botao storage-item-titulo">{item.nome}</span>
+      <button type="button" className="documentos-titulo-botao storage-item-titulo" onClick={onEditar} disabled={pendente} title={`Editar ${item.nome}`} aria-label={`Editar ${item.nome}`}>
+        {item.nome}
+      </button>
       {tagNome && <span className={tagHerdada ? 'storage-item-tag storage-item-tag-herdada' : 'storage-item-tag'}>{tagNome}</span>}
       {pendente ? (
         <button type="button" className="documentos-btn-desfazer" onClick={onDesfazerExclusao} title={`Desfazer exclusão de ${item.nome}`}>
@@ -148,6 +153,7 @@ interface CaixaArrastavelProps {
   onDesfazerExclusao: () => void;
   onMarcarExclusaoItem: (id: string) => void;
   onDesfazerExclusaoItem: (id: string) => void;
+  onEditarCaixa: () => void;
 }
 
 /** Caixa no modo de edição: arrastar, renomear, marcar exclusão; os itens dentro também se arrastam (inclusive para outra caixa). */
@@ -185,14 +191,9 @@ function CaixaEdicao(props: CaixaArrastavelProps) {
               <IconeFuncao funcao="mover" />
             </button>
           )}
-          <span className="documentos-titulo-botao">
+          <button type="button" className="documentos-titulo-botao" onClick={props.onIniciarRenomear} disabled={pendente} title={`Renomear ${nomeExibido}`} aria-label={`Renomear ${nomeExibido}`}>
             <IconeCaixa caixaId={caixa.id} /> {nomeExibido} <span className="storage-codigo">{codigoDaCaixa(caixa.numero)}</span>
-          </span>
-          {!pendente && (
-            <button type="button" className="btn-icone" onClick={props.onIniciarRenomear} title={`Renomear ${nomeExibido}`} aria-label={`Renomear ${nomeExibido}`}>
-              <IconeFuncao funcao="editar" />
-            </button>
-          )}
+          </button>
           {pendente ? (
             <button type="button" className="documentos-btn-desfazer" onClick={props.onDesfazerExclusao} title={`Desfazer exclusão de ${nomeExibido}`}>
               Desfazer
@@ -216,6 +217,7 @@ function CaixaEdicao(props: CaixaArrastavelProps) {
                 tagNome={props.tagDoItem(item).nome}
                 tagHerdada={props.tagDoItem(item).herdada}
                 onAlternarSelecao={() => props.onAlternarSelecao(item.id)}
+                onEditar={props.onEditarCaixa}
                 onMarcarExclusao={() => props.onMarcarExclusaoItem(item.id)}
                 onDesfazerExclusao={() => props.onDesfazerExclusaoItem(item.id)}
               />
@@ -415,6 +417,24 @@ export function StoragePage() {
     setModoEdicao(true);
   }
 
+  async function pedirSairModoEdicao() {
+    if (temPendencias) {
+      const ok = await confirmar({ titulo: 'Descartar as alterações?', mensagem: 'O que você alterou não será salvo.', confirmarRotulo: 'Descartar', perigoso: true });
+      if (!ok) return;
+    }
+    sairModoEdicao();
+  }
+
+  /** O editor completo da caixa trabalha sobre o que está salvo: com alterações pendentes, pergunta antes de descartar. */
+  async function abrirEditorDaCaixa(caixa: CaixaStorage) {
+    if (temPendencias) {
+      const ok = await confirmar({ titulo: 'Descartar as alterações?', mensagem: 'Para editar a caixa por inteiro, as alterações pendentes da lista serão descartadas.', confirmarRotulo: 'Descartar', perigoso: true });
+      if (!ok) return;
+    }
+    sairModoEdicao();
+    setCaixaModal({ caixa });
+  }
+
   function aoArrastarSobre(event: DragOverEvent) {
     const { active, over } = event;
     if (!over) return;
@@ -573,8 +593,8 @@ export function StoragePage() {
         <button
           type="button"
           className={`btn-icone${modoEdicao ? ' documentos-modo-ativo' : ''}`}
-          onClick={() => (modoEdicao ? sairModoEdicao() : entrarModoEdicao())}
-          title={modoEdicao ? 'Sair do modo de edição' : 'Editar (arrastar, renomear, excluir)'}
+          onClick={() => (modoEdicao ? void pedirSairModoEdicao() : entrarModoEdicao())}
+          title={modoEdicao ? 'Sair do modo de edição' : 'Editar (arrastar, renomear, excluir; toque no item para editar a caixa)'}
           aria-label={modoEdicao ? 'Sair do modo de edição' : 'Entrar no modo de edição'}
         >
           <IconeFuncao funcao="editar" />
@@ -680,6 +700,7 @@ export function StoragePage() {
                   onDesfazerExclusao={() => alternarEm(setExclusoesCaixas, caixa.id, false)}
                   onMarcarExclusaoItem={(id) => alternarEm(setExclusoesItens, id, true)}
                   onDesfazerExclusaoItem={(id) => alternarEm(setExclusoesItens, id, false)}
+                  onEditarCaixa={() => void abrirEditorDaCaixa(caixa)}
                 />
               ))}
             </div>
@@ -704,9 +725,6 @@ export function StoragePage() {
                   </button>
                   <button type="button" className="btn-icone" onClick={() => setEtiquetaDe(caixa)} title={`Etiqueta de ${caixa.nome}`} aria-label={`Etiqueta de ${caixa.nome}`}>
                     <IconeQr />
-                  </button>
-                  <button type="button" onClick={() => setCaixaModal({ caixa })}>
-                    Editar
                   </button>
                 </div>
                 {expandido && (
@@ -744,44 +762,43 @@ export function StoragePage() {
       {etiquetaDe && <EtiquetaModal caixa={etiquetaDe} tagNome={etiquetaDe.tag_id ? dados.tagPorId.get(etiquetaDe.tag_id)?.nome : undefined} onFechar={() => setEtiquetaDe(null)} />}
 
       {detalhe && (
-        <ModalBase aberto rotulo={`Caixa ${detalhe.nome}`} onFechar={() => setDetalheId(null)} classe="modal-edicao modal-storage">
-          <h3 className="modal-titulo">
-            <IconeCaixa caixaId={detalhe.id} tamanho={22} /> {detalhe.nome} <span className="storage-codigo">{codigoDaCaixa(detalhe.numero)}</span>
-          </h3>
+        <ModalBase aberto rotulo={`Caixa ${detalhe.nome}`} onFechar={() => setDetalheId(null)} classe="modal-edicao modal-storage" perguntarAoDescartar={false} titulo={
+        <>
+          <IconeCaixa caixaId={detalhe.id} tamanho={22} /> {detalhe.nome} <span className="storage-codigo">{codigoDaCaixa(detalhe.numero)}</span>
+        </>
+      } rodape={
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              setDetalheId(null);
+              setCaixaModal({ caixa: detalhe });
+            }}
+          >
+            Editar
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDetalheId(null);
+              setEtiquetaDe(detalhe);
+            }}
+          >
+            Etiqueta
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDetalheId(null);
+              void duplicarCaixa(detalhe);
+            }}
+          >
+            Duplicar
+          </button>
+        </>
+      }>
           <ChipsDaCaixa caixa={detalhe} dados={dados} />
           <CaixaConteudo caixaId={detalhe.id} dados={dados} />
-          <div className="modal-acoes">
-            <button
-              type="button"
-              onClick={() => {
-                setDetalheId(null);
-                setCaixaModal({ caixa: detalhe });
-              }}
-            >
-              Editar
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDetalheId(null);
-                setEtiquetaDe(detalhe);
-              }}
-            >
-              Etiqueta
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDetalheId(null);
-                void duplicarCaixa(detalhe);
-              }}
-            >
-              Duplicar
-            </button>
-            <button type="button" onClick={() => setDetalheId(null)}>
-              Fechar
-            </button>
-          </div>
         </ModalBase>
       )}
     </div>
