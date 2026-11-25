@@ -20,9 +20,11 @@ export function IconeDoUso({ uso, tamanhoBase, titulo }: { uso: UsoIcone; tamanh
  * Ícones (Settings) muda em todo lugar. O nome da função aparece ao passar o mouse.
  */
 export function IconeFuncao({ funcao, tamanho = 16 }: { funcao: FuncaoIcone; tamanho?: number }) {
-  const { data: usos = [] } = useIconesUsos();
+  const { data: usos = [], isLoading } = useIconesUsos();
   const tema = useTemaEfetivo();
   const rotulo = definicaoDaFuncao(funcao)?.rotulo;
+  // Enquanto os ícones escolhidos carregam, só reserva o espaço: o padrão pode apontar para um arquivo que não existe mais no bucket.
+  if (isLoading) return <span className="icone-reserva" aria-hidden="true" style={{ width: tamanho, height: tamanho }} />;
   const uso = resolverUso(usos, 'funcao', funcao, tema) ?? usoPadraoDaFuncao(funcao);
   if (uso) return <IconeDoUso uso={uso} tamanhoBase={tamanho} titulo={rotulo} />;
   const Provisorio = PROVISORIOS_FUNCAO[funcao];

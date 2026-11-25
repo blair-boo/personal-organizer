@@ -58,12 +58,15 @@ export default defineConfig(({ command }) => ({
           // Cache Storage "arquivos-offline"), apagado nesses dois casos.
           {
             // Só os ícones públicos do bucket "icones" (URL estável), pra aparecerem offline.
+            // Só guarda resposta 200 (com CORS): uma resposta "opaca" (status 0, de <img> sem crossorigin)
+            // não serve para mask-image, e o ícone mascarado que a recebesse do cache ficava invisível.
+            // O nome "-v2" abandona o cache antigo, que pode ter respostas opacas.
             urlPattern: ({ url }) => url.pathname.includes('/storage/v1/object/public/'),
             handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'storage-cache',
+              cacheName: 'storage-cache-v2',
               expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] },
+              cacheableResponse: { statuses: [200] },
             },
           },
         ],

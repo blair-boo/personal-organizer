@@ -759,6 +759,7 @@ function IconeItem({
             height={tamanho}
             style={{ width: tamanho, height: tamanho }}
             loading="lazy"
+            crossOrigin="anonymous"
           />
         )}
       </div>

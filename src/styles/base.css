@@ -329,6 +329,12 @@ label {
   mask-size: contain;
 }
 
+/* Espaço do ícone enquanto a escolha dele ainda carrega. */
+.icone-reserva {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 .btn-icone:disabled {
   opacity: 0.4;
   cursor: default;

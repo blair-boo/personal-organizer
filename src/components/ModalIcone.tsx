@@ -172,7 +172,7 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
                         {icone.nome.toLowerCase().endsWith('.svg') ? (
                           <IconeSupabase arquivo={caminhoIcone(pasta, icone.nome)} tamanho={24} />
                         ) : (
-                          <img className="icone-png" src={icone.url} alt="" width={24} height={24} loading="lazy" />
+                          <img className="icone-png" src={icone.url} alt="" width={24} height={24} loading="lazy" crossOrigin="anonymous" />
                         )}
                       </button>
                     );
