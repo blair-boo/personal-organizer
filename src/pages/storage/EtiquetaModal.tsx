@@ -58,8 +58,13 @@ export function EtiquetaModal({ caixa, tagNome, onFechar }: { caixa: CaixaStorag
   const milimetrosPorModulo = simbolo ? ALTURA_ETIQUETA_MM / (simbolo.altura + 4) : null;
 
   return (
-    <ModalBase aberto rotulo={`Etiqueta da caixa ${codigo}`} onFechar={onFechar} classe="modal-edicao modal-storage">
-      <h3 className="modal-titulo">Etiqueta da caixa</h3>
+    <ModalBase aberto rotulo={`Etiqueta da caixa ${codigo}`} onFechar={onFechar} classe="modal-edicao modal-storage" titulo="Etiqueta da caixa" perguntarAoDescartar={false} rodape={
+        <>
+          <button type="button" onClick={baixar} disabled={!simbolo}>
+            Baixar etiqueta (PNG)
+          </button>
+        </>
+      }>
       <p>
         <strong>{codigo}</strong> · {caixa.nome}
       </p>
@@ -74,14 +79,6 @@ export function EtiquetaModal({ caixa, tagNome, onFechar }: { caixa: CaixaStorag
           Em uma etiqueta de {ALTURA_ETIQUETA_MM} mm de altura, cada módulo do código fica com cerca de {milimetrosPorModulo.toFixed(1).replace('.', ',')} mm.
         </p>
       )}
-      <div className="modal-acoes">
-        <button type="button" onClick={baixar} disabled={!simbolo}>
-          Baixar etiqueta (PNG)
-        </button>
-        <button type="button" onClick={onFechar}>
-          Fechar
-        </button>
-      </div>
     </ModalBase>
   );
 }

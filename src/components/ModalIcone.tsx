@@ -1,5 +1,5 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { ModalBase } from './ModalBase';
+import { BotaoSalvarModal, ModalBase } from './ModalBase';
 import { useToast } from './Toast';
 import { IconeDoUso, IconeFuncao } from './IconeUso';
 import { IconeSupabase } from './IconeSupabase';
@@ -25,6 +25,8 @@ interface ModalIconeProps {
   tamanhoBase: number;
   /** Mostra "Remover ícone" (nas funções não: elas sempre têm um ícone). */
   permiteRemover: boolean;
+  /** Esconde a escolha do ícone (origem, pastas e grade) quando o ícone já veio escolhido. */
+  ocultarSeletor?: boolean;
   onConfirmar: (uso: UsoIcone) => void;
   onRemover?: () => void;
   onFechar: () => void;
@@ -41,7 +43,7 @@ export function ModalIcone(props: ModalIconeProps) {
   return <ModalIconeConteudo {...props} />;
 }
 
-function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase, permiteRemover, onConfirmar, onRemover, onFechar }: ModalIconeProps) {
+function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase, permiteRemover, ocultarSeletor = false, onConfirmar, onRemover, onFechar }: ModalIconeProps) {
   const { mostrarToast } = useToast();
   const { pastas, carregando, erro: erroBruto } = useIconesTodasPastas();
   const { cores: minhasCores } = useCoresUsuario();
@@ -115,9 +117,18 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
   const rotuloTamanho = delta === 0 ? 'padrão' : delta > 0 ? `+${delta}px` : `${delta}px`;
 
   return (
-    <ModalBase aberto rotulo={`Ícone de ${rotuloAlvo}`} onFechar={onFechar} classe="modal-icone">
-      <h2 className="modal-titulo">Ícone de {rotuloAlvo}</h2>
+    <ModalBase aberto rotulo={`Ícone de ${rotuloAlvo}`} onFechar={onFechar} classe="modal-icone" perguntarAoDescartar={false} titulo={`Ícone de ${rotuloAlvo}`} rodape={
+        <>
+          {permiteRemover && inicial && onRemover && (
+            <button type="button" className="btn-icone btn-icone-perigo icone-uso-botao" onClick={onRemover} title={`Remover ícone de ${rotuloAlvo}`} aria-label={`Remover ícone de ${rotuloAlvo}`}>
+              <IconeFuncao funcao="excluir" />
+            </button>
+          )}
+          <BotaoSalvarModal onClick={() => void aplicar()} disabled={!usoRascunho} salvando={copiarEmUso.isPending} rotulo="Confirmar ícone" funcao="confirmar" />
+        </>
+      }>
 
+      {!ocultarSeletor && (
       <div className="modal-icone-secao">
         <div className="modal-icone-abas" role="tablist" aria-label="Origem do ícone">
           <button type="button" role="tab" aria-selected={origem === 'existentes'} className={origem === 'existentes' ? 'ativa' : ''} onClick={() => setOrigem('existentes')}>
@@ -188,6 +199,7 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
           </div>
         )}
       </div>
+      )}
 
       <div className="modal-icone-secao">
         <h3>Tamanho: {rotuloTamanho}</h3>
@@ -273,16 +285,6 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
         </div>
       </div>
 
-      <div className="modal-acoes modal-icone-acoes">
-        {permiteRemover && inicial && onRemover && (
-          <button type="button" className="btn-icone btn-icone-perigo icone-uso-botao" onClick={onRemover} title={`Remover ícone de ${rotuloAlvo}`} aria-label={`Remover ícone de ${rotuloAlvo}`}>
-            <IconeFuncao funcao="excluir" />
-          </button>
-        )}
-        <button type="button" className="btn-icone icone-uso-botao" onClick={() => void aplicar()} disabled={!usoRascunho || copiarEmUso.isPending} title="Confirmar ícone" aria-label="Confirmar ícone">
-          <IconeFuncao funcao="confirmar" />
-        </button>
-      </div>
     </ModalBase>
   );
 }

@@ -198,6 +198,76 @@ label {
   font-size: 16px;
 }
 
+/* Modal padrão: cabeçalho (título + X) e rodapé (salvar) parados; só o corpo rola. */
+.modal-wrap-padrao {
+  max-width: 100%;
+  display: flex;
+}
+
+.modal.modal-padrao {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.modal-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  padding: 12px 14px 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+
+.modal-cabecalho .modal-titulo {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.modal-cabecalho .modal-fechar {
+  position: static;
+  flex: none;
+  color: var(--danger);
+}
+
+.modal-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+  padding: 14px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-corpo::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-corpo::-webkit-scrollbar-thumb {
+  background: var(--accent-border);
+  border-radius: 3px;
+}
+
+.modal-rodape {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding: 8px 20px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+
+.modal-rodape .btn-icone {
+  width: 36px;
+  height: 36px;
+}
+
 .modal p {
   margin: 0;
 }

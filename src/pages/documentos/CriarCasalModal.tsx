@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ModalBase } from '../../components/ModalBase';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
 import { pessoasIndividuais } from '../../lib/responsaveis';
@@ -70,8 +70,11 @@ export function CriarCasalModal({ pessoas, onFechar, onCriado }: { pessoas: Pess
   }
 
   return (
-    <ModalBase aberto rotulo="Novo casal" onFechar={onFechar} classe="modal-edicao">
-      <h3 className="modal-titulo">Novo casal</h3>
+    <ModalBase aberto rotulo="Novo casal" onFechar={onFechar} classe="modal-edicao" titulo="Novo casal" rodape={
+        <>
+          <BotaoSalvarModal onClick={salvar} disabled={invalido} salvando={criar.isPending} rotulo="Criar casal" />
+        </>
+      }>
       {campo(0)}
       {campo(1)}
       {mesmaPessoa && <p role="alert">Escolha duas pessoas diferentes.</p>}
@@ -86,14 +89,6 @@ export function CriarCasalModal({ pessoas, onFechar, onCriado }: { pessoas: Pess
           }}
         />
       </label>
-      <div className="modal-acoes">
-        <button type="button" onClick={salvar} disabled={invalido || criar.isPending} data-autofocus>
-          {criar.isPending ? 'Criando…' : 'Criar casal'}
-        </button>
-        <button type="button" onClick={onFechar}>
-          Cancelar
-        </button>
-      </div>
     </ModalBase>
   );
 }

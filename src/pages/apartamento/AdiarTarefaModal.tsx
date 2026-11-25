@@ -33,8 +33,27 @@ export function AdiarTarefaModal({ tarefa, hoje, quemAdia, onConfirmar, onCancel
   const obs = observacao.trim() || null;
 
   return (
-    <ModalBase aberto rotulo={`Adiar: ${tarefa.nome}`} onFechar={onCancelar}>
-      <h3 className="modal-titulo">Adiar tarefa</h3>
+    <ModalBase
+      aberto
+      rotulo={`Adiar: ${tarefa.nome}`}
+      onFechar={onCancelar}
+      titulo="Adiar tarefa"
+      rodape={
+        <>
+          <button type="button" disabled={!data} onClick={() => onConfirmar({ adiadaAte: data, tipo: 'adiada', observacao: obs, rotulo: `Adiada para ${formatarData(data)}.` })} data-autofocus>
+            Adiar
+          </button>
+          <button type="button" onClick={() => onConfirmar({ adiadaAte: aoPular, tipo: 'pulada', observacao: obs, rotulo: `Pulada desta vez. Próxima em ${formatarData(aoPular)}.` })}>
+            Pular desta vez (próxima em {formatarData(aoPular)})
+          </button>
+          {tarefa.adiada_ate && (
+            <button type="button" onClick={() => onConfirmar({ adiadaAte: null, tipo: 'cancelada', observacao: obs, rotulo: 'Adiamento cancelado.' })}>
+              Cancelar adiamento
+            </button>
+          )}
+        </>
+      }
+    >
       <p>{tarefa.nome}</p>
       <p className="hierarquia-vazio">Próxima execução prevista: {formatarData(atual)}.</p>
       <p className="hierarquia-vazio">
@@ -55,22 +74,6 @@ export function AdiarTarefaModal({ tarefa, hoje, quemAdia, onConfirmar, onCancel
         Observação (opcional)
         <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} />
       </label>
-      <div className="modal-acoes">
-        <button type="button" disabled={!data} onClick={() => onConfirmar({ adiadaAte: data, tipo: 'adiada', observacao: obs, rotulo: `Adiada para ${formatarData(data)}.` })} data-autofocus>
-          Adiar
-        </button>
-        <button type="button" onClick={() => onConfirmar({ adiadaAte: aoPular, tipo: 'pulada', observacao: obs, rotulo: `Pulada desta vez. Próxima em ${formatarData(aoPular)}.` })}>
-          Pular desta vez (próxima em {formatarData(aoPular)})
-        </button>
-        {tarefa.adiada_ate && (
-          <button type="button" onClick={() => onConfirmar({ adiadaAte: null, tipo: 'cancelada', observacao: obs, rotulo: 'Adiamento cancelado.' })}>
-            Cancelar adiamento
-          </button>
-        )}
-        <button type="button" onClick={onCancelar}>
-          Fechar
-        </button>
-      </div>
     </ModalBase>
   );
 }

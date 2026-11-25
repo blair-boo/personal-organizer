@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ModalBase } from '../../components/ModalBase';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { IconeFuncao } from '../../components/IconeUso';
 import { IconeCaixa } from '../../components/IconeCaixa';
 import { ModalIcone } from '../../components/ModalIcone';
@@ -251,8 +251,11 @@ export function CaixaModal({ caixa, dados, tags, ordemNova, numeroNovo, onFechar
   }
 
   return (
-    <ModalBase aberto rotulo={editando ? `Editar caixa ${caixa.nome}` : 'Nova caixa'} onFechar={fechar} classe="modal-edicao modal-storage">
-      <h3 className="modal-titulo">{editando ? 'Editar caixa' : 'Nova caixa'}</h3>
+    <ModalBase aberto rotulo={editando ? `Editar caixa ${caixa.nome}` : 'Nova caixa'} onFechar={fechar} classe="modal-edicao modal-storage" titulo={editando ? 'Editar caixa' : 'Nova caixa'} perguntarAoDescartar={false} rodape={
+        <>
+          <BotaoSalvarModal onClick={() => void salvar()} disabled={!nome.trim()} salvando={salvando} rotulo="Salvar caixa" />
+        </>
+      }>
       <label>
         Nome da caixa
         <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} data-autofocus />
@@ -343,14 +346,6 @@ export function CaixaModal({ caixa, dados, tags, ordemNova, numeroNovo, onFechar
         </button>
       </div>
 
-      <div className="modal-acoes">
-        <button type="button" className="btn-icone" onClick={salvar} disabled={!nome.trim() || salvando} title="Salvar caixa" aria-label="Salvar caixa">
-          <IconeFuncao funcao="salvar" />
-        </button>
-        <button type="button" className="btn-icone btn-icone-perigo" onClick={fechar} title="Cancelar" aria-label="Cancelar">
-          <IconeFuncao funcao="excluir" />
-        </button>
-      </div>
     </ModalBase>
   );
 }

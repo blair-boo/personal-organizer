@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { IconeFuncao } from '../../components/IconeUso';
 import { BotaoExportarCsv } from '../../components/BotaoExportarCsv';
-import { ModalBase } from '../../components/ModalBase';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { ArquivoLink } from '../../components/ArquivoLink';
 import { TagMultiSelect } from '../../components/TagMultiSelect';
 import { TagsChips } from '../../components/TagsChips';
@@ -121,13 +121,11 @@ function FormularioItem({
   tagsIniciais,
   todasTags,
   onSalvar,
-  onCancelar,
 }: {
   inicial: DadosItem;
   tagsIniciais: string[];
   todasTags: { id: string; nome: string }[];
   onSalvar: (dados: DadosItem, tagIds: string[]) => Promise<void>;
-  onCancelar: () => void;
 }) {
   const [dados, setDados] = useState<DadosItem>(inicial);
   const [tagIds, setTagIds] = useState<string[]>(tagsIniciais);
@@ -135,6 +133,7 @@ function FormularioItem({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (salvando) return;
     setSalvando(true);
     try {
       await onSalvar(dados, tagIds);
@@ -144,7 +143,7 @@ function FormularioItem({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form id="form-modal" onSubmit={handleSubmit}>
       <label>
         Nome
         <input type="text" value={dados.nome} onChange={(e) => setDados({ ...dados, nome: e.target.value })} data-autofocus required />
@@ -193,14 +192,6 @@ function FormularioItem({
           onChange={(e) => setDados({ ...dados, observacoes: e.target.value || null })}
         />
       </label>
-      <div className="modal-acoes">
-        <button type="submit" disabled={salvando}>
-          {salvando ? 'Salvando…' : 'Salvar'}
-        </button>
-        <button type="button" onClick={onCancelar}>
-          Cancelar
-        </button>
-      </div>
     </form>
   );
 }
@@ -301,8 +292,11 @@ export function ItensPage() {
           {itens?.length === 0 && <p className="hierarquia-vazio">Nenhum item cadastrado ainda.</p>}
         </ul>
       )}
-      <ModalBase aberto={modalAberto} rotulo={editando ? editando.nome : 'Novo item'} onFechar={() => setModalAberto(false)} classe="modal-edicao">
-        <h3 className="modal-titulo">{editando ? 'Editar item' : 'Novo item'}</h3>
+      <ModalBase aberto={modalAberto} rotulo={editando ? editando.nome : 'Novo item'} onFechar={() => setModalAberto(false)} classe="modal-edicao" titulo={editando ? 'Editar item' : 'Novo item'} rodape={
+        <>
+          <BotaoSalvarModal form="form-modal" />
+        </>
+      }>
         <FormularioItem
           inicial={
             editando
@@ -320,7 +314,6 @@ export function ItensPage() {
           tagsIniciais={editando ? (itemTags?.get(editando.id) ?? []).map((t) => t.id) : []}
           todasTags={todasTags ?? []}
           onSalvar={salvar}
-          onCancelar={() => setModalAberto(false)}
         />
         {editando && (
           <>

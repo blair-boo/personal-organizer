@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
-import { ModalBase } from './ModalBase';
-import { IconeFuncao } from './IconeUso';
+import { BotaoSalvarModal, ModalBase } from './ModalBase';
 import { useToast } from './Toast';
 import { LADO_DA_FOTO, ZOOM_MAXIMO, ZOOM_MINIMO, aplicarZoom, moverImagem, posicaoCentralizada, type PosicaoDaImagem } from '../lib/recorteFoto';
 
@@ -121,8 +120,11 @@ export function RecorteFotoModal({ arquivo, rotulo, onConfirmar, onCancelar }: R
   }
 
   return (
-    <ModalBase aberto rotulo={`Recortar a foto de ${rotulo}`} onFechar={onCancelar} classe="modal-edicao">
-      <h3 className="modal-titulo">Recortar a foto de {rotulo}</h3>
+    <ModalBase aberto rotulo={`Recortar a foto de ${rotulo}`} onFechar={onCancelar} classe="modal-edicao" titulo={`Recortar a foto de ${rotulo}`} rodape={
+        <>
+          <BotaoSalvarModal onClick={confirmar} disabled={!imagem} salvando={gerando} rotulo="Salvar foto" />
+        </>
+      }>
       <p className="hierarquia-vazio">Arraste para posicionar e use o zoom. O círculo é o que aparece na foto.</p>
       <div className="recorte-foto-area">
         <canvas
@@ -143,14 +145,6 @@ export function RecorteFotoModal({ arquivo, rotulo, onConfirmar, onCancelar }: R
         Zoom
         <input type="range" min={ZOOM_MINIMO} max={ZOOM_MAXIMO} step={0.05} value={zoom} onChange={(e) => aoMudarZoom(Number(e.target.value))} aria-label="Zoom da foto" />
       </label>
-      <div className="modal-acoes">
-        <button type="button" className="btn-icone" onClick={confirmar} disabled={!imagem || gerando} title="Salvar foto" aria-label="Salvar foto" data-autofocus>
-          <IconeFuncao funcao="salvar" />
-        </button>
-        <button type="button" className="btn-icone" onClick={onCancelar} title="Cancelar" aria-label="Cancelar">
-          <IconeFuncao funcao="excluir" />
-        </button>
-      </div>
     </ModalBase>
   );
 }

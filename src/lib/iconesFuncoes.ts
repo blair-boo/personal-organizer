@@ -18,7 +18,8 @@ export type FuncaoIcone =
   | 'tema_escuro'
   | 'voltar'
   | 'avancar'
-  | 'topo';
+  | 'topo'
+  | 'filtro_sem_icone';
 
 export interface DefinicaoFuncao {
   chave: FuncaoIcone;
@@ -47,6 +48,7 @@ export const FUNCOES_ICONE: DefinicaoFuncao[] = [
   { chave: 'voltar', rotulo: 'Voltar', arquivoPadrao: null },
   { chave: 'avancar', rotulo: 'Avançar', arquivoPadrao: null },
   { chave: 'topo', rotulo: 'Subir ao topo', arquivoPadrao: null },
+  { chave: 'filtro_sem_icone', rotulo: 'Filtro: lugares sem ícone', arquivoPadrao: 'PNG/UI_UGCCustomUI_Default.png' },
 ];
 
 /** Ícone que ocupa o lugar de uma categoria ou aba sem ícone, só no modo de edição. Fica na raiz do bucket. */

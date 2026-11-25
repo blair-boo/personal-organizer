@@ -83,8 +83,13 @@ export function ExportarPlanilhaModal({ dados, origem, onFechar }: ExportarPlani
   }
 
   return (
-    <ModalBase aberto rotulo="Exportar planilha" onFechar={onFechar} classe="modal-edicao">
-      <h3 className="modal-titulo">Exportar planilha</h3>
+    <ModalBase aberto rotulo="Exportar planilha" onFechar={onFechar} classe="modal-edicao" titulo="Exportar planilha" perguntarAoDescartar={false} rodape={
+        <>
+          <button type="button" onClick={exportar} disabled={exportando || !anoValido || dados.tarefas.length === 0} data-autofocus>
+            {exportando ? 'Exportando…' : 'Exportar'}
+          </button>
+        </>
+      }>
       <p className="settings-secao-ajuda">
         {dados.tarefas.length === 1 ? '1 tarefa' : `${dados.tarefas.length} tarefas`} ({origem}), no formato da aba Esqueleto.
       </p>
@@ -131,14 +136,6 @@ export function ExportarPlanilhaModal({ dados, origem, onFechar }: ExportarPlani
           </a>
         </p>
       )}
-      <div className="modal-acoes">
-        <button type="button" onClick={exportar} disabled={exportando || !anoValido || dados.tarefas.length === 0} data-autofocus>
-          {exportando ? 'Exportando…' : 'Exportar'}
-        </button>
-        <button type="button" onClick={onFechar}>
-          Fechar
-        </button>
-      </div>
     </ModalBase>
   );
 }

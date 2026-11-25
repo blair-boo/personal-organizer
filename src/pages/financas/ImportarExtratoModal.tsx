@@ -134,8 +134,24 @@ export function ImportarExtratoModal({
   const semCategoria = linhas.filter((l) => l.incluir && !l.categoriaId && !regras?.get(normalizarDescricao(l.descricaoOriginal))).length;
 
   return (
-    <ModalBase aberto={aberto} rotulo="Importar extrato/fatura" onFechar={fecharTudo} classe="modal-importacao">
-      <h3 className="modal-titulo">Importar {conta.tipo === 'cartao_credito' ? 'fatura' : 'extrato'} — {rotuloConta(conta)}</h3>
+    <ModalBase aberto={aberto} rotulo="Importar extrato/fatura" onFechar={fecharTudo} classe="modal-importacao" perguntarAoDescartar={false} titulo={`Importar ${conta.tipo === 'cartao_credito' ? 'fatura' : 'extrato'} - ${rotuloConta(conta)}`} rodape={
+        <>
+          {etapa === 'selecionar' ? (
+            <button type="button" onClick={processarArquivo} disabled={!arquivo || processando}>
+              {processando ? 'Lendo PDF…' : 'Ler PDF'}
+            </button>
+          ) : (
+            <>
+              <button type="button" onClick={() => setEtapa('selecionar')}>
+                Voltar
+              </button>
+              <button type="button" onClick={confirmarImportacao} disabled={salvando}>
+                {salvando ? 'Salvando…' : `Importar ${linhas.filter((l) => l.incluir).length} lançamento(s)`}
+              </button>
+            </>
+          )}
+        </>
+      }>
 
       {etapa === 'selecionar' && (
         <div className="importar-selecionar">
@@ -144,14 +160,6 @@ export function ImportarExtratoModal({
             automaticamente — você revisa e corrige antes de salvar.
           </p>
           <input type="file" accept="application/pdf" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
-          <div className="modal-acoes">
-            <button type="button" onClick={processarArquivo} disabled={!arquivo || processando}>
-              {processando ? 'Lendo PDF…' : 'Ler PDF'}
-            </button>
-            <button type="button" onClick={fecharTudo}>
-              Cancelar
-            </button>
-          </div>
         </div>
       )}
 
@@ -222,14 +230,6 @@ export function ImportarExtratoModal({
           <p className="settings-secao-ajuda">
             Total incluído: {formatarMoeda(linhas.filter((l) => l.incluir).reduce((s, l) => s + (l.tipo === 'entrada' ? l.valor : -l.valor), 0))}
           </p>
-          <div className="modal-acoes">
-            <button type="button" onClick={confirmarImportacao} disabled={salvando}>
-              {salvando ? 'Salvando…' : `Importar ${linhas.filter((l) => l.incluir).length} lançamento(s)`}
-            </button>
-            <button type="button" onClick={() => setEtapa('selecionar')}>
-              Voltar
-            </button>
-          </div>
         </div>
       )}
     </ModalBase>

@@ -114,9 +114,6 @@
 .modal-usos-lista {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
   gap: 6px;
   margin: 0;
   padding: 0;
@@ -269,16 +266,16 @@
   gap: 8px;
 }
 
-/* Painel do modo de edição de abas. */
+/* Painel do modo de edição de abas: mesma estrutura dos modais (cabeçalho e rodapé fixos, só o corpo rola). */
 .painel-abas {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px dashed var(--accent-border);
-  border-radius: 8px;
-  max-height: 40vh;
-  overflow-y: auto;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-height: 50vh;
+  max-height: 50dvh;
+  overflow: hidden;
 }
 
 .painel-abas-dica {
@@ -345,8 +342,38 @@
   text-align: left;
 }
 
-.modal-atribuir-conteudo {
+.modal-atribuir-busca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-atribuir-busca input {
   flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+  min-width: 0;
+}
+
+/* "?": translúcido desligado, branco sólido ligado. */
+.modal-atribuir-busca .modal-atribuir-filtro {
+  width: auto;
+  height: 34px;
+  padding: 0 4px;
+  gap: 4px;
+  color: var(--text-h);
+  opacity: 0.45;
+}
+
+.modal-atribuir-busca .modal-atribuir-filtro.ativo {
+  color: var(--text);
+  opacity: 1;
+}
+
+.modal-atribuir-contagem {
+  font-size: 12px;
+}
+
+.modal-atribuir-sem-icone {
+  width: 18px;
+  height: 18px;
+  flex: none;
 }

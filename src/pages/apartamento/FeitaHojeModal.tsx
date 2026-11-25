@@ -31,8 +31,13 @@ export function FeitaHojeModal({ tarefa, dataPrevistaAtrasada, hoje, pessoas, pa
   }
 
   return (
-    <ModalBase aberto rotulo={`Feita hoje: ${tarefa.nome}`} onFechar={onCancelar}>
-      <h3 className="modal-titulo">Feita hoje</h3>
+    <ModalBase aberto rotulo={`Feita hoje: ${tarefa.nome}`} onFechar={onCancelar} titulo="Feita hoje" rodape={
+        <>
+          <button type="button" onClick={() => onConfirmar({ base: dataPrevistaAtrasada ? base : 'execucao', pessoaIds: pessoas.filter((p) => marcadas.has(p.id)).map((p) => p.id) })} data-autofocus>
+            Confirmar
+          </button>
+        </>
+      }>
       <p>{tarefa.nome}</p>
       {pessoas.length > 0 && (
         <fieldset className="manutencao-destino">
@@ -59,14 +64,6 @@ export function FeitaHojeModal({ tarefa, dataPrevistaAtrasada, hoje, pessoas, pa
           </label>
         </fieldset>
       )}
-      <div className="modal-acoes">
-        <button type="button" onClick={() => onConfirmar({ base: dataPrevistaAtrasada ? base : 'execucao', pessoaIds: pessoas.filter((p) => marcadas.has(p.id)).map((p) => p.id) })} data-autofocus>
-          Confirmar
-        </button>
-        <button type="button" onClick={onCancelar}>
-          Cancelar
-        </button>
-      </div>
     </ModalBase>
   );
 }

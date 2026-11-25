@@ -65,8 +65,7 @@ export function ModalUsosIcone({ usos, tamanho, onFechar }: ModalUsosIconeProps)
 
   if (!selecionado) {
     return (
-      <ModalBase aberto rotulo="Onde o ícone é usado" onFechar={onFechar} classe="modal-usos">
-        <h2 className="modal-titulo">Onde o ícone é usado</h2>
+      <ModalBase aberto rotulo="Onde o ícone é usado" onFechar={onFechar} classe="modal-usos" perguntarAoDescartar={false} titulo="Onde o ícone é usado">
         <p className="hierarquia-vazio">Este ícone não está mais em uso.</p>
       </ModalBase>
     );
@@ -74,8 +73,16 @@ export function ModalUsosIcone({ usos, tamanho, onFechar }: ModalUsosIconeProps)
 
   return (
     <>
-      <ModalBase aberto rotulo="Onde o ícone é usado" onFechar={onFechar} classe="modal-usos">
-        <h2 className="modal-titulo">Onde o ícone é usado</h2>
+      <ModalBase aberto rotulo="Onde o ícone é usado" onFechar={onFechar} classe="modal-usos" perguntarAoDescartar={false} titulo="Onde o ícone é usado" rodape={
+        <>
+          <button type="button" className="btn-icone btn-icone-perigo icone-uso-botao" onClick={() => void aoRemover()} title="Remover ícone deste título" aria-label="Remover ícone deste título">
+            <IconeFuncao funcao="excluir" />
+          </button>
+          <button type="button" className="btn-icone icone-uso-botao" onClick={() => setSubstituindo(true)} title="Substituir ícone deste título" aria-label="Substituir ícone deste título">
+            <IconeFuncao funcao="editar" />
+          </button>
+        </>
+      }>
         <ul className="modal-usos-lista">
           {usos.map((u) => {
             const chave = `${u.alvo_tipo}:${u.alvo_id}:${u.tema}`;
@@ -92,14 +99,6 @@ export function ModalUsosIcone({ usos, tamanho, onFechar }: ModalUsosIconeProps)
             );
           })}
         </ul>
-        <div className="modal-acoes modal-icone-acoes">
-          <button type="button" className="btn-icone btn-icone-perigo icone-uso-botao" onClick={() => void aoRemover()} title="Remover ícone deste título" aria-label="Remover ícone deste título">
-            <IconeFuncao funcao="excluir" />
-          </button>
-          <button type="button" className="btn-icone icone-uso-botao" onClick={() => setSubstituindo(true)} title="Substituir ícone deste título" aria-label="Substituir ícone deste título">
-            <IconeFuncao funcao="editar" />
-          </button>
-        </div>
       </ModalBase>
       {substituindo && (
         <ModalIcone
