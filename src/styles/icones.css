@@ -377,3 +377,51 @@
   height: 18px;
   flex: none;
 }
+
+/* Favoritos de ícones: estrela no canto do ícone e filtro (translúcido desligado, sólido ligado). */
+.icone-favorito {
+  position: absolute;
+  top: -6px;
+  left: 12px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  opacity: 0.55;
+}
+
+.icone-favorito.ativo {
+  color: var(--text);
+  opacity: 1;
+}
+
+.filtro-favoritos {
+  width: auto;
+  height: 28px;
+  padding: 0 4px;
+  gap: 4px;
+  color: var(--text-h);
+  opacity: 0.55;
+}
+
+.filtro-favoritos.ativo {
+  color: var(--text);
+  opacity: 1;
+}
+
+.filtro-favoritos-contagem {
+  font-size: 12px;
+}
+
+/* Opção do seletor de ícones com a estrela por cima. */
+.modal-icone-opcao-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.modal-icone-opcao-wrap .icone-favorito {
+  top: -4px;
+  left: -4px;
+}

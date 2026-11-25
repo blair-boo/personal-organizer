@@ -38,8 +38,11 @@ export function IconeSupabase({
   );
 }
 
-/** Ícone ilustrativo colorido (PNG do bucket `icones`), renderizado como imagem normal — sem a máscara de currentColor, que jogaria fora as cores originais. */
+/**
+ * Ícone ilustrativo colorido (PNG do bucket `icones`), renderizado como imagem normal — sem a máscara de currentColor, que jogaria fora as cores originais.
+ * Vai com `crossOrigin` para a resposta guardada no cache servir também a máscara (mask-image exige CORS): sem isso o cache guardava uma resposta "opaca" e o ícone mascarado sumia.
+ */
 export function IconePng({ arquivo, tamanho = 18, titulo }: { arquivo: string; tamanho?: number; titulo?: string }) {
   const url = urlIconeSupabase(arquivo);
-  return <img src={url} alt="" aria-hidden title={titulo} className="icone-png" width={tamanho} height={tamanho} />;
+  return <img src={url} alt="" aria-hidden title={titulo} className="icone-png" width={tamanho} height={tamanho} crossOrigin="anonymous" />;
 }

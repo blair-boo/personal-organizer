@@ -331,6 +331,12 @@ export interface PastaIcones {
   icones: IconeArquivo[];
 }
 
+/** Ícone da galeria marcado como favorito (pasta '' = raiz do bucket). */
+export interface IconeFavorito {
+  pasta: string;
+  arquivo: string;
+}
+
 export type AlvoIcone = 'funcao' | 'categoria' | 'aba' | 'pessoa' | 'caixa';
 export type TemaIcone = 'claro' | 'escuro' | 'ambos';
 export type CorOrigemIcone = 'padrao' | 'app' | 'minha';
