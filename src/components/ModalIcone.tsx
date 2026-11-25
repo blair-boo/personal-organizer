@@ -1,12 +1,15 @@
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { BotaoFavorito, FiltroFavoritos } from './FavoritosIcone';
 import { BotaoSalvarModal, ModalBase } from './ModalBase';
 import { useToast } from './Toast';
 import { IconeDoUso, IconeFuncao } from './IconeUso';
 import { IconeSupabase } from './IconeSupabase';
 import { useAdicionarIcones, useCopiarParaEmUso, useIconesTodasPastas } from '../hooks/useIcones';
 import { useCoresUsuario } from '../hooks/useCoresUsuario';
+import { useAlternarFavoritoIcone, useIconesFavoritos } from '../hooks/useIconesFavoritos';
 import { APP_CORES } from '../lib/coresApp';
 import { mensagemDeErro } from '../lib/erros';
+import { chaveIcone, conjuntoDeFavoritos, favoritosExistentes } from '../lib/iconesFavoritos';
 import { PASTA_EM_USO } from '../lib/iconesUsos';
 import { caminhoIcone } from '../lib/storage';
 import type { AlvoIcone, CorOrigemIcone, TemaIcone, UsoIcone } from '../types';
@@ -52,6 +55,10 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
   const copiarEmUso = useCopiarParaEmUso();
   const [pastaVista, setPastaVista] = useState(inicial?.icone_pasta ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
+  const { data: favoritosLista = [] } = useIconesFavoritos();
+  const alternarFavorito = useAlternarFavoritoIcone();
+  const [soFavoritos, setSoFavoritos] = useState(false);
+  const favoritos = useMemo(() => conjuntoDeFavoritos(favoritosLista), [favoritosLista]);
 
   const [origem, setOrigem] = useState<'existentes' | 'novo'>('existentes');
   const [escolhido, setEscolhido] = useState<{ pasta: string; arquivo: string } | null>(
@@ -108,6 +115,19 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
     }
   }
 
+  async function aoAlternarFavorito(pasta: string, nome: string) {
+    const jaEra = favoritos.has(chaveIcone(pasta, nome));
+    try {
+      await alternarFavorito.mutateAsync({ pasta, arquivo: nome, favorito: !jaEra });
+      mostrarToast(jaEra ? 'Removido dos favoritos.' : 'Adicionado aos favoritos.');
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  // Com o filtro ligado: favoritos de todas as pastas. Sem ele: só a pasta aberta.
+  const opcoes = soFavoritos ? favoritosExistentes(pastas, favoritos) : pastas.filter((p) => p.pasta === pastaVista).flatMap(({ pasta, icones }) => icones.map((icone) => ({ pasta, icone })));
+
   function rotuloPasta(pasta: string): string {
     if (pasta === '') return 'Sem pasta';
     return pasta === PASTA_EM_USO ? 'Em uso' : pasta;
@@ -145,8 +165,9 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
             {erro && <p className="testes-erro">Não foi possível carregar os ícones: {erro}</p>}
             {!carregando && !erro && (
               <div className="modal-icone-linha" role="group" aria-label="Pasta dos ícones">
+                <FiltroFavoritos ativo={soFavoritos} quantidade={favoritosExistentes(pastas, favoritos).length} onAlternar={() => setSoFavoritos((v) => !v)} />
                 {pastas.map(({ pasta }) => (
-                  <button key={pasta} type="button" className={pastaVista === pasta ? 'ativa' : ''} aria-pressed={pastaVista === pasta} onClick={() => setPastaVista(pasta)}>
+                  <button key={pasta} type="button" className={!soFavoritos && pastaVista === pasta ? 'ativa' : ''} aria-pressed={!soFavoritos && pastaVista === pasta} onClick={() => { setSoFavoritos(false); setPastaVista(pasta); }}>
                     {rotuloPasta(pasta)}
                   </button>
                 ))}
@@ -154,19 +175,18 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
             )}
             {!carregando && !erro && (
               <div className="modal-icone-grade" role="listbox" aria-label="Ícones existentes">
-                {(pastas.find((p) => p.pasta === pastaVista)?.icones.length ?? 0) === 0 && <p className="hierarquia-vazio">Nenhum ícone nesta pasta.</p>}
-                {pastas.filter((p) => p.pasta === pastaVista).flatMap(({ pasta, icones }) =>
-                  icones.map((icone) => {
-                    const selecionado = escolhido?.pasta === pasta && escolhido.arquivo === icone.nome;
-                    return (
+                {opcoes.length === 0 && <p className="hierarquia-vazio">{soFavoritos ? 'Nenhum favorito ainda.' : 'Nenhum ícone nesta pasta.'}</p>}
+                {opcoes.map(({ pasta, icone }) => {
+                  const selecionado = escolhido?.pasta === pasta && escolhido.arquivo === icone.nome;
+                  return (
+                    <div key={`${pasta}/${icone.nome}`} className="modal-icone-opcao-wrap">
                       <button
-                        key={`${pasta}/${icone.nome}`}
                         type="button"
                         role="option"
                         aria-selected={selecionado}
                         className={`modal-icone-opcao${selecionado ? ' selecionado' : ''}`}
                         onClick={() => setEscolhido({ pasta, arquivo: icone.nome })}
-                        title={icone.nome}
+                        title={soFavoritos && pasta ? `${icone.nome} (${pasta})` : icone.nome}
                         aria-label={icone.nome}
                       >
                         {icone.nome.toLowerCase().endsWith('.svg') ? (
@@ -175,9 +195,10 @@ function ModalIconeConteudo({ rotuloAlvo, alvoTipo, alvoId, inicial, tamanhoBase
                           <img className="icone-png" src={icone.url} alt="" width={24} height={24} loading="lazy" crossOrigin="anonymous" />
                         )}
                       </button>
-                    );
-                  })
-                )}
+                      <BotaoFavorito favorito={favoritos.has(chaveIcone(pasta, icone.nome))} nome={icone.nome} onAlternar={() => void aoAlternarFavorito(pasta, icone.nome)} />
+                    </div>
+                  );
+                })}
               </div>
             )}
           </>

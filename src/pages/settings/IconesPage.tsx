@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useDialogos } from '../../components/Dialogo';
 import { useToast } from '../../components/Toast';
+import { BotaoFavorito, FiltroFavoritos } from '../../components/FavoritosIcone';
 import { IconeChevron } from '../../components/IconesProvisorios';
 import { IconeDoUso, IconeFuncao } from '../../components/IconeUso';
 import { ModalAtribuirIcone } from '../../components/ModalAtribuirIcone';
@@ -14,8 +15,10 @@ import { SeletorCor } from '../../components/SeletorCor';
 import { mensagemDeErro } from '../../lib/erros';
 import { FUNCOES_ICONE, usoPadraoDaFuncao, type DefinicaoFuncao } from '../../lib/iconesFuncoes';
 import { PASTA_EM_USO, arquivosEmUso, caminhoDoUso, contarUsos, resolverUso } from '../../lib/iconesUsos';
+import { chaveIcone, conjuntoDeFavoritos, favoritosExistentes } from '../../lib/iconesFavoritos';
 import { caminhoIcone, slugify } from '../../lib/storage';
-import { useAdicionarIcones, useCriarPastaIcone, useMigrarUsosParaEmUso, useExcluirIcone, useExcluirPastaIcone, useRenomearPastaIcone, useIconesGaleria, useRenomearIcone, useReordenarIcones, useSubpastasIcones } from '../../hooks/useIcones';
+import { useAdicionarIcones, useCriarPastaIcone, useMigrarUsosParaEmUso, useExcluirIcone, useExcluirPastaIcone, useRenomearPastaIcone, useIconesGaleria, useIconesTodasPastas, useRenomearIcone, useReordenarIcones, useSubpastasIcones } from '../../hooks/useIcones';
+import { useAlternarFavoritoIcone, useIconesFavoritos } from '../../hooks/useIconesFavoritos';
 import { useIconesUsos, useRemoverUsoIcone, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
 import { useTemaEfetivo } from '../../hooks/useTema';
 import type { IconeArquivo, UsoIcone } from '../../types';
@@ -271,6 +274,22 @@ function SecaoGaleria({ tamanho, emUso, mascara, onMascara }: { tamanho: number;
   const criarPasta = useCriarPastaIcone();
   const { pedirTexto } = useDialogos();
   const { mostrarToast } = useToast();
+  const { data: favoritosLista = [], isLoading: carregandoFavoritos, isError: erroFavoritos, error: erroDosFavoritos } = useIconesFavoritos();
+  const { pastas: todasPastas, carregando: carregandoPastas } = useIconesTodasPastas();
+  const alternarFavorito = useAlternarFavoritoIcone();
+  const [soFavoritos, setSoFavoritos] = useState(false);
+  const favoritos = useMemo(() => conjuntoDeFavoritos(favoritosLista), [favoritosLista]);
+  const favoritosVisiveis = useMemo(() => favoritosExistentes(todasPastas, favoritos), [todasPastas, favoritos]);
+
+  async function aoAlternarFavorito(pasta: string, nome: string) {
+    const jaEra = favoritos.has(chaveIcone(pasta, nome));
+    try {
+      await alternarFavorito.mutateAsync({ pasta, arquivo: nome, favorito: !jaEra });
+      mostrarToast(jaEra ? 'Removido dos favoritos.' : 'Adicionado aos favoritos.');
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
 
   async function novaPasta() {
     const nome = await pedirTexto({ titulo: 'Nova pasta', mensagem: 'Nome' });
@@ -292,6 +311,7 @@ function SecaoGaleria({ tamanho, emUso, mascara, onMascara }: { tamanho: number;
             <input type="checkbox" checked={mascara} onChange={(e) => onMascara(e.target.checked)} />
             Máscara
           </label>
+          <FiltroFavoritos ativo={soFavoritos} quantidade={favoritosVisiveis.length} onAlternar={() => setSoFavoritos((v) => !v)} />
           <button type="button" className="btn-icone" onClick={() => void novaPasta()} disabled={criarPasta.isPending} title="Adicionar pasta" aria-label="Adicionar pasta">
             <IconeFuncao funcao="adicionar" />
           </button>
@@ -300,15 +320,28 @@ function SecaoGaleria({ tamanho, emUso, mascara, onMascara }: { tamanho: number;
       <p className="testes-legenda">Cada pasta do bucket é uma divisão. Ao escolher um ícone, uma cópia dele vai para a pasta Em uso. Ícones em uso aparecem marcados e não podem ser renomeados nem excluídos daqui.</p>
       {isLoading && <p className="hierarquia-vazio">Carregando…</p>}
       {isError && <p className="testes-erro">Não foi possível carregar as pastas: {mensagemDeErro(error)}</p>}
-      <GrupoIcones pasta="" titulo="Sem pasta" tamanho={tamanho} emUso={emUso} mascara={mascara} pastasExistentes={pastas} />
-      {pastas.map((pasta) => (
-        <GrupoIcones key={pasta} pasta={pasta} titulo={pasta === PASTA_EM_USO ? 'Em uso' : pasta} tamanho={tamanho} emUso={emUso} mascara={mascara} pastasExistentes={pastas} />
-      ))}
+      {soFavoritos ? (
+        <GradeFavoritos
+          itens={favoritosVisiveis}
+          carregando={carregandoFavoritos || carregandoPastas}
+          erro={erroFavoritos ? mensagemDeErro(erroDosFavoritos) : null}
+          tamanho={tamanho}
+          mascara={mascara}
+          onAlternarFavorito={aoAlternarFavorito}
+        />
+      ) : (
+        <>
+          <GrupoIcones pasta="" titulo="Sem pasta" tamanho={tamanho} emUso={emUso} mascara={mascara} pastasExistentes={pastas} favoritos={favoritos} onAlternarFavorito={aoAlternarFavorito} />
+          {pastas.map((pasta) => (
+            <GrupoIcones key={pasta} pasta={pasta} titulo={pasta === PASTA_EM_USO ? 'Em uso' : pasta} tamanho={tamanho} emUso={emUso} mascara={mascara} pastasExistentes={pastas} favoritos={favoritos} onAlternarFavorito={aoAlternarFavorito} />
+          ))}
+        </>
+      )}
     </section>
   );
 }
 
-function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes }: { pasta: string; titulo: string; tamanho: number; emUso: Set<string>; mascara: boolean; pastasExistentes: string[] }) {
+function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes, favoritos, onAlternarFavorito }: { pasta: string; titulo: string; tamanho: number; emUso: Set<string>; mascara: boolean; pastasExistentes: string[]; favoritos: Set<string>; onAlternarFavorito: (pasta: string, nome: string) => void }) {
   const { data, isLoading, isError, error } = useIconesGaleria(pasta);
   const adicionar = useAdicionarIcones(pasta);
   const renomear = useRenomearIcone(pasta);
@@ -660,6 +693,8 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
                 tamanho={tamanho}
                 mascara={mascara}
                 emUso={emUso.has(caminhoIcone(pasta, icone.nome))}
+                favorito={favoritos.has(chaveIcone(pasta, icone.nome))}
+                onAlternarFavorito={() => onAlternarFavorito(pasta, icone.nome)}
                 onAtribuir={() => setIconeParaAtribuir(icone)}
                 modoEdicao={modoEdicao}
                 pendenteExclusao={exclusoesPendentes.has(icone.id)}
@@ -681,12 +716,58 @@ function GrupoIcones({ pasta, titulo, tamanho, emUso, mascara, pastasExistentes 
   );
 }
 
+/** Favoritos de todas as pastas juntos (filtro da galeria). Tocar no ícone atribui a um lugar; a estrela tira dos favoritos. */
+function GradeFavoritos({
+  itens,
+  carregando,
+  erro,
+  tamanho,
+  mascara,
+  onAlternarFavorito,
+}: {
+  itens: { pasta: string; icone: IconeArquivo }[];
+  carregando: boolean;
+  erro: string | null;
+  tamanho: number;
+  mascara: boolean;
+  onAlternarFavorito: (pasta: string, nome: string) => void;
+}) {
+  const [paraAtribuir, setParaAtribuir] = useState<{ pasta: string; nome: string } | null>(null);
+  return (
+    <div className="icones-grupo">
+      <h3 className="icones-secao-titulo">Favoritos</h3>
+      {paraAtribuir && <ModalAtribuirIcone icone={paraAtribuir} onFechar={() => setParaAtribuir(null)} />}
+      {carregando && <p className="hierarquia-vazio">Carregando…</p>}
+      {erro && <p className="testes-erro">Não foi possível carregar os favoritos: {erro}</p>}
+      {!carregando && !erro && itens.length === 0 && <p className="hierarquia-vazio">Nenhum favorito ainda.</p>}
+      <div className="testes-icones-grid">
+        {itens.map(({ pasta, icone }) => (
+          <div key={`${pasta}/${icone.nome}`} className="testes-icone-item">
+            <div className="testes-icone-arrastar" role="button" tabIndex={0} aria-label={`Atribuir ${icone.nome} a um lugar do app`} title="Atribuir a um lugar do app" onClick={() => setParaAtribuir({ pasta, nome: icone.nome })} onKeyDown={(e) => e.key === 'Enter' && setParaAtribuir({ pasta, nome: icone.nome })}>
+              {mascara ? (
+                <span className="testes-icone-svg" role="img" aria-label={icone.nome} style={{ width: tamanho, height: tamanho, WebkitMaskImage: `url(${icone.url})`, maskImage: `url(${icone.url})` }} />
+              ) : (
+                <img className="testes-icone-img" src={icone.url} alt={icone.nome} width={tamanho} height={tamanho} style={{ width: tamanho, height: tamanho }} loading="lazy" crossOrigin="anonymous" />
+              )}
+            </div>
+            <BotaoFavorito favorito nome={icone.nome} onAlternar={() => onAlternarFavorito(pasta, icone.nome)} />
+            <span className="testes-icone-nome">{icone.nome}</span>
+            <span className="testes-icone-em-uso">{pasta || 'Sem pasta'}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function IconeItem({
   icone,
   nomeExibido,
   tamanho,
   mascara,
   emUso,
+  favorito,
+  onAlternarFavorito,
   onAtribuir,
   modoEdicao,
   pendenteExclusao,
@@ -703,6 +784,8 @@ function IconeItem({
   tamanho: number;
   mascara: boolean;
   emUso: boolean;
+  favorito: boolean;
+  onAlternarFavorito: () => void;
   onAtribuir: () => void;
   modoEdicao: boolean;
   pendenteExclusao: boolean;
@@ -763,6 +846,8 @@ function IconeItem({
           />
         )}
       </div>
+
+      <BotaoFavorito favorito={favorito} nome={icone.nome} onAlternar={onAlternarFavorito} />
 
       {modoEdicao && !emUso && (
         <button

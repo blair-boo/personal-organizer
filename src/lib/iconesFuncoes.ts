@@ -19,7 +19,9 @@ export type FuncaoIcone =
   | 'voltar'
   | 'avancar'
   | 'topo'
-  | 'filtro_sem_icone';
+  | 'filtro_sem_icone'
+  | 'favoritar'
+  | 'favoritado';
 
 export interface DefinicaoFuncao {
   chave: FuncaoIcone;
@@ -48,6 +50,8 @@ export const FUNCOES_ICONE: DefinicaoFuncao[] = [
   { chave: 'voltar', rotulo: 'Voltar', arquivoPadrao: null },
   { chave: 'avancar', rotulo: 'Avançar', arquivoPadrao: null },
   { chave: 'topo', rotulo: 'Subir ao topo', arquivoPadrao: null },
+  { chave: 'favoritar', rotulo: 'Favoritar (ainda não é favorito)', arquivoPadrao: null },
+  { chave: 'favoritado', rotulo: 'Favorito (já é favorito)', arquivoPadrao: null },
   { chave: 'filtro_sem_icone', rotulo: 'Filtro: lugares sem ícone', arquivoPadrao: 'PNG/UI_UGCCustomUI_Default.png' },
 ];
 

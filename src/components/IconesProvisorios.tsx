@@ -180,6 +180,24 @@ export function IconeEngrenagem({ tamanho = 16 }: Props) {
 }
 
 // PROVISORIO: trocar por chevron-right.svg (e chevron-down.svg quando aberto)
+// PROVISORIO: trocar por favoritar.svg
+export function IconeEstrela({ tamanho = 16 }: Props) {
+  return (
+    <Svg tamanho={tamanho}>
+      <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />
+    </Svg>
+  );
+}
+
+// PROVISORIO: trocar por favoritado.svg
+export function IconeEstrelaCheia({ tamanho = 16 }: Props) {
+  return (
+    <Svg tamanho={tamanho}>
+      <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="currentColor" />
+    </Svg>
+  );
+}
+
 export function IconeChevron({ tamanho = 14, aberto = false }: Props & { aberto?: boolean }) {
   return (
     <span className={`icone-chevron${aberto ? ' icone-chevron-aberto' : ''}`}>
@@ -200,4 +218,6 @@ export const PROVISORIOS_FUNCAO: Partial<Record<FuncaoIcone, (props: Props) => R
   atualizar: IconeAtualizar,
   selecionar: IconeSelecionar,
   exportar: IconeExportar,
+  favoritar: IconeEstrela,
+  favoritado: IconeEstrelaCheia,
 };
