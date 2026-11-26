@@ -537,7 +537,7 @@ function ItemDocumentoLinha({
       )}
       <button type="button" className="documentos-titulo-botao" onClick={onExpandir} disabled={pendente}>
         <span className="documentos-seta">{expandido ? '▾' : '▸'}</span>
-        {incompleto && <IconePng arquivo="warnings/UI_Img_DataSnake_Enemy_Mark.png" tamanho={16} titulo="Ainda sem preenchimento" />}
+        {incompleto && <IconePng arquivo="Warnings/UI_Img_DataSnake_Enemy_Mark.png" tamanho={16} titulo="Ainda sem preenchimento" />}
         {tituloExibido}
       </button>
       {modoEdicao && !pendente && (
