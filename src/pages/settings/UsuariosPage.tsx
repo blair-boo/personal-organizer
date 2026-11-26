@@ -2,12 +2,16 @@ import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useDialogos } from '../../components/Dialogo';
 import { IconePessoa } from '../../components/IconePessoa';
+import { IconePng } from '../../components/IconeSupabase';
+import { IconeChevron } from '../../components/IconesProvisorios';
 import { IconeFuncao } from '../../components/IconeUso';
 import { ModalIcone } from '../../components/ModalIcone';
 import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { useToast } from '../../components/Toast';
+import { useAbasConfig } from '../../hooks/useAbasConfig';
 import { useDocumentosPessoas, useRenomearPessoaDocumentos } from '../../hooks/useDocumentos';
 import { useIconesUsos, useRemoverUsoIcone, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
+import { usePermissoesDoUsuario, useSalvarPermissoes } from '../../hooks/usePermissoes';
 import { useTemaEfetivo } from '../../hooks/useTema';
 import {
   useAlterarPapel,
@@ -21,7 +25,9 @@ import {
 } from '../../hooks/useUsuarios';
 import { copiarConteudo } from '../../lib/clipboard';
 import { mensagemDeErro } from '../../lib/erros';
+import { resolverAbas, type AbaPadrao, type GrupoAbas } from '../../lib/abas';
 import { resolverUso } from '../../lib/iconesUsos';
+import { alternarPermissao, ICONES_PERMISSAO, linhasDePermissao, permissaoDe, type CampoPermissao, type Permissoes } from '../../lib/permissoesAbas';
 import { emailValido, nomeDoUsuario, ordenarUsuarios, pessoaDoUsuario, pessoasParaVincular, podeEditarUsuario, podeExcluirUsuario, ROTULO_PAPEL } from '../../lib/usuarios';
 import type { PapelUsuario, Perfil, PessoaDocumentos, UsoIcone } from '../../types';
 import { CompartilharFinancas } from './CompartilharFinancas';
@@ -141,6 +147,144 @@ function EditarUsuarioModal({ perfil, pessoa, ehVoce, onFechar }: { perfil: Perf
   );
 }
 
+const GRUPOS_DE_NOMES: GrupoAbas[] = ['principal', 'settings', 'financas', 'apartamento', 'documentos'];
+
+const ROTULO_CAMPO: Record<CampoPermissao, string> = { ver: 'Visualizar', editar: 'Editar' };
+
+function CelulaPermissao({ campo, ligado, aba, onAlternar }: { campo: CampoPermissao; ligado: boolean; aba: string; onAlternar: () => void }) {
+  const texto = `${ROTULO_CAMPO[campo]} ${aba}: ${ligado ? 'permitido' : 'não permitido'}. Clique para ${ligado ? 'tirar' : 'permitir'}.`;
+  return (
+    <button type="button" className="btn-icone" onClick={onAlternar} aria-pressed={ligado} title={texto} aria-label={texto}>
+      <IconePng arquivo={ICONES_PERMISSAO[campo][ligado ? 'ligado' : 'desligado']} tamanho={22} />
+    </button>
+  );
+}
+
+/** Tabela de abas (principais com subabas recolhidas) com as colunas Visualizar e Editar. As mudanças ficam pendentes até salvar. */
+function PermissoesAbas({ usuarioId, nome, onFechar }: { usuarioId: string; nome: string; onFechar: () => void }) {
+  const { mostrarToast } = useToast();
+  const { confirmar } = useDialogos();
+  const { data: servidor, isLoading, isError } = usePermissoesDoUsuario(usuarioId);
+  const { data: configs = [] } = useAbasConfig();
+  const salvar = useSalvarPermissoes();
+  const [rascunho, setRascunho] = useState<Permissoes | null>(null);
+  const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
+
+  const atual: Permissoes = rascunho ?? servidor ?? {};
+  const nomes = new Map(GRUPOS_DE_NOMES.flatMap((grupo) => resolverAbas(grupo, configs).map((a) => [a.chave, a.nome || a.rotulo] as const)));
+  const nomeDaAba = (chave: string) => nomes.get(chave) ?? chave;
+
+  function alternar(chave: string, campo: CampoPermissao) {
+    setRascunho(alternarPermissao(atual, chave, campo));
+  }
+
+  function alternarExpandida(chave: string) {
+    setExpandidas((conjunto) => {
+      const novo = new Set(conjunto);
+      if (novo.has(chave)) novo.delete(chave);
+      else novo.add(chave);
+      return novo;
+    });
+  }
+
+  async function salvarPermissoes() {
+    if (!rascunho) return;
+    try {
+      await salvar.mutateAsync({ usuarioId, permissoes: rascunho });
+      mostrarToast(`Permissões de ${nome} salvas.`);
+      setRascunho(null);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  async function fechar() {
+    if (rascunho) {
+      const ok = await confirmar({
+        titulo: 'Descartar as alterações?',
+        mensagem: `As mudanças nas permissões de ${nome} ainda não foram salvas.`,
+        confirmarRotulo: 'Descartar',
+        perigoso: true,
+      });
+      if (!ok) return;
+    }
+    onFechar();
+  }
+
+  function linha(aba: AbaPadrao, subaba: boolean, expansivel: boolean) {
+    const permissao = permissaoDe(atual, aba.chave);
+    const rotulo = nomeDaAba(aba.chave);
+    const aberta = expandidas.has(aba.chave);
+    return (
+      <tr key={aba.chave} className={subaba ? 'permissoes-subaba' : undefined}>
+        <th scope="row">
+          <span className="permissoes-nome">
+            {expansivel ? (
+              <button
+                type="button"
+                className="btn-icone permissoes-expandir"
+                onClick={() => alternarExpandida(aba.chave)}
+                aria-expanded={aberta}
+                title={`${aberta ? 'Recolher' : 'Expandir'} as abas de ${rotulo}`}
+                aria-label={`${aberta ? 'Recolher' : 'Expandir'} as abas de ${rotulo}`}
+              >
+                <IconeChevron aberto={aberta} />
+              </button>
+            ) : (
+              <span className="permissoes-sem-expandir" aria-hidden="true" />
+            )}
+            {rotulo}
+          </span>
+        </th>
+        <td>
+          <CelulaPermissao campo="ver" ligado={permissao.ver} aba={rotulo} onAlternar={() => alternar(aba.chave, 'ver')} />
+        </td>
+        <td>
+          <CelulaPermissao campo="editar" ligado={permissao.editar} aba={rotulo} onAlternar={() => alternar(aba.chave, 'editar')} />
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <div className="usuarios-permissoes">
+      <div className="usuarios-permissoes-topo">
+        <strong>Abas de {nome}</strong>
+        <span className="usuarios-acoes">
+          <button type="button" className="btn-icone" onClick={() => void salvarPermissoes()} disabled={!rascunho || salvar.isPending} title="Salvar permissões" aria-label="Salvar permissões">
+            <IconeFuncao funcao="salvar" />
+          </button>
+          <button type="button" className="btn-icone" onClick={() => void fechar()} title="Fechar permissões" aria-label="Fechar permissões">
+            <IconeFuncao funcao="fechar" />
+          </button>
+        </span>
+      </div>
+      {isLoading ? (
+        <p>Carregando…</p>
+      ) : isError ? (
+        <p role="alert">Não foi possível carregar as permissões.</p>
+      ) : (
+        <table className="permissoes-tabela">
+          <thead>
+            <tr>
+              <th scope="col">Aba</th>
+              <th scope="col">{ROTULO_CAMPO.ver}</th>
+              <th scope="col">{ROTULO_CAMPO.editar}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhasDePermissao().flatMap(({ principal, subabas }) => [
+              linha(principal, false, subabas.length > 0),
+              ...(expandidas.has(principal.chave) ? subabas.map((s) => linha(s, true, false)) : []),
+            ])}
+          </tbody>
+        </table>
+      )}
+      <p className="conta-detalhe">Quem não tem linha nesta tabela não vê nem edita nada. Admin vê e edita tudo. Ao marcar uma aba principal, a escolha vale para as subabas, que podem ser ajustadas depois. Vale só no app: o banco ainda não trava por aba.</p>
+    </div>
+  );
+}
+
 function UsuarioLinha({ perfil, pessoa, pessoas, souAdmin, ehVoce }: { perfil: Perfil; pessoa: PessoaDocumentos | null; pessoas: PessoaDocumentos[]; souAdmin: boolean; ehVoce: boolean }) {
   const { mostrarToast } = useToast();
   const { confirmar } = useDialogos();
@@ -153,6 +297,7 @@ function UsuarioLinha({ perfil, pessoa, pessoas, souAdmin, ehVoce }: { perfil: P
   const excluir = useExcluirUsuario();
   const [editando, setEditando] = useState(false);
   const [escolhendoIcone, setEscolhendoIcone] = useState(false);
+  const [permissoesAbertas, setPermissoesAbertas] = useState(false);
 
   const nome = nomeDoUsuario(perfil, pessoa);
   const podeEditar = podeEditarUsuario(souAdmin, ehVoce);
@@ -277,6 +422,14 @@ function UsuarioLinha({ perfil, pessoa, pessoas, souAdmin, ehVoce }: { perfil: P
       </label>
 
       <div className="usuarios-acoes">
+        {souAdmin &&
+          (perfil.papel === 'admin' ? (
+            <span className="conta-detalhe">Vê e edita tudo</span>
+          ) : (
+            <button type="button" onClick={() => setPermissoesAbertas((aberto) => !aberto)} aria-expanded={permissoesAbertas} title={`Permissões de ${nome}`} aria-label={`Permissões de ${nome}`}>
+              Permissões
+            </button>
+          ))}
         {podeEditar && (
           <button type="button" className="btn-icone" onClick={() => setEditando(true)} title={`Editar ${nome}`} aria-label={`Editar ${nome}`}>
             <IconeFuncao funcao="editar" />
@@ -289,6 +442,7 @@ function UsuarioLinha({ perfil, pessoa, pessoas, souAdmin, ehVoce }: { perfil: P
         )}
       </div>
 
+      {permissoesAbertas && souAdmin && <PermissoesAbas usuarioId={perfil.usuario_id} nome={nome} onFechar={() => setPermissoesAbertas(false)} />}
       {editando && <EditarUsuarioModal perfil={perfil} pessoa={pessoa} ehVoce={ehVoce} onFechar={() => setEditando(false)} />}
       {escolhendoIcone && pessoa && (
         <ModalIcone

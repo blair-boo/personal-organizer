@@ -6,9 +6,12 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import './index.css';
 import { router } from './router';
 import { MENSAGEM_SEM_CONEXAO } from './lib/erros';
+import { criarMutationCachePermissoes } from './lib/permissoesAtuais';
 import { consultaFicaOffline, persisterOffline, VALIDADE_OFFLINE_MS, VERSAO_DO_CACHE } from './lib/offline/persistencia';
 
 const queryClient = new QueryClient({
+  // Recusa gravar numa aba em que a pessoa só pode ver (permissões de Settings > Usuários).
+  mutationCache: criarMutationCachePermissoes(() => window.location.pathname, import.meta.env.BASE_URL),
   defaultOptions: {
     queries: {
       staleTime: 60_000,
