@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../auth/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { useMeuPerfil } from './usePermissoes';
 import type { PapelUsuario, Perfil } from '../types';
 
 /** Logins do app (Settings > Usuários). Não fica guardado para uso offline. */
@@ -17,10 +17,8 @@ export function usePerfis() {
 
 /** Quem está usando o app é admin? Falso enquanto os perfis não carregam. */
 export function useEhAdmin(): boolean {
-  const { session } = useAuth();
-  const { data: perfis } = usePerfis();
-  const meuId = session?.user.id;
-  return !!meuId && !!perfis?.some((p) => p.usuario_id === meuId && p.papel === 'admin');
+  const { data: perfil } = useMeuPerfil();
+  return perfil?.papel === 'admin';
 }
 
 export function useAlterarPapel() {

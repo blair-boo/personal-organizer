@@ -242,3 +242,59 @@
   flex: 1;
   min-width: 0;
 }
+
+/* Permissões por aba (dentro da linha do usuário) */
+.usuarios-permissoes {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.usuarios-permissoes p {
+  margin: 0;
+}
+
+.usuarios-permissoes-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.permissoes-tabela {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.permissoes-tabela th,
+.permissoes-tabela td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
+.permissoes-tabela th:first-child {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.permissoes-nome {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.permissoes-subaba th {
+  padding-left: 32px;
+  font-weight: 400;
+}
+
+.permissoes-sem-expandir {
+  display: inline-block;
+  width: 28px;
+  flex-shrink: 0;
+}

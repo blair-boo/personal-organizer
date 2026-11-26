@@ -34,6 +34,8 @@ const CONSULTAS_OFFLINE = new Set([
   'storage_caixa_anexos',
   'documentos',
   'documentos_pessoas',
+  'meu_perfil',
+  'permissoes_abas',
   'documentos_proximos_vencimentos',
   'documento_campos',
   'documento_locais_renovacao',
