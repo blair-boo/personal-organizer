@@ -57,16 +57,6 @@
   text-decoration: underline;
 }
 
-.documentos-marcador-vazio {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--text-h);
-  opacity: 0.5;
-  flex-shrink: 0;
-}
-
 .documentos-busca-linha {
   display: flex;
   align-items: center;
