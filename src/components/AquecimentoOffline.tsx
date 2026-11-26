@@ -11,6 +11,7 @@ import {
   useProximosVencimentosPessoais,
 } from '../hooks/useDocumentos';
 import { useIconesUsos } from '../hooks/useIconesUsos';
+import { usePermissoes } from '../hooks/usePermissoes';
 import { useItemDocumentos } from '../hooks/useItemDocumentos';
 import { useTodosItemTags } from '../hooks/useItemTags';
 import { useItens } from '../hooks/useItens';
@@ -100,6 +101,7 @@ export function AquecimentoOffline({ onTerminou }: { onTerminou: () => void }) {
   useTodasTarefaClassificacoes();
   useProximosVencimentosPessoais();
   useDocumentosPendentes();
+  usePermissoes();
   useAbasConfig();
   useIconesUsos();
 

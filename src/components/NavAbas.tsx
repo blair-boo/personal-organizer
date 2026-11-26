@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { IconeUso } from './IconeUso';
 import { useAbasDoGrupo, useAbasEdicaoOpcional } from './AbasEdicao';
 import { useIconesUsos } from '../hooks/useIconesUsos';
+import { usePermissoes } from '../hooks/usePermissoes';
 import { useTemaEfetivo } from '../hooks/useTema';
 import { resolverUso } from '../lib/iconesUsos';
 import type { GrupoAbas } from '../lib/abas';
@@ -19,7 +20,8 @@ interface NavAbasProps {
 
 /** Barra de abas com nome, ícone e ordem configuráveis (Settings > modo de edição das abas). */
 export function NavAbas({ grupo, className, rota, children }: NavAbasProps) {
-  const abas = useAbasDoGrupo(grupo);
+  const { podeVer } = usePermissoes();
+  const abas = useAbasDoGrupo(grupo).filter((aba) => podeVer(aba.chave));
   const { data: usos = [] } = useIconesUsos();
   const tema = useTemaEfetivo();
   const edicao = useAbasEdicaoOpcional();
