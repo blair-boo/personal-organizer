@@ -143,7 +143,7 @@ export function AppPage() {
       <section>
         <h3>Uso offline</h3>
         <p className="backup-nota">
-          Apartamento e Documentos ficam guardados no aparelho e abrem sem internet, anexos incluídos. Finanças precisa de internet.
+          Apartamento e Documentos ficam guardados no aparelho e abrem sem internet, anexos incluídos. Finanças abre só para leitura; alterar e importar precisam de internet.
         </p>
         <ul className="lista-contas">
           <li>

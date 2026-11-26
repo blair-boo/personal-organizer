@@ -110,14 +110,18 @@ Classes já disponíveis, preferir a criar equivalente: `.btn-icone`,
   (padrão `caminhoXxx(...)`), nunca string montada dentro do componente.
 - Bucket sempre privado, acesso só autenticado, com policy na migration.
 
-## Offline (Apartamento e Documentos)
+## Offline (Apartamento, Documentos e Finanças)
 
-Essas duas áreas abrem sem internet (README, seção "Uso offline"). O que isso exige de quem mexe:
+Apartamento e Documentos abrem sem internet; Finanças abre só para leitura (README, seção "Uso offline"). O que isso exige de quem mexe:
 
-- Consulta nova de Apartamento ou Documentos entra na lista fechada
+- Consulta nova de Apartamento, Documentos ou Finanças entra na lista fechada
   `CONSULTAS_OFFLINE` (`src/lib/offline/persistencia.ts`) E no aquecimento
-  (`src/components/AquecimentoOffline.tsx`), senão não existe offline. Finanças
-  não entra, de propósito.
+  (`src/components/AquecimentoOffline.tsx`), senão não existe offline.
+- Consulta de Finanças leva o id de quem está logado (`useAuth().session?.user.id`)
+  no segundo elemento da queryKey: o cache do aparelho é um só e não pode misturar
+  logins. O escopo (eu, pessoa, Conjunto) é filtrado no cliente, a partir do que a
+  RLS devolve (`src/lib/financas.ts`). Busca de uso único (ex.: regras da importação)
+  usa chave fora da lista, para não encher o cache.
 - Lista de anexos nova (campo `arquivo_url`) entra em `BUCKET_POR_CONSULTA`
   (`src/lib/offline/arquivos.ts`); o arquivo é guardado pela chave bucket +
   caminho, nunca pela URL assinada. Abrir ou baixar arquivo passa por

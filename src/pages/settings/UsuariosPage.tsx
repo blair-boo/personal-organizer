@@ -30,6 +30,7 @@ import { resolverUso } from '../../lib/iconesUsos';
 import { alternarPermissao, ICONES_PERMISSAO, linhasDePermissao, permissaoDe, type CampoPermissao, type Permissoes } from '../../lib/permissoesAbas';
 import { emailValido, nomeDoUsuario, ordenarUsuarios, pessoaDoUsuario, pessoasParaVincular, podeEditarUsuario, podeExcluirUsuario, ROTULO_PAPEL } from '../../lib/usuarios';
 import type { PapelUsuario, Perfil, PessoaDocumentos, UsoIcone } from '../../types';
+import { CompartilharFinancas } from './CompartilharFinancas';
 
 function ConvidarModal({ onFechar }: { onFechar: () => void }) {
   const { mostrarToast } = useToast();
@@ -505,6 +506,8 @@ export function UsuariosPage() {
           ))}
         </ul>
       )}
+
+      <CompartilharFinancas />
 
       {convidando && <ConvidarModal onFechar={() => setConvidando(false)} />}
     </div>
