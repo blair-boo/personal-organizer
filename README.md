@@ -72,8 +72,8 @@ conta). As categorias são globais. A tela de Finanças tem um seletor
   Conjunto, minhas, de quem compartilhou. Settings → Banco de lançamentos tem
   filtro por pessoa e mostra a origem de cada regra.
 
-Migrations: `0033_financas_por_usuario.sql` (dono, conta conjunta, divisão,
-acessos, RLS) e `0034_comprovantes_por_dono.sql` (bucket `comprovantes`).
+Migrations: `0034_financas_por_usuario.sql` (dono, conta conjunta, divisão,
+acessos, RLS) e `0035_comprovantes_por_dono.sql` (bucket `comprovantes`).
 
 ## Importação de extrato/fatura (PDF)
 
