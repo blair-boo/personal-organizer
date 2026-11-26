@@ -4,6 +4,7 @@ import { executarOuEnfileirar } from '../lib/offline/executarOuEnfileirar';
 import { caminhoAnexoDocumento } from '../lib/storage';
 import { aposGravar, SEM_BLOQUEIO_OFFLINE } from './mutacoesOffline';
 import { hojeIso, somarDias } from '../lib/datas';
+import type { DocumentoParaPendencia } from '../lib/documentosPendentes';
 import type {
   AreaDocumento,
   CasalMembro,
@@ -30,6 +31,9 @@ export const MODELO_PADRAO_DOCUMENTOS_PESSOAIS = [
   'Carteira de Trabalho (CTPS)',
   'Passaporte',
 ];
+
+/** Consulta das pendências de preenchimento (quadros da aba Hoje). Fica sob 'documentos' para valer offline e ser invalidada junto. */
+const CHAVE_PENDENCIAS = ['documentos', 'pendencias'] as const;
 
 function queryKeyDocumentos(area: AreaDocumento, pessoaId?: string, gatoId?: string) {
   return ['documentos', area, pessoaId ?? null, gatoId ?? null];
@@ -62,7 +66,7 @@ export function useCriarDocumento(area: AreaDocumento, pessoaId?: string, gatoId
       const resultado = await executarOuEnfileirar(qc, 'tabela.inserir', { tabela: 'documentos', consulta: chave, linha: documento, ordenarPor: ORDEM_DOCUMENTOS });
       return { documento, resultado };
     },
-    onSuccess: ({ resultado }) => aposGravar(qc, [chave])(resultado),
+    onSuccess: ({ resultado }) => aposGravar(qc, [chave, CHAVE_PENDENCIAS])(resultado),
   });
 }
 
@@ -99,7 +103,7 @@ export function useExcluirDocumento(area: AreaDocumento, pessoaId?: string, gato
   return useMutation({
     onMutate: SEM_BLOQUEIO_OFFLINE,
     mutationFn: (id: string) => executarOuEnfileirar(qc, 'tabela.excluir', { tabela: 'documentos', consultas: [chave], ids: [id] }),
-    onSuccess: aposGravar(qc, [chave]),
+    onSuccess: aposGravar(qc, [chave, CHAVE_PENDENCIAS]),
   });
 }
 
@@ -263,6 +267,24 @@ export function useProximosVencimentosPessoais() {
   });
 }
 
+/** Documentos pessoais e de apartamento com o que falta para saber se estão pendentes (aba Hoje). */
+export function useDocumentosPendentes() {
+  return useQuery({
+    queryKey: CHAVE_PENDENCIAS,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('documentos')
+        .select('id, area, pessoa_id, titulo, ordem, numero, numero_espelho, emissao, vencimento_tipo, vencimento_data, vencimento_calculada, campos:documentos_campos(conteudo)')
+        .in('area', ['pessoais', 'apartamento'])
+        .is('gato_id', null);
+      if (error) throw error;
+      return (data as unknown as (Omit<DocumentoParaPendencia, 'qtdCamposVazios'> & { campos: { conteudo: string | null }[] })[]).map(
+        ({ campos, ...documento }): DocumentoParaPendencia => ({ ...documento, qtdCamposVazios: campos.filter((c) => !c.conteudo?.trim()).length })
+      );
+    },
+  });
+}
+
 /** Campos fixos do formulário de documento pessoal (área "pessoais"). */
 export interface DadosDocumentoPessoal {
   titulo: string;
@@ -288,7 +310,7 @@ export function useAtualizarDocumentoPessoal(area: AreaDocumento, pessoaId?: str
     onMutate: SEM_BLOQUEIO_OFFLINE,
     mutationFn: ({ id, dados }: { id: string; dados: DadosDocumentoPessoal }) =>
       executarOuEnfileirar(qc, 'tabela.atualizar', { tabela: 'documentos', consultas: [chave], id, mudancas: { ...dados }, ordenarPor: ORDEM_DOCUMENTOS }),
-    onSuccess: aposGravar(qc, [chave, ['documentos_proximos_vencimentos']]),
+    onSuccess: aposGravar(qc, [chave, CHAVE_PENDENCIAS, ['documentos_proximos_vencimentos']]),
   });
 }
 
@@ -330,7 +352,7 @@ export function useSalvarCamposDocumento(documentoId: string) {
         consulta: chave,
         linhas: campos.map((campo, ordem) => ({ id: crypto.randomUUID(), documento_id: documentoId, ordem, ...campo })),
       }),
-    onSuccess: aposGravar(qc, [chave]),
+    onSuccess: aposGravar(qc, [chave, CHAVE_PENDENCIAS]),
   });
 }
 
@@ -409,7 +431,7 @@ export function useAdicionarAnexoDocumento(documentoId: string) {
         arquivoLocal: arquivo,
         nomeArquivo: arquivo.name,
       }),
-    onSuccess: aposGravar(qc, [queryKeyAnexos(documentoId)]),
+    onSuccess: aposGravar(qc, [queryKeyAnexos(documentoId), CHAVE_PENDENCIAS]),
   });
 }
 
@@ -451,7 +473,7 @@ export function useCriarDocumentoCompleto(area: AreaDocumento, pessoaId?: string
         bucket: BUCKET_CONFIDENCIAL,
       });
     },
-    onSuccess: aposGravar(qc, [chave, ['documento_campos'], ['documento_locais_renovacao'], ['documento_anexos']]),
+    onSuccess: aposGravar(qc, [chave, CHAVE_PENDENCIAS, ['documento_campos'], ['documento_locais_renovacao'], ['documento_anexos']]),
   });
 }
 
@@ -461,7 +483,7 @@ export function useRemoverAnexoDocumento(documentoId: string) {
     onMutate: SEM_BLOQUEIO_OFFLINE,
     mutationFn: (anexo: DocumentoAnexo) =>
       executarOuEnfileirar(qc, 'anexo.excluir', { tabela: 'documentos_anexos', consulta: queryKeyAnexos(documentoId), id: anexo.id, bucket: BUCKET_CONFIDENCIAL, caminho: anexo.arquivo_url }),
-    onSuccess: aposGravar(qc, [queryKeyAnexos(documentoId)]),
+    onSuccess: aposGravar(qc, [queryKeyAnexos(documentoId), CHAVE_PENDENCIAS]),
   });
 }
 

@@ -2,13 +2,27 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useHistoricoPessoas, useHistoricoTarefas } from '../../hooks/useTarefasHistorico';
 import { useTarefasManutencao } from '../../hooks/useTarefasManutencao';
-import { useCasalMembros, useDocumentosPessoas } from '../../hooks/useDocumentos';
+import { useCasalMembros, useDocumentosPendentes, useDocumentosPessoas } from '../../hooks/useDocumentos';
+import { IconePng } from '../../components/IconeSupabase';
+import { pendenciasApartamento, pendenciasPessoais, ROTULO_PENDENCIA, type ItemPendente } from '../../lib/documentosPendentes';
 import { useProximasDatasGatos } from '../../hooks/useProximasDatasGatos';
 import { competenciaAtual, formatarCompetenciaExtenso, formatarData, hojeIso, somarMeses } from '../../lib/datas';
 import { textoDeDias } from '../../lib/gatos';
 import { usePendentes } from '../../lib/offline/fila';
 import { equilibrioDoMes, tarefasPorPessoa } from '../../lib/painelHoje';
 import { membrosPorCasal, pessoasIndividuais } from '../../lib/responsaveis';
+
+const ICONE_PENDENCIA = 'Warnings/UI_Img_DataSnake_Enemy_Mark.png';
+
+function LinhaPendente({ item, para }: { item: ItemPendente; para: string }) {
+  return (
+    <li className={`hoje-pendencia${item.motivo === 'vencido' ? ' hoje-atrasada' : ''}`}>
+      <IconePng arquivo={ICONE_PENDENCIA} tamanho={16} />
+      <Link to={para}>{item.titulo}</Link>
+      <span className="storage-codigo">({ROTULO_PENDENCIA[item.motivo]})</span>
+    </li>
+  );
+}
 
 function textoQuantidade(n: number, singular: string, plural: string): string {
   return n === 1 ? `1 ${singular}` : `${n} ${plural}`;
@@ -21,6 +35,7 @@ export function HojePage() {
   const { data: casalMembros } = useCasalMembros();
   const { data: historico } = useHistoricoTarefas();
   const { data: historicoPessoas } = useHistoricoPessoas();
+  const { data: documentosPendentes, isLoading: carregandoDocumentos, isError: erroDocumentos } = useDocumentosPendentes();
   const proximasGatos = useProximasDatasGatos();
   const pendentes = usePendentes();
   const [mes, setMes] = useState(competenciaAtual);
@@ -30,6 +45,8 @@ export function HojePage() {
   const membros = useMemo(() => membrosPorCasal(casalMembros ?? []), [casalMembros]);
   const grupos = useMemo(() => tarefasPorPessoa(tarefas ?? [], individuais, membros, hoje), [tarefas, individuais, membros, hoje]);
   const equilibrio = useMemo(() => equilibrioDoMes(historico ?? [], historicoPessoas ?? [], individuais, mes), [historico, historicoPessoas, individuais, mes]);
+  const gruposDocumentos = useMemo(() => pendenciasPessoais(documentosPendentes ?? [], pessoas ?? [], hoje), [documentosPendentes, pessoas, hoje]);
+  const pendentesApartamento = useMemo(() => pendenciasApartamento(documentosPendentes ?? []), [documentosPendentes]);
   const avisosGatos = proximasGatos.filter((p) => p.vencida || p.emBreve);
 
   if (carregandoTarefas) return <p>Carregando…</p>;
@@ -78,6 +95,53 @@ export function HojePage() {
         )}
         <p>
           <Link to="/apartamento/tarefas">Abrir Tarefas</Link>
+        </p>
+      </section>
+
+      <section className="hoje-cartao" aria-label="Documentos pessoais pendentes">
+        <h3>Documentos pessoais pendentes</h3>
+        {carregandoDocumentos ? (
+          <p>Carregando…</p>
+        ) : erroDocumentos ? (
+          <p role="alert">Não foi possível carregar os documentos.</p>
+        ) : gruposDocumentos.every((g) => g.itens.length === 0) ? (
+          <p className="hierarquia-vazio">Nenhum documento pessoal pendente.</p>
+        ) : (
+          gruposDocumentos
+            .filter((g) => g.itens.length > 0)
+            .map((g) => (
+              <div key={g.pessoaId} className="hoje-grupo">
+                <h4>{g.nome}</h4>
+                <ul className="hoje-lista hoje-lista-pendencias">
+                  {g.itens.map((item) => (
+                    <LinhaPendente key={item.id} item={item} para={`/documentos/pessoais?pessoa=${g.pessoaId}&doc=${item.id}`} />
+                  ))}
+                </ul>
+              </div>
+            ))
+        )}
+        <p>
+          <Link to="/documentos/pessoais">Abrir Documentos pessoais</Link>
+        </p>
+      </section>
+
+      <section className="hoje-cartao" aria-label="Documentos do apartamento pendentes">
+        <h3>Documentos do apartamento pendentes</h3>
+        {carregandoDocumentos ? (
+          <p>Carregando…</p>
+        ) : erroDocumentos ? (
+          <p role="alert">Não foi possível carregar os documentos.</p>
+        ) : pendentesApartamento.length === 0 ? (
+          <p className="hierarquia-vazio">Nenhum documento do apartamento com campo sem preenchimento.</p>
+        ) : (
+          <ul className="hoje-lista hoje-lista-pendencias">
+            {pendentesApartamento.map((item) => (
+              <LinhaPendente key={item.id} item={item} para="/documentos/apartamento" />
+            ))}
+          </ul>
+        )}
+        <p>
+          <Link to="/documentos/apartamento">Abrir Documentos do apartamento</Link>
         </p>
       </section>
 

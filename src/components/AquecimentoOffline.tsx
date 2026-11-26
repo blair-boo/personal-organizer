@@ -7,6 +7,7 @@ import {
   useDocumentoLocaisRenovacao,
   useDocumentos,
   useDocumentosPessoas,
+  useDocumentosPendentes,
   useProximosVencimentosPessoais,
 } from '../hooks/useDocumentos';
 import { useIconesUsos } from '../hooks/useIconesUsos';
@@ -98,6 +99,7 @@ export function AquecimentoOffline({ onTerminou }: { onTerminou: () => void }) {
   useCasalMembros();
   useTodasTarefaClassificacoes();
   useProximosVencimentosPessoais();
+  useDocumentosPendentes();
   useAbasConfig();
   useIconesUsos();
 

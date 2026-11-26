@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -16,6 +17,7 @@ import { resolverUso } from '../../lib/iconesUsos';
 import { useIconesUsos, useRemoverUsoIcone, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
 import { useTemaEfetivo } from '../../hooks/useTema';
 import { copiarConteudo } from '../../lib/clipboard';
+import { semPreenchimento } from '../../lib/documentosPendentes';
 import { formatarData, somarPeriodo } from '../../lib/datas';
 import { caminhoAnexoDocumento, enviarArquivo, removerArquivo } from '../../lib/storage';
 import {
@@ -571,13 +573,14 @@ interface EdicaoPessoasProps {
 function ListaDocumentosPessoa({
   pessoaId,
   pessoaNome,
+  abrirDocumentoId,
   modoEdicao,
   onModoEdicao,
   pessoasPendentes,
   confirmarPessoas,
   aplicarPessoas,
   descartarPessoas,
-}: { pessoaId: string; pessoaNome: string; modoEdicao: boolean; onModoEdicao: (ativo: boolean) => void } & EdicaoPessoasProps) {
+}: { pessoaId: string; pessoaNome: string; abrirDocumentoId: string | null; modoEdicao: boolean; onModoEdicao: (ativo: boolean) => void } & EdicaoPessoasProps) {
   const { data: usosIcones = [] } = useIconesUsos();
   const temaEfetivo = useTemaEfetivo();
   const salvarUso = useSalvarUsoIcone();
@@ -598,7 +601,7 @@ function ListaDocumentosPessoa({
   const [ordemLocal, setOrdemLocal] = useState<Documento[] | null>(null);
   const [exclusoesPendentes, setExclusoesPendentes] = useState<Set<string>>(new Set());
   const [renomeacoesPendentes, setRenomeacoesPendentes] = useState<Map<string, string>>(new Map());
-  const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
+  const [expandidos, setExpandidos] = useState<Set<string>>(() => new Set(abrirDocumentoId ? [abrirDocumentoId] : []));
   const [salvando, setSalvando] = useState(false);
 
   const [modalAberto, setModalAberto] = useState(false);
@@ -945,7 +948,7 @@ function ListaDocumentosPessoa({
                       documento={d}
                       tituloExibido={tituloAtual(d)}
                       renomeacaoPendente={renomeacoesPendentes.has(d.id)}
-                      incompleto={!d.numero && !d.numero_espelho && !d.emissao && !d.vencimento_tipo}
+                      incompleto={semPreenchimento(d)}
                       modoEdicao={modoEdicao}
                       pendente={pendente}
                       editando={edicaoAtivaId === d.id}
@@ -1236,7 +1239,10 @@ export function DocumentosPessoaisPage() {
   const excluirPessoa = useExcluirPessoaDocumentos();
   const { pedirTexto, confirmar } = useDialogos();
   const { mostrarToast } = useToast();
-  const [pessoaAtualId, setPessoaAtualId] = useState<string | null>(null);
+  const [parametros] = useSearchParams();
+  const pessoaDoLink = parametros.get('pessoa');
+  const documentoDoLink = parametros.get('doc');
+  const [pessoaAtualId, setPessoaAtualId] = useState<string | null>(pessoaDoLink);
   const [criandoCasal, setCriandoCasal] = useState(false);
   const [modoEdicao, setModoEdicao] = useState(false);
   const [renomeacoes, setRenomeacoes] = useState<Map<string, string>>(new Map());
@@ -1328,6 +1334,7 @@ export function DocumentosPessoaisPage() {
           key={pessoaAtual.id}
           pessoaId={pessoaAtual.id}
           pessoaNome={pessoaAtual.nome}
+          abrirDocumentoId={pessoaAtual.id === pessoaDoLink ? documentoDoLink : null}
           modoEdicao={modoEdicao}
           onModoEdicao={setModoEdicao}
           pessoasPendentes={renomeacoes.size > 0 || exclusoes.size > 0}
