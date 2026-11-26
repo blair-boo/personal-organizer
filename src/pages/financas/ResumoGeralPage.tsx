@@ -2,7 +2,11 @@ import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { competenciaAtual, competenciaParaData, formatarMoeda, somarMeses, ultimoDiaDaCompetencia } from '../../lib/datas';
 import { BotaoVoltar } from '../../components/BotaoVoltar';
+import { SeletorEscopoFinancas } from '../../components/SeletorEscopoFinancas';
+import { useContas } from '../../hooks/useContas';
+import { useEscopoFinancas } from '../../hooks/useEscopoFinancas';
 import { useLancamentosPeriodo } from '../../hooks/useResumoFinanceiro';
+import { lancamentosDoEscopo } from '../../lib/financas';
 
 const OPCOES_PERIODO = [3, 6, 12];
 
@@ -16,7 +20,13 @@ export function ResumoGeralPage() {
 
   const inicio = competenciaParaData(competencias[0]);
   const fim = ultimoDiaDaCompetencia(competencias[competencias.length - 1]);
-  const { data: lancamentos, isLoading } = useLancamentosPeriodo(inicio, fim);
+  const { escopo, meuId } = useEscopoFinancas();
+  const { data: contas } = useContas();
+  const { data: lancamentosVisiveis, isLoading, isError } = useLancamentosPeriodo(inicio, fim);
+  const lancamentos = useMemo(
+    () => lancamentosDoEscopo(lancamentosVisiveis ?? [], contas ?? [], escopo, meuId),
+    [lancamentosVisiveis, contas, escopo, meuId]
+  );
 
   const dadosGrafico = useMemo(() => {
     const porMes = new Map(competencias.map((c) => [c, { competencia: c, entradas: 0, saidas: 0 }]));
@@ -33,6 +43,7 @@ export function ResumoGeralPage() {
   return (
     <div className="resumo-geral">
       <BotaoVoltar />
+      <SeletorEscopoFinancas />
       <div className="abas-internas">
         {OPCOES_PERIODO.map((n) => (
           <button key={n} type="button" className={meses === n ? 'ativa' : ''} onClick={() => setMeses(n)}>
@@ -43,6 +54,8 @@ export function ResumoGeralPage() {
 
       {isLoading ? (
         <p>Carregando…</p>
+      ) : isError ? (
+        <p className="hierarquia-vazio">Não foi possível carregar o resumo. Tente de novo.</p>
       ) : (
         <>
           <div className="grafico-resumo-geral">

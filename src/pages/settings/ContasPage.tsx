@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useAuth } from '../../auth/AuthContext';
 import { IconeFuncao } from '../../components/IconeUso';
 import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { useDialogos } from '../../components/Dialogo';
@@ -6,8 +7,16 @@ import { useToast } from '../../components/Toast';
 import { mensagemDeErro } from '../../lib/erros';
 import { formatarMoeda } from '../../lib/datas';
 import { ehCartao, rotuloConta, TIPO_CONTA_INFO } from '../../lib/contas';
+import { podeEditarConta } from '../../lib/financas';
 import { useAtualizarConta, useContas, useCriarConta, useExcluirConta, type DadosConta } from '../../hooks/useContas';
+import { useFinancasAcessos } from '../../hooks/useFinancasAcessos';
+import { useNomesUsuarios } from '../../hooks/useNomesUsuarios';
+import { usePerfis } from '../../hooks/useUsuarios';
 import type { Conta, FormatoCartao, StatusConta, SubtipoVirtualCartao, TipoConta } from '../../types';
+
+function contaVazia(meuId: string): DadosConta {
+  return { ...CONTA_VAZIA, dono_id: meuId };
+}
 
 const CONTA_VAZIA: DadosConta = {
   nome: null,
@@ -22,6 +31,9 @@ const CONTA_VAZIA: DadosConta = {
   subtipo_virtual: null,
   valor_deposito_mensal: null,
   dia_deposito: null,
+  dono_id: '',
+  conjunta: false,
+  donos: [],
 };
 
 const STATUS_LABEL: Record<StatusConta, string> = {
@@ -42,12 +54,19 @@ function FormularioConta({
 }) {
   const [dados, setDados] = useState<DadosConta>(inicial);
   const [salvando, setSalvando] = useState(false);
+  const { data: perfis } = usePerfis();
+  const nomeDe = useNomesUsuarios();
+  const { mostrarToast } = useToast();
   const cartao = ehCartao(dados.tipo);
   const statusOpcoes: StatusConta[] = cartao ? ['ativo', 'cancelado', 'expirado'] : ['ativo', 'inativo'];
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (salvando) return;
+    if (dados.conjunta && dados.donos.length < 2) {
+      mostrarToast('Uma conta conjunta precisa de pelo menos dois donos.', 'erro');
+      return;
+    }
     setSalvando(true);
     try {
       await onSalvar(dados);
@@ -155,11 +174,13 @@ function FormularioConta({
             onChange={(e) => setDados({ ...dados, conta_vinculada_id: e.target.value || null })}
           >
             <option value="">Não vinculado</option>
-            {contasBancarias.map((c) => (
-              <option key={c.id} value={c.id}>
-                {rotuloConta(c)}
-              </option>
-            ))}
+            {contasBancarias
+              .filter((c) => c.dono_id === dados.dono_id)
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {rotuloConta(c)}
+                </option>
+              ))}
           </select>
         </label>
       )}
@@ -199,18 +220,61 @@ function FormularioConta({
         </select>
       </label>
 
+      <label>
+        <input
+          type="checkbox"
+          checked={dados.conjunta}
+          onChange={(e) => {
+            const outros = (perfis ?? []).filter((p) => p.usuario_id !== dados.dono_id);
+            setDados({
+              ...dados,
+              conjunta: e.target.checked,
+              // Ao marcar, já sugere os donos: quem criou e, se só houver mais um login, ele.
+              donos: e.target.checked ? [...new Set([dados.dono_id, ...(dados.donos.length > 0 ? dados.donos : outros.length === 1 ? [outros[0].usuario_id] : [])])] : [],
+            });
+          }}
+        />{' '}
+        Conta conjunta
+      </label>
+      {dados.conjunta && (
+        <fieldset className="contas-donos">
+          <legend>Donos da conta</legend>
+          {(perfis ?? []).map((p) => (
+            <label key={p.usuario_id}>
+              <input
+                type="checkbox"
+                checked={dados.donos.includes(p.usuario_id)}
+                disabled={p.usuario_id === dados.dono_id}
+                onChange={(e) =>
+                  setDados({
+                    ...dados,
+                    donos: e.target.checked ? [...dados.donos, p.usuario_id] : dados.donos.filter((id) => id !== p.usuario_id),
+                  })
+                }
+              />{' '}
+              {nomeDe(p.usuario_id)}
+            </label>
+          ))}
+        </fieldset>
+      )}
+
     </form>
   );
 }
 
-function detalheConta(conta: Conta): string {
+function detalheConta(conta: Conta, meuId: string, nomeDe: (id: string) => string): string {
   const partes = [TIPO_CONTA_INFO[conta.tipo].label, conta.instituicao];
+  if (conta.conjunta) partes.push(`Conjunta (${conta.donos.map((id) => (id === meuId ? 'você' : nomeDe(id))).join(' e ')})`);
+  else if (conta.dono_id !== meuId) partes.push(`De ${nomeDe(conta.dono_id)}`);
   if (conta.status !== 'ativo') partes.push(STATUS_LABEL[conta.status]);
   return partes.join(' · ');
 }
 
 export function ContasPage() {
-  const { data: contas, isLoading } = useContas();
+  const meuId = useAuth().session?.user.id ?? '';
+  const nomeDe = useNomesUsuarios();
+  const { data: acessos } = useFinancasAcessos();
+  const { data: contas, isLoading, isError } = useContas();
   const criar = useCriarConta();
   const atualizar = useAtualizarConta();
   const excluir = useExcluirConta();
@@ -265,25 +329,40 @@ export function ContasPage() {
   }
 
   function linhaConta(conta: Conta) {
+    const podeEditar = podeEditarConta(conta, meuId, acessos ?? []);
     return (
       <li key={conta.id} className={conta.status === 'ativo' ? '' : 'conta-inativa'}>
         <div>
           <strong>{rotuloConta(conta)}</strong>
           <span className="conta-detalhe">
-            {detalheConta(conta)}
+            {detalheConta(conta, meuId, nomeDe)}
             {conta.tipo === 'cartao_beneficio' && conta.valor_deposito_mensal != null && (
               <> · {formatarMoeda(conta.valor_deposito_mensal)}/mês, dia {conta.dia_deposito}</>
             )}
             {conta.tipo === 'cartao_credito' && conta.conta_vinculada_id && (
-              <> · fatura paga por {rotuloConta((contas ?? []).find((c) => c.id === conta.conta_vinculada_id)!)}</>
+              <> · fatura paga por {rotuloConta((contas ?? []).find((c) => c.id === conta.conta_vinculada_id) ?? conta)}</>
             )}
           </span>
         </div>
         <div className="hierarquia-item-acoes">
-          <button type="button" className="btn-icone" onClick={() => abrirEdicao(conta)} aria-label="Editar">
+          <button
+            type="button"
+            className="btn-icone"
+            disabled={!podeEditar}
+            onClick={() => abrirEdicao(conta)}
+            title="Editar conta"
+            aria-label="Editar conta"
+          >
             ✎
           </button>
-          <button type="button" className="btn-icone btn-icone-perigo" onClick={() => tratarExcluir(conta)} aria-label="Excluir">
+          <button
+            type="button"
+            className="btn-icone btn-icone-perigo"
+            disabled={!podeEditar}
+            onClick={() => tratarExcluir(conta)}
+            title="Excluir conta"
+            aria-label="Excluir conta"
+          >
             <IconeFuncao funcao="excluir" />
           </button>
         </div>
@@ -299,6 +378,8 @@ export function ContasPage() {
       </button>
       {isLoading ? (
         <p>Carregando…</p>
+      ) : isError ? (
+        <p className="hierarquia-vazio">Não foi possível carregar as contas. Tente de novo.</p>
       ) : (
         <>
           <ul className="lista-contas">
@@ -336,8 +417,11 @@ export function ContasPage() {
                   subtipo_virtual: editando.subtipo_virtual,
                   valor_deposito_mensal: editando.valor_deposito_mensal,
                   dia_deposito: editando.dia_deposito,
+                  dono_id: editando.dono_id,
+                  conjunta: editando.conjunta,
+                  donos: editando.donos,
                 }
-              : CONTA_VAZIA
+              : contaVazia(meuId)
           }
           contasBancarias={contasBancarias}
           onSalvar={salvar}

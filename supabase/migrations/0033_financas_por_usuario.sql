@@ -17,6 +17,7 @@ alter table contas
 alter table lancamentos
     add column conjunto boolean not null default false,
     add column conjunto_com uuid references auth.users(id) on delete set null,
+    add column pagador_id uuid references auth.users(id) on delete set null,
     add column divisao_percentual numeric(5,2) not null default 50
         check (divisao_percentual >= 0 and divisao_percentual <= 100),
     add constraint lancamentos_conjunto_exige_parceiro check (not conjunto or conjunto_com is not null);
@@ -148,6 +149,33 @@ $$;
 create trigger contas_proteger_dono
     before update of dono_id on contas
     for each row execute function contas_proteger_dono();
+
+-- Quem pagou uma despesa conjunta é o dono da conta. Fica gravado no lançamento porque quem
+-- recebe a divisão (conjunto_com) não enxerga a conta do pagador.
+create function lancamentos_definir_pagador() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+    new.pagador_id := case when new.conjunto then (select c.dono_id from contas c where c.id = new.conta_id) else null end;
+    return new;
+end;
+$$;
+
+create trigger lancamentos_definir_pagador
+    before insert or update of conta_id, conjunto on lancamentos
+    for each row execute function lancamentos_definir_pagador();
+
+-- Se a conta mudar de dono, as despesas conjuntas dela acompanham.
+create function contas_atualizar_pagador() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+    update lancamentos set pagador_id = new.dono_id where conta_id = new.id and conjunto;
+    return new;
+end;
+$$;
+
+create trigger contas_atualizar_pagador
+    after update of dono_id on contas
+    for each row execute function contas_atualizar_pagador();
 
 -- 4) Policies ---------------------------------------------------------------------------------
 

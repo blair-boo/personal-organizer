@@ -46,7 +46,9 @@ export function ImportarExtratoModal({
   const [salvando, setSalvando] = useState(false);
 
   const descricoesNormalizadas = linhas.map((l) => normalizarDescricao(l.descricaoOriginal));
-  const { data: regras } = useRegrasPara(descricoesNormalizadas);
+  // As regras aprendidas ficam no banco de lançamentos do dono da conta (conta conjunta: do Conjunto).
+  const donoDasRegras = conta.conjunta ? null : conta.dono_id;
+  const { data: regras } = useRegrasPara(descricoesNormalizadas, donoDasRegras);
 
   function fecharTudo() {
     setEtapa('selecionar');
@@ -116,7 +118,7 @@ export function ImportarExtratoModal({
 
       for (const l of incluidas) {
         if (l.categoriaId) {
-          await salvarRegra(normalizarDescricao(l.descricaoOriginal), l.categoriaId);
+          await salvarRegra(normalizarDescricao(l.descricaoOriginal), l.categoriaId, donoDasRegras);
         }
       }
 

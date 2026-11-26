@@ -1,10 +1,20 @@
 import { useMemo } from 'react';
 import { BotaoVoltar } from '../../components/BotaoVoltar';
 import { formatarData, formatarMoeda } from '../../lib/datas';
+import { SeletorEscopoFinancas } from '../../components/SeletorEscopoFinancas';
+import { useContas } from '../../hooks/useContas';
+import { useEscopoFinancas } from '../../hooks/useEscopoFinancas';
 import { useLancamentosParcelados } from '../../hooks/useResumoFinanceiro';
+import { lancamentosDoEscopo } from '../../lib/financas';
 
 export function ParcelamentosPage() {
-  const { data: lancamentos, isLoading } = useLancamentosParcelados();
+  const { escopo, meuId } = useEscopoFinancas();
+  const { data: contas } = useContas();
+  const { data: lancamentosVisiveis, isLoading, isError } = useLancamentosParcelados();
+  const lancamentos = useMemo(
+    () => lancamentosDoEscopo(lancamentosVisiveis ?? [], contas ?? [], escopo, meuId),
+    [lancamentosVisiveis, contas, escopo, meuId]
+  );
 
   const compras = useMemo(() => {
     const mapa = new Map<
@@ -33,12 +43,21 @@ export function ParcelamentosPage() {
   if (isLoading) return (
     <>
       <BotaoVoltar />
+      <SeletorEscopoFinancas />
       <p>Carregando…</p>
+    </>
+  );
+  if (isError) return (
+    <>
+      <BotaoVoltar />
+      <SeletorEscopoFinancas />
+      <p className="hierarquia-vazio">Não foi possível carregar os parcelamentos. Tente de novo.</p>
     </>
   );
   if (compras.length === 0) return (
     <>
       <BotaoVoltar />
+      <SeletorEscopoFinancas />
       <p className="hierarquia-vazio">Nenhum parcelamento em andamento.</p>
     </>
   );
@@ -46,6 +65,7 @@ export function ParcelamentosPage() {
   return (
     <>
     <BotaoVoltar />
+    <SeletorEscopoFinancas />
     <ul className="lista-lancamentos lista-parcelamentos">
       {compras.map((c, i) => {
         const parcelasRestantes = c.parcelaTotal - c.ultimaParcelaVista;

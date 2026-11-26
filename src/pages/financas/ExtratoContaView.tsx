@@ -9,7 +9,11 @@ import { formatarData, formatarMoeda } from '../../lib/datas';
 import { normalizarDescricao } from '../../lib/normalizacao';
 import { rotuloHierarquico } from '../../lib/hierarquia';
 import { useContas } from '../../hooks/useContas';
+import { useEscopoFinancas } from '../../hooks/useEscopoFinancas';
+import { useNomesUsuarios } from '../../hooks/useNomesUsuarios';
+import { usePerfis } from '../../hooks/useUsuarios';
 import { rotuloConta } from '../../lib/contas';
+import { contasDoEscopo } from '../../lib/financas';
 import { useCategorias } from '../../hooks/useCategorias';
 import {
   useAtualizarLancamento,
@@ -19,7 +23,7 @@ import {
   type DadosLancamento,
 } from '../../hooks/useLancamentos';
 import { ImportarExtratoModal } from './ImportarExtratoModal';
-import type { Lancamento, TipoConta, TipoLancamento } from '../../types';
+import type { Conta, Lancamento, TipoConta, TipoLancamento } from '../../types';
 
 const LANCAMENTO_VAZIO_BASE = {
   descricao_original: '',
@@ -32,19 +36,26 @@ const LANCAMENTO_VAZIO_BASE = {
 };
 
 function FormularioLancamento({
-  contaId,
+  conta,
   competencia,
   editando,
   onSalvo,
 }: {
-  contaId: string;
+  conta: Conta;
   competencia: string;
   editando: Lancamento | null;
   onSalvo: () => void;
 }) {
+  const contaId = conta.id;
   const criar = useCriarLancamento(contaId, competencia);
   const atualizar = useAtualizarLancamento(contaId, competencia);
   const { mostrarToast } = useToast();
+  const { data: perfis } = usePerfis();
+  const nomeDe = useNomesUsuarios();
+  // Quem pagou é o dono da conta; a despesa só pode ser dividida com outro login.
+  const parceiros = (perfis ?? []).filter((p) => p.usuario_id !== conta.dono_id);
+  // Conta conjunta já é dos dois: não tem o que marcar.
+  const podeDividir = !conta.conjunta;
   const [dados, setDados] = useState({
     data: editando?.data ?? `${competencia}-01`,
     descricao_original: editando?.descricao_original ?? LANCAMENTO_VAZIO_BASE.descricao_original,
@@ -52,12 +63,20 @@ function FormularioLancamento({
     tipo: editando?.tipo ?? LANCAMENTO_VAZIO_BASE.tipo,
     categoria_id: editando?.categoria_id ?? LANCAMENTO_VAZIO_BASE.categoria_id,
     observacao: editando?.observacao ?? LANCAMENTO_VAZIO_BASE.observacao,
+    conjunto: editando?.conjunto ?? false,
+    conjunto_com: editando?.conjunto_com ?? null,
+    divisao_percentual: editando?.divisao_percentual ?? 50,
   });
   const [salvando, setSalvando] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (salvando) return;
+    const dividir = podeDividir && dados.tipo === 'saida' && dados.conjunto;
+    if (dividir && !dados.conjunto_com) {
+      mostrarToast('Escolha com quem dividir a despesa.', 'erro');
+      return;
+    }
     setSalvando(true);
     try {
       const payload: DadosLancamento = {
@@ -72,6 +91,9 @@ function FormularioLancamento({
         parcela_atual: editando?.parcela_atual ?? null,
         parcela_total: editando?.parcela_total ?? null,
         observacao: dados.observacao,
+        conjunto: dividir,
+        conjunto_com: dividir ? dados.conjunto_com : null,
+        divisao_percentual: dividir ? dados.divisao_percentual : 50,
       };
       if (editando) {
         await atualizar.mutateAsync({ id: editando.id, dados: payload });
@@ -121,6 +143,52 @@ function FormularioLancamento({
         Observação
         <input type="text" value={dados.observacao ?? ''} onChange={(e) => setDados({ ...dados, observacao: e.target.value || null })} />
       </label>
+      {podeDividir && dados.tipo === 'saida' && (
+        <div className="escopo-campo-divisao">
+          <label>
+            <input
+              type="checkbox"
+              checked={dados.conjunto}
+              onChange={(e) =>
+                setDados({
+                  ...dados,
+                  conjunto: e.target.checked,
+                  conjunto_com: e.target.checked ? (dados.conjunto_com ?? parceiros[0]?.usuario_id ?? null) : dados.conjunto_com,
+                })
+              }
+              disabled={parceiros.length === 0}
+            />{' '}
+            Despesa conjunta
+          </label>
+          {parceiros.length === 0 && <p className="financas-aviso">Convide mais uma pessoa em Settings › Usuários para dividir despesas.</p>}
+          {dados.conjunto && parceiros.length > 0 && (
+            <>
+              <label>
+                Dividir com
+                <select value={dados.conjunto_com ?? ''} onChange={(e) => setDados({ ...dados, conjunto_com: e.target.value || null })} required>
+                  <option value="">Escolha uma pessoa</option>
+                  {parceiros.map((p) => (
+                    <option key={p.usuario_id} value={p.usuario_id}>
+                      {nomeDe(p.usuario_id)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Parte de quem pagou (%)
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="1"
+                  value={dados.divisao_percentual}
+                  onChange={(e) => setDados({ ...dados, divisao_percentual: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })}
+                />
+              </label>
+            </>
+          )}
+        </div>
+      )}
     </form>
   );
 }
@@ -129,7 +197,9 @@ export function ExtratoContaView({ competencia, tiposConta }: { competencia: str
   const { data: contas } = useContas();
   const { data: categoriasDespesa } = useCategorias('despesa');
   const { data: categoriasReceita } = useCategorias('receita');
-  const contasFiltradas = (contas ?? []).filter((c) => tiposConta.includes(c.tipo) && c.status === 'ativo');
+  const { escopo, meuId, podeEditar } = useEscopoFinancas();
+  const nomeDe = useNomesUsuarios();
+  const contasFiltradas = contasDoEscopo(contas ?? [], escopo, meuId).filter((c) => tiposConta.includes(c.tipo) && c.status === 'ativo');
 
   const [contaId, setContaId] = useState<string | null>(null);
   const contaAtual = contasFiltradas.find((c) => c.id === contaId) ?? contasFiltradas[0] ?? null;
@@ -170,11 +240,18 @@ export function ExtratoContaView({ competencia, tiposConta }: { competencia: str
   }
 
   if (contasFiltradas.length === 0) {
+    if (escopo.tipo === 'conjunto') {
+      return <p className="hierarquia-vazio">Nenhuma conta conjunta aqui. Marque uma conta como conjunta em Settings › Contas e Cartões.</p>;
+    }
+    if (escopo.tipo === 'pessoa') {
+      return <p className="hierarquia-vazio">{nomeDe(escopo.usuarioId)} não tem contas deste tipo.</p>;
+    }
     return <p className="hierarquia-vazio">Cadastre uma conta em Settings › Contas e Cartões pra começar.</p>;
   }
 
   return (
     <div className="extrato-view">
+      {!podeEditar && <p className="financas-aviso">Você pode ver estas finanças, mas não alterar.</p>}
       <div className="extrato-topo">
         <select value={contaAtual?.id ?? ''} onChange={(e) => setContaId(e.target.value)}>
           {contasFiltradas.map((c) => (
@@ -183,11 +260,12 @@ export function ExtratoContaView({ competencia, tiposConta }: { competencia: str
             </option>
           ))}
         </select>
-        <button type="button" onClick={() => setModalImportarAberto(true)}>
+        <button type="button" onClick={() => setModalImportarAberto(true)} disabled={!podeEditar}>
           Importar PDF
         </button>
         <button
           type="button"
+          disabled={!podeEditar}
           onClick={() => {
             setEditando(null);
             setModalLancamentoAberto(true);
@@ -216,21 +294,35 @@ export function ExtratoContaView({ competencia, tiposConta }: { competencia: str
                     <div>
                       <span>{formatarData(l.data)}</span> — {l.descricao_original}
                       {l.parcela_total && ` (${l.parcela_atual}/${l.parcela_total})`}
+                      {l.conjunto && (
+                        <span className="lancamento-etiqueta" title={`Dividida com ${nomeDe(l.conjunto_com)} (${l.divisao_percentual}% para quem pagou)`}>
+                          Conjunta
+                        </span>
+                      )}
                     </div>
                     <div className="extrato-lancamento-acoes">
                       <span className={l.tipo === 'entrada' ? 'valor-entrada' : 'valor-saida'}>{formatarMoeda(l.valor)}</span>
                       <button
                         type="button"
                         className="btn-icone"
+                        disabled={!podeEditar}
                         onClick={() => {
                           setEditando(l);
                           setModalLancamentoAberto(true);
                         }}
-                        aria-label="Editar"
+                        title="Editar lançamento"
+                        aria-label="Editar lançamento"
                       >
                         ✎
                       </button>
-                      <button type="button" className="btn-icone btn-icone-perigo" onClick={() => tratarExcluir(l)} aria-label="Excluir">
+                      <button
+                        type="button"
+                        className="btn-icone btn-icone-perigo"
+                        disabled={!podeEditar}
+                        onClick={() => tratarExcluir(l)}
+                        title="Excluir lançamento"
+                        aria-label="Excluir lançamento"
+                      >
                         <IconeFuncao funcao="excluir" />
                       </button>
                     </div>
@@ -256,7 +348,7 @@ export function ExtratoContaView({ competencia, tiposConta }: { competencia: str
       }
     >
           <FormularioLancamento
-            contaId={contaAtual.id}
+            conta={contaAtual}
             competencia={competencia}
             editando={editando}
             onSalvo={() => setModalLancamentoAberto(false)}

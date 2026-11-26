@@ -30,6 +30,12 @@ export interface Conta {
   subtipo_virtual: SubtipoVirtualCartao | null;
   valor_deposito_mensal: number | null;
   dia_deposito: number | null;
+  /** Login dono da conta. Lançamentos e importações herdam o dono pela conta. */
+  dono_id: string;
+  /** Conta conjunta: aparece na área Conjunto, e `donos` lista todos os logins donos. */
+  conjunta: boolean;
+  /** Logins donos de uma conta conjunta (inclui o dono_id). Vazio nas contas individuais. */
+  donos: string[];
 }
 
 export interface Categoria {
@@ -62,6 +68,22 @@ export interface Lancamento {
   parcela_atual: number | null;
   parcela_total: number | null;
   observacao: string | null;
+  /** Despesa conjunta numa conta individual: dividida com `conjunto_com`. */
+  conjunto: boolean;
+  conjunto_com: string | null;
+  /** Quem pagou (dono da conta). Só preenchido quando `conjunto`. */
+  pagador_id: string | null;
+  /** Parte de quem pagou, de 0 a 100. A diferença é de `conjunto_com`. */
+  divisao_percentual: number;
+}
+
+export type NivelAcessoFinancas = 'ver' | 'editar';
+
+/** O dono libera as próprias finanças a outro login. */
+export interface FinancasAcesso {
+  dono_id: string;
+  convidado_id: string;
+  nivel: NivelAcessoFinancas;
 }
 
 export interface Item {
