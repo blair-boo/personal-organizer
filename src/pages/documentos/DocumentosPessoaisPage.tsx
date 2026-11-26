@@ -6,6 +6,7 @@ import { CriarCasalModal } from './CriarCasalModal';
 import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { ArquivoLink, BotaoBaixarArquivo } from '../../components/ArquivoLink';
 import { IconeFuncao } from '../../components/IconeUso';
+import { IconePng } from '../../components/IconeSupabase';
 import { IconePessoa } from '../../components/IconePessoa';
 import { ModalIcone } from '../../components/ModalIcone';
 import { useDialogos } from '../../components/Dialogo';
@@ -536,7 +537,7 @@ function ItemDocumentoLinha({
       )}
       <button type="button" className="documentos-titulo-botao" onClick={onExpandir} disabled={pendente}>
         <span className="documentos-seta">{expandido ? '▾' : '▸'}</span>
-        {incompleto && <span className="documentos-marcador-vazio" title="Ainda sem preenchimento" aria-hidden="true" />}
+        {incompleto && <IconePng arquivo="warnings/UI_Img_DataSnake_Enemy_Mark.png" tamanho={16} titulo="Ainda sem preenchimento" />}
         {tituloExibido}
       </button>
       {modoEdicao && !pendente && (
