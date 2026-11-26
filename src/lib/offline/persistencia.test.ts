@@ -11,8 +11,14 @@ describe('consultaFicaOffline', () => {
     }
   });
 
-  it('não guarda Finanças, backup nem consultas desconhecidas', () => {
-    for (const nome of ['lancamentos', 'contas', 'categorias', 'importacoes', 'regras_categorizacao', 'backup_status', 'qualquer_coisa']) {
+  it('guarda a leitura de Finanças e os nomes dos logins', () => {
+    for (const nome of ['contas', 'categorias', 'lancamentos', 'lancamentos_periodo', 'lancamentos_parcelados', 'regras_categorizacao', 'financas_acessos', 'perfis']) {
+      expect(consultaFicaOffline({ queryKey: [nome, 'um-login'], state: sucesso as never })).toBe(true);
+    }
+  });
+
+  it('não guarda backup, a busca de regras da importação nem consultas desconhecidas', () => {
+    for (const nome of ['importacoes', 'regras_categorizacao_importacao', 'backup_status', 'qualquer_coisa']) {
       expect(consultaFicaOffline({ queryKey: [nome], state: sucesso as never })).toBe(false);
     }
   });
@@ -26,7 +32,8 @@ describe('consultaFicaOffline', () => {
 describe('chaveFicaOffline', () => {
   it('olha só o primeiro elemento da chave', () => {
     expect(chaveFicaOffline(['documentos', 'pessoais', null])).toBe(true);
-    expect(chaveFicaOffline(['lancamentos', 1])).toBe(false);
+    expect(chaveFicaOffline(['lancamentos', 1])).toBe(true);
+    expect(chaveFicaOffline(['importacoes', 1])).toBe(false);
     expect(chaveFicaOffline([])).toBe(false);
   });
 });

@@ -51,6 +51,30 @@ cada push na branch de desenvolvimento. Antes do primeiro deploy:
 
 O app fica em `https://<seu-usuario>.github.io/personal-organizer/`.
 
+## Finanças por pessoa, compartilhamento e Conjunto
+
+Cada login tem as próprias finanças: contas, importações, lançamentos e banco de
+lançamentos são do dono (`contas.dono_id`; lançamentos e importações herdam pela
+conta). As categorias são globais. A tela de Finanças tem um seletor
+**Eu | pessoas que liberaram | Conjunto**, guardado na URL (`?de=`).
+
+- **Compartilhar:** em Settings → Usuários, cada pessoa libera as próprias
+  finanças a outro login, como "Pode ver" ou "Pode ver e editar". Quem só pode
+  ver não altera nada (a RLS do banco recusa, não só a tela).
+- **Conta conjunta:** em Settings → Contas, marque "Conta conjunta" e escolha os
+  donos. Ela aparece no Conjunto, e os lançamentos se dividem em partes iguais.
+- **Despesa conjunta:** num lançamento de saída de uma conta individual, marque
+  "Despesa conjunta", escolha com quem dividir e a parte de quem pagou (padrão
+  50%). Quem recebe a divisão enxerga só aquele lançamento. O resumo do mês do
+  Conjunto mostra a parte de cada um e o acerto ("fulano deve X a ciclana").
+- **Banco de lançamentos:** as regras são do dono da conta; numa conta conjunta
+  são as do Conjunto. A sugestão na importação segue a ordem: dono da conta,
+  Conjunto, minhas, de quem compartilhou. Settings → Banco de lançamentos tem
+  filtro por pessoa e mostra a origem de cada regra.
+
+Migrations: `0033_financas_por_usuario.sql` (dono, conta conjunta, divisão,
+acessos, RLS) e `0034_comprovantes_por_dono.sql` (bucket `comprovantes`).
+
 ## Importação de extrato/fatura (PDF)
 
 A leitura do PDF é heurística — layout de banco varia muito — então toda
@@ -59,9 +83,9 @@ categorizar um lançamento na revisão, a escolha fica salva no "banco de
 lançamentos" (Settings → Banco de Lançamentos): da próxima vez que aparecer
 uma descrição parecida, a categoria já vem preenchida sozinha.
 
-## Uso offline (Apartamento, Documentos e Storage)
+## Uso offline (Apartamento, Documentos, Storage e Finanças)
 
-Apartamento, Documentos e Storage abrem sem internet, anexos incluídos. Finanças precisa de internet.
+Apartamento, Documentos e Storage abrem sem internet, anexos incluídos. Finanças abre só para ler (contas, lançamentos do mês atual e do anterior, resumo dos últimos 6 meses, parcelamentos e banco de lançamentos, das suas finanças, de quem compartilhou com você e do Conjunto); alterar e importar exigem internet. Os dados de quem compartilhou ficam no aparelho até você sair da conta; se o acesso for revogado, o que já estava guardado só some quando a tela for aberta com internet de novo.
 
 - **O que fica no aparelho:** as consultas dessas áreas (IndexedDB, via `@tanstack/react-query-persist-client`, lista fechada em `src/lib/offline/persistencia.ts`) e os arquivos anexados (Cache Storage `arquivos-offline`, em `src/lib/offline/arquivos.ts`). Os arquivos não podem usar o cache do service worker porque os buckets são privados e a URL assinada muda a cada acesso.
 - **Como fica sincronizado:** com internet, `OfflineProvider` (`src/components/OfflineContext.tsx`) busca as consultas e baixa só os anexos que faltam ou mudaram, ao abrir o app, quando a conexão volta, ao voltar pro app depois de 30 min e quando um anexo novo aparece. Clicar no indicador do cabeçalho ("Atualizado às HH:MM") faz isso na hora.
@@ -99,7 +123,7 @@ Em Apartamento > Tarefas (rota `/apartamento/tarefas`; a antiga `/apartamento/ma
 
 Aceitam alterações sem internet: Storage (caixas, itens, observações, tags e fotos), Tarefas (criar, editar, excluir, cômodos, "Feita hoje", Histórico e Adiar/Pular), Itens e Projetos (dados e anexos), Gatos (cadastro, nascimento, ordem, vacinas, vermífugos, consultas, pesos, exames com arquivo e foto) e Documentos (criar, renomear, reordenar, excluir, dados do documento pessoal e anexos).
 
-**Continuam exigindo internet:** Settings, Finanças, importação, exportação para planilha e etiquetas de Storage fora do cache. Também funcionam offline, desde a segunda rodada da fase 2: excluir gato (apaga tudo dele, com os arquivos, ao enviar), criar casal e pessoa, criar documento completo com anexos escolhidos sem internet, e salvar campos livres e locais de renovação.
+**Continuam exigindo internet:** Settings, alterações de Finanças (Finanças só abre para ler), importação, exportação para planilha e etiquetas de Storage fora do cache. Também funcionam offline, desde a segunda rodada da fase 2: excluir gato (apaga tudo dele, com os arquivos, ao enviar), criar casal e pessoa, criar documento completo com anexos escolhidos sem internet, e salvar campos livres e locais de renovação.
 
 **Operações genéricas (fase 2):** além das operações de Storage e Manutenção, a fila tem `tabela.inserir`, `tabela.atualizar` e `tabela.excluir` (uma linha de tabela simples; dizem em qual consulta do react-query a alteração aparece), `anexo.incluir` e `anexo.excluir` (linha + arquivo no bucket; o arquivo fica no Cache Storage do aparelho até subir), `tarefa.definirClassificacoes`, `gato.definirFoto`, `tabela.substituirConjunto` (campos e locais de um documento), `documento.criarCompleto`, `casal.criar` e `gato.excluir`. Hook novo que queira funcionar offline: use `executarOuEnfileirar` com uma delas, `onMutate: SEM_BLOQUEIO_OFFLINE` e `aposGravar(qc, [chaves])` (`src/hooks/mutacoesOffline.ts`).
 

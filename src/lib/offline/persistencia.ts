@@ -4,9 +4,11 @@ import type { PersistedClient, Persister } from '@tanstack/react-query-persist-c
 
 /**
  * Consultas que ficam guardadas no aparelho pra o app abrir sem internet:
- * Apartamento, Documentos e Storage, mais o que a interface precisa pra se desenhar
- * (abas e ícones). Lista fechada de propósito: consulta nova (principalmente de
- * Finanças, que não precisa de offline) só entra aqui se alguém decidir.
+ * Apartamento, Documentos, Storage e Finanças (só leitura), mais o que a interface
+ * precisa pra se desenhar (abas e ícones). Lista fechada de propósito: consulta nova
+ * só entra aqui se alguém decidir.
+ * As de Finanças levam o id de quem está logado na chave (o cache do aparelho é um
+ * só) e, por isso, nunca se misturam entre logins.
  */
 const CONSULTAS_OFFLINE = new Set([
   'itens',
@@ -40,6 +42,16 @@ const CONSULTAS_OFFLINE = new Set([
   'documento_anexos',
   'abas_config',
   'icones_usos',
+  // Finanças (só leitura offline). Os lançamentos de quem compartilhou comigo também ficam no aparelho.
+  'contas',
+  'categorias',
+  'lancamentos',
+  'lancamentos_periodo',
+  'lancamentos_parcelados',
+  'regras_categorizacao',
+  'financas_acessos',
+  // Nomes dos logins no seletor de Finanças.
+  'perfis',
 ]);
 
 /**
@@ -50,7 +62,7 @@ const CONSULTAS_OFFLINE = new Set([
  */
 export const VALIDADE_OFFLINE_MS = 24 * 24 * 60 * 60 * 1000;
 /** Mudou o formato de alguma consulta guardada? Aumente: o que estava guardado é descartado. */
-export const VERSAO_DO_CACHE = 'v6';
+export const VERSAO_DO_CACHE = 'v7';
 
 const CHAVE_IDB = 'po-react-query-offline';
 

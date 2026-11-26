@@ -13,6 +13,8 @@ export interface RegraCategorizacao {
 }
 
 const QUERY_KEY = ['regras_categorizacao'];
+/** Busca da importação: fica de fora do offline (uma chave por lista de descrições, só serve na hora). */
+const QUERY_KEY_IMPORTACAO = ['regras_categorizacao_importacao'];
 
 /** Todas as regras que a RLS deixa eu ver (minhas, do Conjunto e de quem liberou). A página filtra por pessoa. */
 export function useTodasRegras() {
@@ -61,7 +63,7 @@ export function useAtualizarCategoriaRegra() {
 export function useRegrasPara(descricoesNormalizadas: string[], donoDaConta: string | null) {
   const meuId = useAuth().session?.user.id;
   return useQuery({
-    queryKey: [...QUERY_KEY, meuId, donoDaConta, [...descricoesNormalizadas].sort()],
+    queryKey: [...QUERY_KEY_IMPORTACAO, meuId, donoDaConta, [...descricoesNormalizadas].sort()],
     enabled: descricoesNormalizadas.length > 0 && !!meuId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -101,6 +103,6 @@ export function useSalvarRegra() {
         { onConflict: 'dono_id,descricao_normalizada' }
       );
     if (error) throw error;
-    await qc.invalidateQueries({ queryKey: QUERY_KEY });
+    await Promise.all([qc.invalidateQueries({ queryKey: QUERY_KEY }), qc.invalidateQueries({ queryKey: QUERY_KEY_IMPORTACAO })]);
   };
 }
