@@ -298,3 +298,11 @@
   width: 28px;
   flex-shrink: 0;
 }
+
+/* Settings > Casais */
+.casais-membros {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}

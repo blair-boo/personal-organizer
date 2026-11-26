@@ -37,6 +37,7 @@ import { IconesPage } from './pages/settings/IconesPage';
 import { BackupPage } from './pages/settings/BackupPage';
 import { AppPage } from './pages/settings/AppPage';
 import { UsuariosPage } from './pages/settings/UsuariosPage';
+import { CasaisPage } from './pages/settings/CasaisPage';
 
 function RedirecionarParaTarefas() {
   const { search } = useLocation();
@@ -110,6 +111,7 @@ export const router = createBrowserRouter(
             { path: 'icones', element: <IconesPage /> },
             { path: 'contas', element: <ContasPage /> },
             { path: 'usuarios', element: <UsuariosPage /> },
+            { path: 'casais', element: <CasaisPage /> },
             { path: 'banco-lancamentos', element: <BancoDeLancamentosPage /> },
             { path: 'calendario', element: <CalendarioPage /> },
             { path: 'backup', element: <BackupPage /> },
