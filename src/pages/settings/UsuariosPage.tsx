@@ -1,0 +1,358 @@
+import { useState } from 'react';
+import { useAuth } from '../../auth/AuthContext';
+import { useDialogos } from '../../components/Dialogo';
+import { IconePessoa } from '../../components/IconePessoa';
+import { IconeFuncao } from '../../components/IconeUso';
+import { ModalIcone } from '../../components/ModalIcone';
+import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
+import { useToast } from '../../components/Toast';
+import { useDocumentosPessoas, useRenomearPessoaDocumentos } from '../../hooks/useDocumentos';
+import { useIconesUsos, useRemoverUsoIcone, useSalvarUsoIcone } from '../../hooks/useIconesUsos';
+import { useTemaEfetivo } from '../../hooks/useTema';
+import {
+  useAlterarPapel,
+  useConvidarUsuario,
+  useEhAdmin,
+  useExcluirUsuario,
+  usePerfis,
+  useTrocarEmail,
+  useVincularPessoa,
+  type ResultadoConvite,
+} from '../../hooks/useUsuarios';
+import { copiarConteudo } from '../../lib/clipboard';
+import { mensagemDeErro } from '../../lib/erros';
+import { resolverUso } from '../../lib/iconesUsos';
+import { emailValido, nomeDoUsuario, ordenarUsuarios, pessoaDoUsuario, pessoasParaVincular, podeEditarUsuario, podeExcluirUsuario, ROTULO_PAPEL } from '../../lib/usuarios';
+import type { PapelUsuario, Perfil, PessoaDocumentos, UsoIcone } from '../../types';
+
+function ConvidarModal({ onFechar }: { onFechar: () => void }) {
+  const { mostrarToast } = useToast();
+  const convidar = useConvidarUsuario();
+  const [email, setEmail] = useState('');
+  const [semEmail, setSemEmail] = useState<ResultadoConvite | null>(null);
+
+  async function enviar() {
+    try {
+      const resultado = await convidar.mutateAsync(email.trim());
+      if (resultado.enviado) {
+        mostrarToast(`Convite enviado para ${email.trim()}.`);
+        onFechar();
+      } else {
+        setSemEmail(resultado);
+      }
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  return (
+    <ModalBase
+      aberto
+      rotulo="Convidar usuário"
+      onFechar={onFechar}
+      classe="modal-edicao"
+      titulo="Convidar usuário"
+      perguntarAoDescartar={!semEmail}
+      rodape={!semEmail && <BotaoSalvarModal form="form-convidar" disabled={!emailValido(email)} salvando={convidar.isPending} rotulo="Enviar convite" />}
+    >
+      {semEmail?.link ? (
+        <div className="usuarios-link-convite">
+          <p role="status">O login foi criado, mas o e-mail não pôde ser enviado ({semEmail.motivo}). Copie o link e envie para a pessoa.</p>
+          <div className="usuarios-link-linha">
+            <input type="text" readOnly value={semEmail.link} aria-label="Link de acesso" onFocus={(e) => e.currentTarget.select()} />
+            <button type="button" className="btn-icone" onClick={() => void copiarConteudo(semEmail.link!, mostrarToast, 'Link de acesso')} title="Copiar link" aria-label="Copiar link de acesso">
+              <IconeFuncao funcao="copiar" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form
+          id="form-convidar"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (emailValido(email)) void enviar();
+          }}
+        >
+          <label>
+            E-mail
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" required data-autofocus />
+          </label>
+          <p className="conta-detalhe">O login é criado agora. A pessoa escolhe a senha ao aceitar o convite.</p>
+        </form>
+      )}
+    </ModalBase>
+  );
+}
+
+function EditarUsuarioModal({ perfil, pessoa, ehVoce, onFechar }: { perfil: Perfil; pessoa: PessoaDocumentos | null; ehVoce: boolean; onFechar: () => void }) {
+  const { mostrarToast } = useToast();
+  const renomear = useRenomearPessoaDocumentos();
+  const trocarEmail = useTrocarEmail();
+  const [nome, setNome] = useState(pessoa?.nome ?? '');
+  const [email, setEmail] = useState(perfil.email);
+
+  const nomeMudou = !!pessoa && nome.trim() !== '' && nome.trim() !== pessoa.nome;
+  const emailMudou = ehVoce && email.trim().toLowerCase() !== perfil.email.toLowerCase();
+  const invalido = (!!pessoa && !nome.trim()) || (emailMudou && !emailValido(email));
+
+  async function salvar() {
+    try {
+      if (nomeMudou && pessoa) {
+        await renomear.mutateAsync({ id: pessoa.id, nome: nome.trim() });
+        mostrarToast('Nome salvo.');
+      }
+      if (emailMudou) {
+        await trocarEmail.mutateAsync(email.trim());
+        mostrarToast(`Enviamos um link de confirmação para ${email.trim()}. O e-mail só muda depois da confirmação.`, 'info');
+      }
+      onFechar();
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  return (
+    <ModalBase
+      aberto
+      rotulo="Editar usuário"
+      onFechar={onFechar}
+      classe="modal-edicao"
+      titulo="Editar usuário"
+      rodape={<BotaoSalvarModal onClick={() => void salvar()} disabled={invalido || (!nomeMudou && !emailMudou)} salvando={renomear.isPending || trocarEmail.isPending} />}
+    >
+      {pessoa ? (
+        <label>
+          Nome
+          <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} data-autofocus />
+        </label>
+      ) : (
+        <p className="conta-detalhe">Vincule uma pessoa a este login para ter nome e ícone.</p>
+      )}
+      {ehVoce ? (
+        <label>
+          E-mail
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+        </label>
+      ) : (
+        <p className="conta-detalhe">E-mail: {perfil.email}. Só quem é dono do login troca o próprio e-mail.</p>
+      )}
+    </ModalBase>
+  );
+}
+
+function UsuarioLinha({ perfil, pessoa, pessoas, souAdmin, ehVoce }: { perfil: Perfil; pessoa: PessoaDocumentos | null; pessoas: PessoaDocumentos[]; souAdmin: boolean; ehVoce: boolean }) {
+  const { mostrarToast } = useToast();
+  const { confirmar } = useDialogos();
+  const { data: usosIcones = [] } = useIconesUsos();
+  const temaEfetivo = useTemaEfetivo();
+  const salvarUso = useSalvarUsoIcone();
+  const removerUso = useRemoverUsoIcone();
+  const alterarPapel = useAlterarPapel();
+  const vincular = useVincularPessoa();
+  const excluir = useExcluirUsuario();
+  const [editando, setEditando] = useState(false);
+  const [escolhendoIcone, setEscolhendoIcone] = useState(false);
+
+  const nome = nomeDoUsuario(perfil, pessoa);
+  const podeEditar = podeEditarUsuario(souAdmin, ehVoce);
+  const podeExcluir = podeExcluirUsuario(souAdmin, ehVoce);
+
+  async function mudarPapel(papel: PapelUsuario) {
+    try {
+      await alterarPapel.mutateAsync({ usuarioId: perfil.usuario_id, papel });
+      mostrarToast(`${nome} agora é ${ROTULO_PAPEL[papel]}.`);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  async function mudarPessoa(pessoaId: string) {
+    try {
+      await vincular.mutateAsync({ usuarioId: perfil.usuario_id, pessoaId: pessoaId || null });
+      mostrarToast(pessoaId ? 'Pessoa vinculada.' : 'Pessoa desvinculada.');
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  async function excluirUsuario() {
+    const ok = await confirmar({
+      titulo: `Excluir ${nome}?`,
+      mensagem: `O login ${perfil.email} é apagado e essa pessoa não consegue mais entrar. A pessoa cadastrada em Documentos continua, sem login vinculado. Essa ação não pode ser desfeita.`,
+      confirmarRotulo: 'Excluir',
+      perigoso: true,
+    });
+    if (!ok) return;
+    try {
+      await excluir.mutateAsync(perfil.usuario_id);
+      mostrarToast(`${nome} excluído.`);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  async function aplicarIcone(uso: UsoIcone) {
+    try {
+      await salvarUso.mutateAsync(uso);
+      mostrarToast(`Ícone de ${nome} salvo.`);
+      setEscolhendoIcone(false);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  async function removerIcone() {
+    if (!pessoa) return;
+    const ok = await confirmar({
+      titulo: 'Remover ícone?',
+      mensagem: `O ícone sai de "${nome}". O arquivo continua disponível na lista de ícones.`,
+      confirmarRotulo: 'Remover',
+      perigoso: true,
+    });
+    if (!ok) return;
+    try {
+      await removerUso.mutateAsync({ alvoTipo: 'pessoa', alvoId: pessoa.id });
+      mostrarToast(`Ícone de ${nome} removido.`);
+      setEscolhendoIcone(false);
+    } catch (err) {
+      mostrarToast(mensagemDeErro(err), 'erro');
+    }
+  }
+
+  return (
+    <li className="usuarios-linha">
+      <button
+        type="button"
+        className="btn-icone"
+        onClick={() => setEscolhendoIcone(true)}
+        disabled={!pessoa || !podeEditar}
+        title={pessoa ? `Trocar ícone de ${nome}` : 'Vincule uma pessoa para ter ícone'}
+        aria-label={pessoa ? `Trocar ícone de ${nome}` : 'Vincule uma pessoa para ter ícone'}
+      >
+        {pessoa ? (
+          <IconePessoa pessoa={pessoa} tamanho={24} />
+        ) : (
+          <span className="pessoa-inicial" aria-hidden="true">
+            {perfil.email.charAt(0).toUpperCase()}
+          </span>
+        )}
+      </button>
+
+      <div className="usuarios-identidade">
+        <span className="usuarios-nome">{nome}</span>
+        {pessoa && <span className="conta-detalhe">{perfil.email}</span>}
+        <span className="usuarios-selos">
+          {ehVoce && <span className="usuarios-selo">Você</span>}
+          {!perfil.confirmado && <span className="usuarios-selo">Convite pendente</span>}
+        </span>
+      </div>
+
+      <label className="usuarios-campo">
+        Papel
+        {souAdmin ? (
+          <select value={perfil.papel} onChange={(e) => void mudarPapel(e.target.value as PapelUsuario)} disabled={alterarPapel.isPending}>
+            <option value="admin">{ROTULO_PAPEL.admin}</option>
+            <option value="membro">{ROTULO_PAPEL.membro}</option>
+          </select>
+        ) : (
+          <span>{ROTULO_PAPEL[perfil.papel]}</span>
+        )}
+      </label>
+
+      <label className="usuarios-campo">
+        Pessoa
+        {souAdmin ? (
+          <select value={pessoa?.id ?? ''} onChange={(e) => void mudarPessoa(e.target.value)} disabled={vincular.isPending}>
+            <option value="">Nenhuma</option>
+            {pessoasParaVincular(pessoas, perfil.usuario_id).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span>{pessoa?.nome ?? 'Nenhuma'}</span>
+        )}
+      </label>
+
+      <div className="usuarios-acoes">
+        {podeEditar && (
+          <button type="button" className="btn-icone" onClick={() => setEditando(true)} title={`Editar ${nome}`} aria-label={`Editar ${nome}`}>
+            <IconeFuncao funcao="editar" />
+          </button>
+        )}
+        {podeExcluir && (
+          <button type="button" className="btn-icone btn-icone-perigo" onClick={() => void excluirUsuario()} disabled={excluir.isPending} title={`Excluir ${nome}`} aria-label={`Excluir ${nome}`}>
+            <IconeFuncao funcao="excluir" />
+          </button>
+        )}
+      </div>
+
+      {editando && <EditarUsuarioModal perfil={perfil} pessoa={pessoa} ehVoce={ehVoce} onFechar={() => setEditando(false)} />}
+      {escolhendoIcone && pessoa && (
+        <ModalIcone
+          aberto
+          rotuloAlvo={nome}
+          alvoTipo="pessoa"
+          alvoId={pessoa.id}
+          inicial={resolverUso(usosIcones, 'pessoa', pessoa.id, temaEfetivo)}
+          tamanhoBase={18}
+          permiteRemover
+          onConfirmar={(uso: UsoIcone) => void aplicarIcone(uso)}
+          onRemover={() => void removerIcone()}
+          onFechar={() => setEscolhendoIcone(false)}
+        />
+      )}
+    </li>
+  );
+}
+
+/**
+ * Settings > Usuários: os logins do app, com papel (admin ou membro) e a pessoa de Documentos a que cada um
+ * está ligado. Todos veem a lista. Só admin convida, exclui e muda papel e vínculo; cada um edita o próprio
+ * nome, e-mail e ícone (o banco trava papel e vínculo para quem não é admin).
+ */
+export function UsuariosPage() {
+  const { session } = useAuth();
+  const { data: perfis, isLoading, isError } = usePerfis();
+  const { data: pessoas = [] } = useDocumentosPessoas();
+  const souAdmin = useEhAdmin();
+  const [convidando, setConvidando] = useState(false);
+  const meuId = session?.user.id;
+
+  return (
+    <div className="usuarios">
+      <div className="usuarios-topo">
+        <p className="conta-detalhe">Quem pode entrar no app. Cada login fica ligado a uma pessoa de Documentos.</p>
+        {souAdmin && (
+          <button type="button" onClick={() => setConvidando(true)}>
+            + Usuário
+          </button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <p>Carregando…</p>
+      ) : isError ? (
+        <p role="alert">Não foi possível carregar os usuários.</p>
+      ) : !perfis || perfis.length === 0 ? (
+        <p className="hierarquia-vazio">Nenhum usuário ainda.</p>
+      ) : (
+        <ul className="usuarios-lista">
+          {ordenarUsuarios(perfis, pessoas, meuId).map((perfil) => (
+            <UsuarioLinha
+              key={perfil.usuario_id}
+              perfil={perfil}
+              pessoa={pessoaDoUsuario(pessoas, perfil.usuario_id)}
+              pessoas={pessoas}
+              souAdmin={souAdmin}
+              ehVoce={perfil.usuario_id === meuId}
+            />
+          ))}
+        </ul>
+      )}
+
+      {convidando && <ConvidarModal onFechar={() => setConvidando(false)} />}
+    </div>
+  );
+}

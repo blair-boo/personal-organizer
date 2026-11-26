@@ -401,3 +401,15 @@ export interface BackupStatus {
   tamanho_arquivos_bytes: number;
   objetos_arquivos: number;
 }
+
+export type PapelUsuario = 'admin' | 'membro';
+
+/** Um login do app (Settings > Usuários). Nasce por trigger quando o login é criado, inclusive no convite. */
+export interface Perfil {
+  usuario_id: string;
+  email: string;
+  papel: PapelUsuario;
+  /** false enquanto o convite não foi aceito. */
+  confirmado: boolean;
+  criado_em: string;
+}

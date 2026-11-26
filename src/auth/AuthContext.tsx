@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { limparTudoAoSair } from '../lib/offline/limpar';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, TIPO_DO_LINK_DE_ACESSO } from '../lib/supabaseClient';
 import { lerSessaoGuardada, proximaSessao } from './sessaoGuardada';
 
 interface AuthState {
@@ -10,6 +10,9 @@ interface AuthState {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  /** Quem chegou por convite (ou recuperação de senha) precisa escolher uma senha antes de usar o app. */
+  precisaDefinirSenha: boolean;
+  definirSenha: (senha: string) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -17,6 +20,7 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [precisaDefinirSenha, setPrecisaDefinirSenha] = useState(TIPO_DO_LINK_DE_ACESSO !== null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -34,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (event === 'PASSWORD_RECOVERY') setPrecisaDefinirSenha(true);
       setSession((atual) => proximaSessao(atual, event, newSession));
     });
     return () => listener.subscription.unsubscribe();
@@ -44,12 +49,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   }
 
+  async function definirSenha(senha: string) {
+    const { error } = await supabase.auth.updateUser({ password: senha });
+    if (!error) setPrecisaDefinirSenha(false);
+    return { error: error?.message ?? null };
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     await limparTudoAoSair(queryClient);
   }
 
-  return <AuthContext.Provider value={{ session, loading, signIn, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ session, loading, signIn, signOut, precisaDefinirSenha, definirSenha }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthState {

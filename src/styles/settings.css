@@ -154,3 +154,91 @@
 .backup-nota {
   margin: 0;
 }
+
+/* Settings > Usuários */
+.usuarios-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.usuarios-topo p {
+  margin: 0;
+}
+
+.usuarios-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.usuarios-linha {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--bg-raised);
+}
+
+.usuarios-identidade {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.usuarios-nome {
+  color: var(--text-h);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.usuarios-selos {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.usuarios-selo {
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.usuarios-selos:empty {
+  display: none;
+}
+
+.usuarios-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.usuarios-acoes {
+  display: flex;
+  gap: 4px;
+}
+
+.usuarios-link-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.usuarios-link-linha input {
+  flex: 1;
+  min-width: 0;
+}
