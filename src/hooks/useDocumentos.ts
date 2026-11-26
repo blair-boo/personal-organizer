@@ -215,6 +215,45 @@ export function useCriarCasalDocumentos() {
   });
 }
 
+export interface AtualizacaoCasalDocumentos {
+  casalId: string;
+  nome: string;
+  /** Pessoas que já existem. */
+  pessoaIds: string[];
+  /** Nomes de pessoas a criar na hora (com os documentos padrão delas) e juntar ao casal. */
+  novasPessoas: string[];
+}
+
+/**
+ * Renomeia o casal e troca seus membros (sempre duas pessoas diferentes). Os documentos do casal ficam como estão.
+ * Pessoas criadas agora já ganham os documentos padrão. Precisa de internet. Primeiro entram os membros novos e só
+ * depois saem os antigos, para um erro no meio nunca deixar o casal sem membros.
+ */
+export function useAtualizarCasalDocumentos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ casalId, nome, pessoaIds, novasPessoas }: AtualizacaoCasalDocumentos) => {
+      const novas = novasPessoas.map((nomeNovo) => ({ id: crypto.randomUUID(), nome: nomeNovo }));
+      const ids = [...pessoaIds, ...novas.map((p) => p.id)];
+      if (ids.length !== 2 || ids[0] === ids[1]) throw new Error('Um casal junta exatamente duas pessoas diferentes.');
+      if (novas.length > 0) {
+        const { error } = await supabase.from('documentos_pessoas').insert(novas.map((p) => ({ ...p, tipo: 'pessoa', ordem: 0, usuario_id: null })));
+        if (error) throw error;
+        const documentos = novas.flatMap((p) => MODELO_PADRAO_DOCUMENTOS_PESSOAIS.map((titulo, i) => ({ id: crypto.randomUUID(), area: 'pessoais', pessoa_id: p.id, titulo, ordem: i + 1 })));
+        const { error: erroDocumentos } = await supabase.from('documentos').insert(documentos);
+        if (erroDocumentos) throw erroDocumentos;
+      }
+      const { error: erroNome } = await supabase.from('documentos_pessoas').update({ nome }).eq('id', casalId);
+      if (erroNome) throw erroNome;
+      const { error: erroMembros } = await supabase.from('documentos_casal_membros').upsert(ids.map((pessoa_id) => ({ casal_id: casalId, pessoa_id })), { onConflict: 'casal_id,pessoa_id', ignoreDuplicates: true });
+      if (erroMembros) throw erroMembros;
+      const { error: erroSaida } = await supabase.from('documentos_casal_membros').delete().eq('casal_id', casalId).not('pessoa_id', 'in', `(${ids.join(',')})`);
+      if (erroSaida) throw erroSaida;
+    },
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: ['documentos_pessoas'] }), qc.invalidateQueries({ queryKey: ['documentos_casal_membros'] }), qc.invalidateQueries({ queryKey: ['documentos'] })]),
+  });
+}
+
 export interface ProximoVencimento {
   documentoId: string;
   pessoaId: string;

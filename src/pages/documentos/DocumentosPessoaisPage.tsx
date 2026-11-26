@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CriarCasalModal } from './CriarCasalModal';
+import { CriarCasalModal } from '../../components/CriarCasalModal';
 import { BotaoSalvarModal, ModalBase } from '../../components/ModalBase';
 import { ArquivoLink, BotaoBaixarArquivo } from '../../components/ArquivoLink';
 import { IconeFuncao } from '../../components/IconeUso';
@@ -1347,7 +1347,7 @@ export function DocumentosPessoaisPage() {
         <CriarCasalModal
           pessoas={pessoas ?? []}
           onFechar={() => setCriandoCasal(false)}
-          onCriado={(casal) => {
+          onSalvo={(casal) => {
             setCriandoCasal(false);
             setPessoaAtualId(casal.id);
           }}

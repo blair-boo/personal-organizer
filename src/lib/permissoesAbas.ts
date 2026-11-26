@@ -22,6 +22,9 @@ export type Permissoes = Record<string, Permissao>;
  */
 export const ABA_SEMPRE_LIBERADA = 'settings:usuarios';
 
+/** Todos veem (cada um confere seus casais), mas só admin edita. Também fica fora da tabela de permissões. */
+export const ABA_SO_VISUALIZAR = 'settings:casais';
+
 /** Principal que tem subabas, e o grupo delas. */
 const GRUPO_DAS_SUBABAS: Record<string, GrupoAbas> = {
   'principal:financas': 'financas',
@@ -49,7 +52,7 @@ export interface LinhaPermissao {
 export function linhasDePermissao(): LinhaPermissao[] {
   return ABAS_PADRAO.principal.map((principal) => {
     const grupo = GRUPO_DAS_SUBABAS[principal.chave];
-    return { principal, subabas: grupo ? ABAS_PADRAO[grupo].filter((a) => a.chave !== ABA_SEMPRE_LIBERADA) : [] };
+    return { principal, subabas: grupo ? ABAS_PADRAO[grupo].filter((a) => a.chave !== ABA_SEMPRE_LIBERADA && a.chave !== ABA_SO_VISUALIZAR) : [] };
   });
 }
 
@@ -83,7 +86,7 @@ export function alternarPermissao(permissoes: Permissoes, chave: string, campo: 
 
 /** A aba aparece no menu e abre? A principal aparece se ela ou alguma subaba tem "ver" (Settings sempre aparece, por causa de Usuários). */
 export function podeVerAba(permissoes: Permissoes, admin: boolean, chave: string): boolean {
-  if (admin || chave === ABA_SEMPRE_LIBERADA) return true;
+  if (admin || chave === ABA_SEMPRE_LIBERADA || chave === ABA_SO_VISUALIZAR) return true;
   if (chave in GRUPO_DAS_SUBABAS) {
     const temAbaLiberada = ABAS_PADRAO[GRUPO_DAS_SUBABAS[chave]].some((a) => a.chave === ABA_SEMPRE_LIBERADA);
     return temAbaLiberada || permissaoDe(permissoes, chave).ver || subabasDe(chave).some((s) => permissaoDe(permissoes, s.chave).ver);
@@ -93,6 +96,7 @@ export function podeVerAba(permissoes: Permissoes, admin: boolean, chave: string
 
 export function podeEditarAba(permissoes: Permissoes, admin: boolean, chave: string): boolean {
   if (admin || chave === ABA_SEMPRE_LIBERADA) return true;
+  if (chave === ABA_SO_VISUALIZAR) return false;
   return permissaoDe(permissoes, chave).editar;
 }
 
