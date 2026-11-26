@@ -36,6 +36,18 @@
   padding-left: 20px;
 }
 
+.hoje-lista-pendencias {
+  list-style: none;
+  padding-left: 0;
+}
+
+.hoje-pendencia {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
 .hoje-atrasada {
   color: var(--danger);
   font-weight: 600;
