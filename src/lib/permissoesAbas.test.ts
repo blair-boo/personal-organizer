@@ -7,6 +7,7 @@ describe('tabela de abas', () => {
     expect(linhas.map((l) => l.principal.chave)).toEqual(['principal:hoje', 'principal:financas', 'principal:apartamento', 'principal:storage', 'principal:documentos', 'principal:settings']);
     expect(linhas.find((l) => l.principal.chave === 'principal:hoje')?.subabas).toEqual([]);
     expect(chavesDaTabela()).not.toContain('settings:usuarios');
+    expect(chavesDaTabela()).not.toContain('settings:casais');
     expect(linhas.find((l) => l.principal.chave === 'principal:settings')?.subabas.length).toBeGreaterThan(0);
   });
 });
@@ -75,6 +76,12 @@ describe('podeVerAba e podeEditarAba', () => {
     expect(podeEditarAba({}, false, 'principal:hoje')).toBe(false);
     expect(podeVerAba({}, false, 'principal:settings')).toBe(true);
   });
+  it('Casais todos veem, mas só admin edita', () => {
+    expect(podeVerAba({}, false, 'settings:casais')).toBe(true);
+    expect(podeEditarAba({}, false, 'settings:casais')).toBe(false);
+    expect(podeEditarAba({ 'settings:casais': { ver: true, editar: true } }, false, 'settings:casais')).toBe(false);
+    expect(podeEditarAba({}, true, 'settings:casais')).toBe(true);
+  });
   it('Usuários é sempre liberada, para cada um editar o próprio cadastro', () => {
     expect(podeVerAba({}, false, 'settings:usuarios')).toBe(true);
     expect(podeEditarAba({}, false, 'settings:usuarios')).toBe(true);
@@ -103,6 +110,7 @@ describe('chaveDaRota', () => {
     expect(chaveDaRota('/apartamento/tarefas')).toBe('apartamento:tarefas');
     expect(chaveDaRota('/apartamento/manutencao')).toBe('apartamento:tarefas');
     expect(chaveDaRota('/settings/usuarios')).toBe('settings:usuarios');
+    expect(chaveDaRota('/settings/casais')).toBe('settings:casais');
   });
   it('Finanças: competência na frente e rotas soltas', () => {
     expect(chaveDaRota('/financas/2026-11/conta-corrente')).toBe('financas:conta-corrente');
